@@ -83,7 +83,7 @@ def fetch_kline(code: str, days: int = 250) -> pd.DataFrame:
     return df[["date", "open", "high", "low", "close", "volume"]]
 
 
-# 5 只标的池（阉割版，只保留稳定大票）
+# 5 只标的池
 STOCK_POOL = [
     {"code": "sh600460", "name": "士兰微", "sector": "半导体"},
     {"code": "sh600519", "name": "贵州茅台", "sector": "消费"},

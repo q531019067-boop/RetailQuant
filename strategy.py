@@ -1,5 +1,5 @@
 """
-rQuant.strategy — 阉割版策略层
+rQuant.strategy
 - ChanLun2BApprox：MA5 上穿 MA20 → 买入信号
 - BuyHold：买入持有，跌破 MA60 卖出（最简择时）
 - 不做仓位管理、不做市场状态判断、不做宏观
