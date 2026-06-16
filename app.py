@@ -1,15 +1,17 @@
 """
-rQuant.app — Flask Web（端口 5060）
+rQuant.app — Flask Web（默认端口 8080）
 - 看板：持仓 + 信号 + 曲线
 - 操作：买 / 卖 / 加仓
 - 不做多用户、不做密码、不做缓存层
+- 启动：python3 app.py
+- 自定义端口：RQUANT_PORT=5060 python3 app.py
 """
+
 from __future__ import annotations
 import os
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
 from flask import Flask, render_template, request, redirect, url_for, jsonify, flash
 
@@ -25,51 +27,84 @@ import squarify
 app = Flask(__name__)
 app.secret_key = "rquant-dev-key"  # 仅本地用
 
+DEFAULT_PORT = int(os.environ.get("RQUANT_PORT", "8080"))
+
 
 def _log(msg: str):
     """统一日志输出：带时间戳，写 stderr 确保 waitress 不吞"""
-    import sys
     ts = datetime.now().strftime("%H:%M:%S")
     sys.stderr.write(f"[{ts}] [app] {msg}\n")
     sys.stderr.flush()
 
 
-def _safe_float(x, default=0.0):
+def _safe_float(x, default=0.0) -> float:
     try:
         return float(x)
     except (TypeError, ValueError):
         return default
 
 
-def _safe_int(x, default=0):
+def _safe_int(x, default=0) -> int:
     try:
         return int(x)
     except (TypeError, ValueError):
         return default
 
 
+def _build_watchlist_view(codes: list[str], positions_raw: list[dict]) -> list[dict]:
+    """把自选股 code 列表补全成前端可直接渲染的视图（含 is_held 标记）"""
+    held_codes = {p["code"] for p in positions_raw}
+    rows = []
+    for code in codes:
+        info = data.get_stock(code)
+        price = info.get("price", 0)
+        change_pct = info.get("change_pct", 0)
+        rows.append(
+            {
+                "code": code,
+                "name": info.get("name", code),
+                "price": round(price, 2) if price else 0,
+                "change_pct": round(change_pct, 2),
+                "sector": info.get("sector", ""),
+                "is_held": code in held_codes,
+            }
+        )
+    return rows
+
+
+def _pool_name_map() -> dict[str, str]:
+    """code → name 的标的池查找表（用于买入选股时回填名称）"""
+    return {s["code"]: s["name"] for s in data.get_pool()}
+
+
 # ============== 首页 ==============
+
 
 @app.route("/")
 def index():
     _log("首页被访问 —— 如果你看到这行，说明浏览器确实连接到了服务器")
-    # 1. 持仓
     positions_raw = pf.get_positions()
+
+    # 1. 持仓（市值 / 盈亏）
     positions = []
-    total_cost = 0
-    total_market = 0
+    total_cost = 0.0
+    total_market = 0.0
     for p in positions_raw:
         df = data.fetch_kline(p["code"], 70)
         current = float(df["close"].iloc[-1]) if not df.empty else p["avg_cost"]
         market_value = current * p["shares"]
         pnl = market_value - p["avg_cost"] * p["shares"]
-        positions.append({
-            **p,
-            "current_price": round(current, 2),
-            "market_value": round(market_value, 2),
-            "pnl": round(pnl, 2),
-            "pnl_pct": round((current / p["avg_cost"] - 1) * 100, 2) if p["avg_cost"] > 0 else 0,
-        })
+        positions.append(
+            {
+                **p,
+                "current_price": round(current, 2),
+                "market_value": round(market_value, 2),
+                "pnl": round(pnl, 2),
+                "pnl_pct": round((current / p["avg_cost"] - 1) * 100, 2)
+                if p["avg_cost"] > 0
+                else 0,
+            }
+        )
         total_cost += p["avg_cost"] * p["shares"]
         total_market += market_value
     total_pnl = total_market - total_cost
@@ -87,34 +122,13 @@ def index():
     buy_signals = []
     for s in data.get_pool():
         df = data.fetch_kline(s["code"], 70)
-        sigs = strategy.scan_stock(s["code"], s["name"], s["sector"], df)
-        for sig in sigs:
-            buy_signals.append(sig)
+        buy_signals.extend(strategy.scan_stock(s["code"], s["name"], s["sector"], df))
 
-    # 4. 快照
-    snapshots = pf.list_snapshots()
-    # 按日期排序
-    snapshots.sort(key=lambda x: x["date"])
-
-    # 5. 交易历史
+    # 4. 交易历史 + 5. 自选股视图
     trades = sorted(pf.list_trades(), key=lambda x: x["datetime"], reverse=True)
-
-    # 6. 自选股（用内存字典补全行情）
+    snapshots = sorted(pf.list_snapshots(), key=lambda x: x["date"])
     watchlist_codes = data.get_watchlist_codes()
-    watchlist_stocks = []
-    held_codes = {p["code"] for p in positions_raw}
-    for code in watchlist_codes:
-        info = data.get_stock(code)
-        curr_price = info.get("price", 0)
-        change_pct = info.get("change_pct", 0)
-        watchlist_stocks.append({
-            "code": code,
-            "name": info.get("name", code),
-            "price": round(curr_price, 2) if curr_price else 0,
-            "change_pct": round(change_pct, 2),
-            "sector": info.get("sector", ""),
-            "is_held": code in held_codes,
-        })
+    watchlist_stocks = _build_watchlist_view(watchlist_codes, positions_raw)
 
     return render_template(
         "index.html",
@@ -135,6 +149,7 @@ def index():
 
 # ============== 买入 ==============
 
+
 @app.route("/position/add", methods=["POST"])
 def add_position():
     code = request.form.get("code", "").strip().lower()
@@ -146,12 +161,7 @@ def add_position():
     if shares % 100 != 0:
         flash("股数必须是 100 的整数倍", "error")
         return redirect(url_for("index"))
-    # 找名字
-    name = code
-    for s in data.get_pool():
-        if s["code"] == code:
-            name = s["name"]
-            break
+    name = _pool_name_map().get(code, code)
     pf.add_position(code, name, shares, price)
     pf.add_trade("BUY", code, name, shares, price, note="手动买入")
     flash(f"✅ 已买入 {code} {shares} 股 @ ¥{price}", "success")
@@ -159,6 +169,7 @@ def add_position():
 
 
 # ============== 卖出 ==============
+
 
 @app.route("/position/sell/<code>", methods=["POST"])
 def sell_position(code):
@@ -172,13 +183,23 @@ def sell_position(code):
     except ValueError as e:
         flash(str(e), "error")
         return redirect(url_for("index"))
-    pf.add_trade("SELL", code, result.get("code", code), shares, price,
-                 note=f"盈亏 ¥{result['pnl']:+.2f}")
-    flash(f"🔴 已卖出 {code} {shares} 股 @ ¥{price}，盈亏 ¥{result['pnl']:+.2f}", "success")
+    pf.add_trade(
+        "SELL",
+        code,
+        result.get("code", code),
+        shares,
+        price,
+        note=f"盈亏 ¥{result['pnl']:+.2f}",
+    )
+    flash(
+        f"🔴 已卖出 {code} {shares} 股 @ ¥{price}，盈亏 ¥{result['pnl']:+.2f}",
+        "success",
+    )
     return redirect(url_for("index"))
 
 
 # ============== 删除交易 ==============
+
 
 @app.route("/trade/delete/<trade_id>", methods=["POST"])
 def delete_trade(trade_id):
@@ -189,10 +210,11 @@ def delete_trade(trade_id):
 
 # ============== 保存快照 ==============
 
+
 @app.route("/api/snapshot", methods=["POST"])
 def save_snapshot():
     positions = pf.get_positions()
-    total_market = 0
+    total_market = 0.0
     for p in positions:
         df = data.fetch_kline(p["code"], 70)
         if not df.empty:
@@ -207,14 +229,14 @@ def save_snapshot():
 TREEMAP_W, TREEMAP_H = 900, 500
 
 
-def _compute_treemap(boards: list) -> list:
+def _compute_treemap(boards: list[dict]) -> list[dict]:
     """用 squarify 库计算 Treemap 矩形坐标，附加到每个板块上"""
     if not boards:
         return boards
     values = [max(abs(b["change_pct"]), 0.3) for b in boards]
     normed = squarify.normalize_sizes(values, TREEMAP_W, TREEMAP_H)
     rects = squarify.squarify(normed, 0, 0, TREEMAP_W, TREEMAP_H)
-    # 矩形按面积降序排列，需按原顺序映射回去
+    # squarify 按面积降序输出矩形；用 values 的排序映射回原始 boards 顺序
     indexed = sorted(enumerate(values), key=lambda x: -x[1])
     for rank, (orig_idx, _) in enumerate(indexed):
         r = rects[rank]
@@ -243,7 +265,9 @@ def api_boards():
         return jsonify({"type": board_type, "boards": boards, "count": len(boards)})
     except Exception as e:
         _log(f"/api/boards 异常: {e}")
-        return jsonify({"type": board_type, "boards": [], "count": 0, "error": str(e)}), 500
+        return jsonify(
+            {"type": board_type, "boards": [], "count": 0, "error": str(e)}
+        ), 500
 
 
 @app.route("/api/board/<code>/stocks")
@@ -254,8 +278,13 @@ def api_board_stocks(code):
         stocks = board.fetch_board_stocks(code, 20)
         # 同步写入全局股票字典
         for s in stocks:
-            data.upsert_stock(s["code"], name=s.get("name", ""), price=s.get("price", 0),
-                            change_pct=s.get("change_pct", 0), turnover=s.get("turnover", 0))
+            data.upsert_stock(
+                s["code"],
+                name=s.get("name", ""),
+                price=s.get("price", 0),
+                change_pct=s.get("change_pct", 0),
+                turnover=s.get("turnover", 0),
+            )
         if not stocks:
             _log(f"/api/board/{code}/stocks: 成分股数据为空")
         else:
@@ -267,6 +296,7 @@ def api_board_stocks(code):
 
 
 # ============== 自选股 API ==============
+
 
 @app.route("/api/watchlist")
 def api_watchlist():
@@ -286,40 +316,28 @@ def api_watchlist_toggle():
     if code in codes:
         data.remove_from_watchlist(code)
         _log(f"自选股 移除: {code}")
-        return jsonify({"ok": True, "code": code, "in_watchlist": False, "action": "removed"})
-    else:
-        data.add_to_watchlist(code)
-        info = data.get_stock(code)
-        if info.get("name"):
-            data.upsert_stock(code, name=info["name"])
-        _log(f"自选股 添加: {code}")
-        return jsonify({"ok": True, "code": code, "in_watchlist": True, "action": "added"})
+        return jsonify(
+            {"ok": True, "code": code, "in_watchlist": False, "action": "removed"}
+        )
+    data.add_to_watchlist(code)
+    info = data.get_stock(code)
+    if info.get("name"):
+        data.upsert_stock(code, name=info["name"])
+    _log(f"自选股 添加: {code}")
+    return jsonify({"ok": True, "code": code, "in_watchlist": True, "action": "added"})
 
 
 @app.route("/api/watchlist/stocks")
 def api_watchlist_stocks():
     """返回自选股行情（从内存字典补全，含是否持仓判断）"""
     codes = data.get_watchlist_codes()
-    positions_raw = pf.get_positions()
-    held_codes = {p["code"] for p in positions_raw}
-    stocks = []
-    for code in codes:
-        info = data.get_stock(code)
-        curr_price = info.get("price", 0)
-        change_pct = info.get("change_pct", 0)
-        stocks.append({
-            "code": code,
-            "name": info.get("name", code),
-            "price": round(curr_price, 2) if curr_price else 0,
-            "change_pct": round(change_pct, 2),
-            "sector": info.get("sector", ""),
-            "is_held": code in held_codes,
-        })
-    _log(f"自选股 行情 API: {len(stocks)} 只")
-    return jsonify({"stocks": stocks, "count": len(stocks)})
+    rows = _build_watchlist_view(codes, pf.get_positions())
+    _log(f"自选股 行情 API: {len(rows)} 只")
+    return jsonify({"stocks": rows, "count": len(rows)})
 
 
 # ============== 错误 ==============
+
 
 @app.errorhandler(404)
 def not_found(e):
@@ -334,11 +352,22 @@ def server_error(e):
 # ============== 启动 ==============
 
 if __name__ == "__main__":
-    port = int(os.environ.get("RQUANT_PORT", "8080"))
-    print(f"rQuant 启动：http://localhost:{port}")
+    print(
+        f"rQuant 启动（双栈）：\n"
+        f"  http://localhost:{DEFAULT_PORT}/\n"
+        f"  http://127.0.0.1:{DEFAULT_PORT}/\n"
+        f"  http://[::1]:{DEFAULT_PORT}/"
+    )
     _log("日志系统已就绪，等待请求中…")
     try:
         from waitress import serve
-        serve(app, host="0.0.0.0", port=port)
+
+        # 双 listen = IPv4 + IPv6 同时监听，避免 localhost 在 macOS 上解析到 ::1 时连不上
+        serve(
+            app,
+            listen=[f"127.0.0.1:{DEFAULT_PORT}", f"[::1]:{DEFAULT_PORT}"],
+            ident="rquant",
+        )
     except ImportError:
-        app.run(host="0.0.0.0", port=port, debug=True)
+        # Flask dev server 不支持双 listen，回退到单 host
+        app.run(host="127.0.0.1", port=DEFAULT_PORT, debug=True)

@@ -1,23 +1,26 @@
 """
 rQuant.board — 板块行情数据层
 - 通过 Sina 行情 API 获取行业 ETF 实时数据
-- 行业板块 / 概念板块均可覆盖
-- 5 分钟内存缓存
+- 行业 / 概念 复用同一份 ETF 池（底层数据源相同，差异化交给前端标签）
+- 2 分钟内存缓存（盘中快速刷新）
 """
+
 from __future__ import annotations
 import re
+import sys
 import time
 from datetime import datetime
-from typing import List, Dict, Any, Optional
 
 import requests
 
 SINA_QUOTE_API = "https://hq.sinajs.cn/list="
 SINA_HEADERS = {"Referer": "https://finance.sina.com.cn/"}
 
-# ============== 行业 ETF 映射（板块名 → ETF 代码） ==============
+# ============== 板块 ETF 池 ==============
+# Sina 不暴露真实"行业板块"或"概念板块"成分股接口；
+# 用 ETF 行情做板块代理，同一份池子被行业 / 概念两个 tab 共用。
 
-INDUSTRY_ETFS: List[Dict[str, str]] = [
+SECTOR_ETFS: list[dict[str, str]] = [
     {"code": "sh512480", "name": "半导体"},
     {"code": "sh512800", "name": "银行"},
     {"code": "sh512880", "name": "证券"},
@@ -48,73 +51,65 @@ INDUSTRY_ETFS: List[Dict[str, str]] = [
     {"code": "sh516970", "name": "基建"},
     {"code": "sh516090", "name": "新材料"},
     {"code": "sh515880", "name": "通信"},
-]
-
-CONCEPT_ETFS: List[Dict[str, str]] = [
-    {"code": "sh515030", "name": "新能车"},
-    {"code": "sh561160", "name": "锂电池"},
-    {"code": "sh515050", "name": "5G通信"},
-    {"code": "sh516510", "name": "云计算"},
-    {"code": "sh515790", "name": "光伏"},
-    {"code": "sh516090", "name": "新材料"},
-    {"code": "sh512480", "name": "半导体"},
-    {"code": "sh516160", "name": "新能源"},
-    {"code": "sz159766", "name": "旅游"},
-    {"code": "sh512660", "name": "军工"},
-    {"code": "sz159865", "name": "养殖"},
-    {"code": "sh516970", "name": "基建"},
-    {"code": "sh515210", "name": "钢铁"},
-    {"code": "sh561230", "name": "化工"},
-    {"code": "sh515880", "name": "通信"},
-    {"code": "sh512170", "name": "医疗"},
-    {"code": "sh512010", "name": "医药"},
-    {"code": "sh512690", "name": "白酒"},
-    {"code": "sz159928", "name": "消费"},
-    {"code": "sh512200", "name": "房地产"},
-    {"code": "sh512400", "name": "有色金属"},
-    {"code": "sh512880", "name": "证券"},
-    {"code": "sz159611", "name": "电力"},
-    {"code": "sh512800", "name": "银行"},
-    {"code": "sz159949", "name": "创业板50"},
-    {"code": "sh588000", "name": "科创50"},
-    {"code": "sh510050", "name": "上证50"},
-    {"code": "sh510300", "name": "沪深300"},
-    {"code": "sh510500", "name": "中证500"},
-    {"code": "sh512100", "name": "中证1000"},
 ]
 
 # ============== 缓存 ==============
 
-_cache: Dict[str, tuple] = {}  # key → (data, timestamp)
+_cache: dict[str, tuple] = {}  # key → (data, timestamp)
+CACHE_TTL = 120  # 秒
 
 
 def _log(msg: str):
-    import sys
     ts = datetime.now().strftime("%H:%M:%S")
     sys.stderr.write(f"[{ts}] [board] {msg}\n")
     sys.stderr.flush()
 
 
-def _cached(key: str, ttl: int = 300):
+def _cached(key: str):
     if key in _cache:
         data, ts = _cache[key]
-        if time.time() - ts < ttl:
+        if time.time() - ts < CACHE_TTL:
             return data
     return None
 
 
-def _set_cache(key: str, data: Any):
+def _set_cache(key: str, data):
     _cache[key] = (data, time.time())
 
 
 # ============== Sina 行情解析 ==============
 
-def _fetch_etf_quotes(etf_list: List[Dict[str, str]]) -> List[Dict[str, Any]]:
-    """批量拉取 ETF 实时行情（Sina API）"""
-    codes = [e["code"] for e in etf_list]
-    if not codes:
-        return []
 
+def _parse_sina_quote_line(code: str, text: str, fallback_name: str) -> dict | None:
+    """从 Sina 批量返回的文本中解析单只 ETF 行情"""
+    pattern = rf'var hq_str_{code}="([^"]*)"'
+    m = re.search(pattern, text)
+    if not m:
+        return None
+    fields = m.group(1).split(",")
+    if len(fields) < 4:
+        return None
+    try:
+        prev_close = float(fields[2])
+        current = float(fields[3])
+    except (ValueError, IndexError):
+        return None
+    if prev_close <= 0:
+        return None
+    return {
+        "code": code,
+        "name": fallback_name or fields[0],
+        "price": round(current, 3),
+        "change_pct": round((current - prev_close) / prev_close * 100, 2),
+        "change_amt": round(current - prev_close, 3),
+    }
+
+
+def _fetch_etf_quotes(etf_list: list[dict[str, str]]) -> list[dict]:
+    """批量拉取 ETF 实时行情（Sina API）"""
+    if not etf_list:
+        return []
+    codes = [e["code"] for e in etf_list]
     url = SINA_QUOTE_API + ",".join(codes)
     try:
         r = requests.get(url, headers=SINA_HEADERS, timeout=8)
@@ -125,94 +120,58 @@ def _fetch_etf_quotes(etf_list: List[Dict[str, str]]) -> List[Dict[str, Any]]:
         _log(f"Sina ETF 行情异常: {e}")
         return []
 
-    text = r.text
     results = []
-
-    # 建立 code → name 映射
-    name_map = {e["code"]: e["name"] for e in etf_list}
-
     for etf in etf_list:
-        code = etf["code"]
-        # 从返回文本中提取该 ETF 的数据行
-        pattern = rf'var hq_str_{code}="([^"]*)"'
-        m = re.search(pattern, text)
-        if not m:
-            _log(f"Sina ETF 未找到: {code}")
-            continue
-        fields = m.group(1).split(",")
-        if len(fields) < 4:
-            continue
-
-        # Sina 字段: name, open, prev_close, current, high, low, ...
-        try:
-            prev_close = float(fields[2])
-            current = float(fields[3])
-        except (ValueError, IndexError):
-            continue
-
-        if prev_close <= 0:
-            continue
-
-        change_pct = round((current - prev_close) / prev_close * 100, 2)
-        results.append({
-            "code": code,
-            "name": name_map.get(code, fields[0]),
-            "price": round(current, 3),
-            "change_pct": change_pct,
-            "change_amt": round(current - prev_close, 3),
-        })
-
+        item = _parse_sina_quote_line(etf["code"], r.text, etf["name"])
+        if item is not None:
+            results.append(item)
+        else:
+            _log(f"Sina ETF 未找到: {etf['code']}")
     return results
 
 
 # ============== 公开接口 ==============
 
-def fetch_sector_boards(top_n: int = 30) -> List[Dict[str, Any]]:
-    """获取行业板块排行（按涨幅降序）"""
-    cache_key = "sector_all"
-    cached = _cached(cache_key, ttl=120)  # 2 分钟缓存（盘中快速刷新）
+
+def fetch_boards(board_type: str = "sector", top_n: int = 30) -> list[dict]:
+    """获取板块排行（按涨幅降序）
+
+    board_type 暂作 cache key 区分，行业/概念底层用同一份 ETF 池。
+    """
+    cache_key = f"boards_{board_type}"
+    cached = _cached(cache_key)
     if cached is not None:
-        _log(f"行业板块: 命中缓存, {len(cached)} 条")
+        _log(f"{board_type} 板块: 命中缓存, {len(cached)} 条")
         return cached[:top_n]
 
-    data = _fetch_etf_quotes(INDUSTRY_ETFS)
+    data = _fetch_etf_quotes(SECTOR_ETFS)
     data.sort(key=lambda x: x["change_pct"], reverse=True)
     if not data:
-        _log("行业板块: 返回空数据")
+        _log(f"{board_type} 板块: 返回空数据")
     else:
-        _log(f"行业板块: 刷新完成, {len(data)} 只 ETF")
+        _log(f"{board_type} 板块: 刷新完成, {len(data)} 只 ETF")
     _set_cache(cache_key, data)
     return data[:top_n]
 
 
-def fetch_concept_boards(top_n: int = 30) -> List[Dict[str, Any]]:
-    """获取概念板块排行（按涨幅降序）"""
-    cache_key = "concept_all"
-    cached = _cached(cache_key, ttl=120)
-    if cached is not None:
-        _log(f"概念板块: 命中缓存, {len(cached)} 条")
-        return cached[:top_n]
-
-    data = _fetch_etf_quotes(CONCEPT_ETFS)
-    data.sort(key=lambda x: x["change_pct"], reverse=True)
-    if not data:
-        _log("概念板块: 返回空数据")
-    else:
-        _log(f"概念板块: 刷新完成, {len(data)} 只 ETF")
-    _set_cache(cache_key, data)
-    return data[:top_n]
+# 向后兼容的薄包装（历史 API 名字保留）
+def fetch_sector_boards(top_n: int = 30) -> list[dict]:
+    return fetch_boards("sector", top_n)
 
 
-def fetch_board_stocks(board_code: str, top_n: int = 20) -> List[Dict[str, Any]]:
-    """获取板块「成分股」——返回该 ETF 自身的详情（Sina 方案下无真实成分股）"""
+def fetch_concept_boards(top_n: int = 30) -> list[dict]:
+    return fetch_boards("concept", top_n)
+
+
+def fetch_board_stocks(board_code: str, top_n: int = 20) -> list[dict]:
+    """获取板块「成分股」——Sina 方案下只能返回该 ETF 自身"""
     cache_key = f"stocks_{board_code}"
-    cached = _cached(cache_key, ttl=120)
+    cached = _cached(cache_key)
     if cached is not None:
         return cached[:top_n]
 
     try:
-        url = SINA_QUOTE_API + board_code
-        r = requests.get(url, headers=SINA_HEADERS, timeout=8)
+        r = requests.get(SINA_QUOTE_API + board_code, headers=SINA_HEADERS, timeout=8)
         if r.status_code != 200:
             _log(f"成分股 {board_code}: HTTP {r.status_code}")
             return []
@@ -223,24 +182,23 @@ def fetch_board_stocks(board_code: str, top_n: int = 20) -> List[Dict[str, Any]]
             return []
 
         fields = m.group(1).split(",")
-        if len(fields) < 6:
+        if len(fields) < 4:
             return []
 
         name = fields[0]
         prev_close = float(fields[2])
         current = float(fields[3])
-        change_pct = round((current - prev_close) / prev_close * 100, 2)
-        volume = fields[5] if len(fields) > 5 else "0"
-
-        result = [{
-            "code": board_code,
-            "name": name,
-            "price": round(current, 3),
-            "change_pct": change_pct,
-            "change_amt": round(current - prev_close, 3),
-            "turnover": 0,
-            "pe": 0,
-        }]
+        result = [
+            {
+                "code": board_code,
+                "name": name,
+                "price": round(current, 3),
+                "change_pct": round((current - prev_close) / prev_close * 100, 2),
+                "change_amt": round(current - prev_close, 3),
+                "turnover": 0,
+                "pe": 0,
+            }
+        ]
         _set_cache(cache_key, result)
         return result[:top_n]
     except Exception as e:
