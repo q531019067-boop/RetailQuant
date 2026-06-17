@@ -92,10 +92,23 @@
       </div>
 
       <div class="box">
-        <h2>🔥 买入信号 <span class="badge green">{{ buy_signals|length }}</span></h2>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
+          <h2 style="margin:0;">🔥 买入信号 <span class="badge green" id="buy-signal-total">{{ buy_signals|length }}</span></h2>
+          <select id="filter-category" onchange="onCategoryChange()" style="padding:4px 8px;border-radius:4px;background:#1a1a2e;color:#e0e0e0;border:1px solid #2a2a4e;">
+            <option value="all">📂 全部大类</option>
+            {% for cat in category_options %}
+              <option value="{{ cat.value }}">{{ cat.label }}</option>
+            {% endfor %}
+          </select>
+          <select id="filter-strategy" onchange="applyFilter()" style="padding:4px 8px;border-radius:4px;background:#1a1a2e;color:#e0e0e0;border:1px solid #2a2a4e;">
+            <option value="all">🎯 全部策略</option>
+          </select>
+          <span style="font-size:12px;color:#78909c;" id="filter-count-display"></span>
+        </div>
+        <div id="buy-signals-list">
         {% if buy_signals %}
           {% for s in buy_signals %}
-          <div class="signal">
+          <div class="signal" data-category="{{ s.category }}" data-strategy="{{ s.strategy }}">
             <div class="sig-head">
               <span><b>{{ s.code }}</b> {{ s.name }} · {{ s.sector }}</span>
               <span class="strat-tag">{{ s.strategy }}</span>
@@ -104,12 +117,15 @@
             <div class="sig-detail">
               现价 ¥{{ "%.2f"|format(s.current_price) }} → 买 ¥{{ "%.2f"|format(s.suggested_buy) }}
               · 止损 ¥{{ "%.2f"|format(s.stop_loss) }} · 止盈 ¥{{ "%.2f"|format(s.take_profit) }}
+              · 信心度 <b>{{ s.confidence }}</b>
             </div>
           </div>
           {% endfor %}
         {% else %}
           <p class="empty">📭 今日无信号</p>
         {% endif %}
+        </div>
+        <p class="empty" id="buy-signal-empty" style="display:none;">🔍 当前筛选下无信号</p>
       </div>
     </div>
 
@@ -244,6 +260,60 @@
   </div>
 
   <script>
+  // ========== 买入信号筛选（按大类 / 按策略） ==========
+
+  const strategiesByCategory = {{ strategies_by_category|tojson }};
+
+  function onCategoryChange() {
+    const cat = document.getElementById('filter-category').value;
+    const stratSel = document.getElementById('filter-strategy');
+    stratSel.innerHTML = '<option value="all">🎯 全部策略</option>';
+    if (cat !== 'all' && strategiesByCategory[cat]) {
+      strategiesByCategory[cat].forEach(s => {
+        const opt = document.createElement('option');
+        opt.value = s.name;
+        opt.textContent = s.name;
+        stratSel.appendChild(opt);
+      });
+    }
+    applyFilter();
+  }
+
+  function applyFilter() {
+    const cat = document.getElementById('filter-category').value;
+    const strat = document.getElementById('filter-strategy').value;
+    const items = document.querySelectorAll('#buy-signals-list .signal');
+    let visible = 0;
+    items.forEach(item => {
+      const itemCat = item.dataset.category;
+      const itemStrat = item.dataset.strategy;
+      const catMatch = cat === 'all' || itemCat === cat;
+      const stratMatch = strat === 'all' || itemStrat === strat;
+      if (catMatch && stratMatch) {
+        item.style.display = '';
+        visible++;
+      } else {
+        item.style.display = 'none';
+      }
+    });
+    const total = items.length;
+    const display = document.getElementById('filter-count-display');
+    if (cat === 'all' && strat === 'all') {
+      display.textContent = '';
+    } else {
+      display.textContent = `（显示 ${visible} / ${total}）`;
+    }
+    const empty = document.getElementById('buy-signal-empty');
+    const list = document.getElementById('buy-signals-list');
+    if (visible === 0 && total > 0) {
+      empty.style.display = 'block';
+      list.style.display = 'none';
+    } else {
+      empty.style.display = 'none';
+      list.style.display = '';
+    }
+  }
+
   function showAddForm() { document.getElementById('add-form').style.display = 'block'; }
   function hideAddForm() { document.getElementById('add-form').style.display = 'none'; }
 
