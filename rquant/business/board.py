@@ -103,7 +103,7 @@ def _fetch_boards(board_type: str, top_n: int) -> list[dict]:
         _log(f"{board_type} 板块: 未知类型")
         return []
 
-    # 字段：f3 涨跌幅(×100) / f4 涨跌额 / f12 板块 code / f14 板块名
+    # 字段：f2 成交额(元) / f3 涨跌幅(×100) / f4 涨跌额 / f12 板块 code / f14 板块名
     #      f104 股票数 / f128 领涨股名 / f140 领涨股 code
     params = {
         "pn": 1,
@@ -111,7 +111,7 @@ def _fetch_boards(board_type: str, top_n: int) -> list[dict]:
         "po": 1,
         "fid": "f3",
         "fs": fs,
-        "fields": "f3,f4,f12,f14,f104,f128,f140",
+        "fields": "f2,f3,f4,f12,f14,f104,f128,f140",
     }
     try:
         r = _session.get(EAST_MONEY_URL, params=params, timeout=8)
@@ -137,6 +137,8 @@ def _fetch_boards(board_type: str, top_n: int) -> list[dict]:
                 "change_pct": round(item.get("f3", 0) / 100, 2),
                 # f4 单位"点"（板块指数点位涨跌）
                 "change_amt": round(item.get("f4", 0) / 100, 2),
+                # f2 板块成交额（单位：元）
+                "turnover": item.get("f2", 0),
                 "stocks_count": item.get("f104", 0),
                 "lead_stock": item.get("f128", ""),
                 "lead_stock_code": item.get("f140", ""),
