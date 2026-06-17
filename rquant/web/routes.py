@@ -97,6 +97,7 @@ def register_routes(app: Flask) -> None:
         trades = sorted(pf.list_trades(), key=lambda x: x["datetime"], reverse=True)
         snapshots = sorted(pf.list_snapshots(), key=lambda x: x["date"])
         watchlist_codes = data.get_watchlist_codes()
+        data.populate_watchlist_info(watchlist_codes)
         watchlist_stocks = _build_watchlist_view(watchlist_codes, positions_raw)
 
         # 6. 策略列表（按大类分组，前端下拉框用）
