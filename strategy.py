@@ -35,9 +35,7 @@ def _calc_ma(df: pd.DataFrame, n: int) -> float:
     return float(df["close"].tail(n).mean())
 
 
-def chanlun2b_signal(
-    code: str, name: str, sector: str, df: pd.DataFrame
-) -> Signal | None:
+def chanlun2b_signal(code: str, name: str, sector: str, df: pd.DataFrame) -> Signal | None:
     """缠论二买近似：站上 MA5 + MA5 > MA20 → 买入
     最简版：只做这一个条件，不加缩量、不加其他过滤器
     """
@@ -68,9 +66,7 @@ def chanlun2b_signal(
     )
 
 
-def buyhold_signal(
-    code: str, name: str, sector: str, df: pd.DataFrame
-) -> Signal | None:
+def buyhold_signal(code: str, name: str, sector: str, df: pd.DataFrame) -> Signal | None:
     """Buy & Hold 近似：现价 < MA60 的 95% → 触发"加仓"信号
     最简：低位吸筹
     """
