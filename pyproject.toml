@@ -11,5 +11,13 @@ dependencies = [
     "squarify>=0.4",
 ]
 
+[dependency-groups]
+dev = [
+    "ruff>=0.12",
+]
+
 [tool.ruff]
-# Use ruff defaults — no extra rules beyond standard
+line-length = 120
+
+[tool.ruff.format]
+quote-style = "double"
