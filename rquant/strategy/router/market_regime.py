@@ -146,7 +146,7 @@ def get_market_regime(index_df: pd.DataFrame | None = None) -> MarketState:
 
     # 缓存 miss —— 拉指数 K 线
     try:
-        from data import fetch_kline  # 延迟导入避免循环
+        from rquant.business.data import fetch_kline  # 延迟导入避免循环
 
         df = fetch_kline("sh000001", 130)
     except Exception:

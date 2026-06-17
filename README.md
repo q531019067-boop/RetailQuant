@@ -56,6 +56,56 @@ uv run ruff format   # 代码自动格式化
 
 ## 修改记录
 
+### 2026-06-17 · 目录重构（rquant 包 / 5 层 / 0 业务变更）
+
+把所有核心模块从根目录搬进 `rquant/` 包，按"业务/数据/策略/Web/兼容"分层。**纯结构调整，逻辑 0 变更**。
+
+#### 目录变化
+
+```
+rquant/
+├── business/         # 业务层：data / board / portfolio / market(新)
+├── data_source/      # 数据层：pool / sina(拆出) / cache(拆出)
+├── strategy/         # 策略层（原 strategies/，去 s）
+├── web/              # Web 层：app_factory / routes / views
+└── compat/           # 兼容层：老 strategy.py 转发
+```
+
+#### 文件变化
+
+| 旧 | 新 |
+|---|---|
+| 根目录 `app.py` (388 行) | `rquant/web/app_factory.py` + `routes.py` + `views.py` |
+| 根目录 `datasources.py` (274 行) | `rquant/data_source/{pool,sina,cache}.py` |
+| 根目录 `data.py` / `board.py` / `portfolio.py` | `rquant/business/` |
+| 根目录 `strategy.py` (65 行兼容层) | `rquant/compat/strategy.py` |
+| `strategies/` (包) | `rquant/strategy/` |
+| `_test_*.py` (根目录探针) | `tests/test_*.py` |
+| `test_page.html` (根目录) | `templates/test_page.html` |
+| `data/*.json` K线缓存 | `cache/*.json` |
+| `data/portfolio.json` 等业务文件 | `data/` (保留) |
+
+#### 根目录残留
+
+- `app.py` (薄转发) / `strategy.py` (薄转发)：保持老 `python3 app.py` / `from strategy import` 仍能工作
+- 新增 `scripts/run.py`：替代启动入口
+- 新增 `tests/` / `cache/` 目录
+
+#### 验证
+
+```
+ruff check .  → All checks passed!
+ruff format   → 全部格式化
+三地址访问     → 127.0.0.1 / localhost / [::1] 全部 200
+/api/boards   → 200 (5475 bytes)
+策略注册       → 10 个（6 大类 + legacy + router）
+兼容层         → 老 scan_stock / chanlun2b_signal / sell_signal 仍工作
+数据池         → sina_kline ✓ healthy / sina_quote ✓ healthy
+市场状态       → 路由器识别当前 SIDEWAYS（close ¥4108 在 MA120 附近）
+```
+
+---
+
 ### 2026-06-17 · 策略引擎 v1（6 大类 / 7 个策略 / 0 业务变更）
 
 #### 6 大类策略
@@ -302,31 +352,39 @@ ruff format   → 全部格式化
 
 ---
 
-## 架构（三层）
+## 架构（rquant 包 / 5 层）
 
 ```
-┌─────────────────────────────────────────┐
-│  app.py / strategy.py                   │  业务路由（不变）
-└─────────────────┬───────────────────────┘
-                  │ data.fetch_kline() / board.fetch_*
-┌─────────────────▼───────────────────────┐
-│  data.py / board.py  （业务层 wrapper） │  - 接口 100% 不变
-│                                         │  - 业务层 2 分钟缓存
-└─────────────────┬───────────────────────┘
-                  │ pool.fetch_kline / pool.fetch_quotes
-┌─────────────────▼───────────────────────┐
-│  datasources.py  （数据源池 + Sina 实现）│  - Protocol 抽象
-│                                         │  - 健康度跟踪
-│  ├── SinaKlineSource  (K线+本地JSON缓存) │  - 30s 短窗口批量缓存
-│  ├── SinaQuoteSource  (行情)            │  - 自动 failover
-│  └── DataSourcePool  (路由)             │
-└─────────────────────────────────────────┘
+rquant/                              # 主包
+├── business/                        # 业务层
+│   ├── data.py          (K线 wrapper / 自选股 / 标的池)
+│   ├── board.py         (板块行情 + Treemap 坐标)
+│   ├── portfolio.py     (持仓管理)
+│   └── market.py        (大盘指数，给路由器用)
+├── data_source/                     # 数据层
+│   ├── pool.py          (DataSourcePool 路由)
+│   ├── sina.py          (SinaKlineSource / SinaQuoteSource)
+│   └── cache.py         (缓存目录 + URL 常量)
+├── strategy/                        # 策略层（10 个策略 + 路由器）
+│   ├── base.py / registry.py
+│   ├── etf_rotation/  volume_breakout/  turtle/  factor/
+│   ├── grid/  pattern/  legacy/  router/
+├── web/                             # Web 层
+│   ├── app_factory.py   (create_app / run)
+│   ├── routes.py        (12 路由)
+│   └── views.py         (辅助函数)
+└── compat/                          # 兼容层
+    └── strategy.py      (老 strategy.py 转发)
+
+app.py           # 根目录薄转发 → rquant.web.app_factory.run()
+strategy.py      # 根目录薄转发 → rquant.compat.strategy (老 API)
+scripts/run.py   # 替代启动入口
 ```
 
 ### 扩展示例（加 Tencent 行情源）
 
 ```python
-# datasources.py 加新源
+# rquant/data_source/ 新建 tencent.py
 class TencentQuoteSource:
     name = "tencent_quote"
     def fetch(self, code): ...
@@ -334,11 +392,11 @@ class TencentQuoteSource:
     def healthy(self): ...
 
 # 注册到池（priority 越小越优先）
-from datasources import pool
+from rquant.data_source import pool
 pool.add_quote(TencentQuoteSource(), priority=0)  # Tencent 优先，Sina 兜底
 ```
 
-业务代码（`app.py` / `data.py` / `board.py`）**完全不用动**。
+业务代码（`rquant/web/` / `rquant/business/`）**完全不用动**。
 
 ---
 
@@ -346,34 +404,38 @@ pool.add_quote(TencentQuoteSource(), priority=0)  # Tencent 优先，Sina 兜底
 
 ```
 rQuant/
-├── app.py              # Flask 主程序（11 路由）
-├── board.py            # 板块行情业务层（SECTOR_ETFS 映射 + 2 分钟缓存 + Treemap 坐标）
-├── data.py             # K 线 wrapper + 自选股 + 内存股票字典 + 标的池
-├── datasources.py      # 数据源池（Protocol + SinaKlineSource + SinaQuoteSource + Pool）
-├── strategy.py         # 兼容层（老 API + 转发到 strategies）
-├── STRATEGIES.md       # 9 个策略详细文档（条件/参数/适用场景）
-├── portfolio.py        # 持仓管理（JSON 存储）
-├── strategies/         # 策略引擎（6 大类 / 7 个策略）
-│   ├── base.py         #   Strategy Protocol + Signal + 指标工具
-│   ├── registry.py     #   @register + STRATEGIES
-│   ├── etf_rotation/   #   跨境定投 + 红利低波轮动
-│   ├── volume_breakout/#   量价共振突破
-│   ├── turtle/         #   海龟/唐奇安
-│   ├── factor/         #   多因子选股
-│   ├── grid/           #   网格/马丁
-│   ├── pattern/        #   游资形态
-│   ├── legacy/         #   老策略优化版（chanlun2b / buyhold）
-│   └── router/         #   场景路由器（牛/熊/震荡 → 子策略）
-├── pyproject.toml      # 项目元数据 + 依赖声明（uv 管理）
-├── requirements.txt    # 锁定依赖（uv pip compile 生成）
-├── _test_api.py        # 备选数据源探针（nufm.dfcfw.com，未启用）
-├── _test_sina.py       # 板块接口冒烟测试
-├── templates/
-│   ├── index.html      # 看板（持仓 + 信号 + Treemap + 自选股）
-│   └── error.html
-├── static/
+├── app.py                 # 启动入口（转发到 rquant.web）
+├── strategy.py            # 兼容层（老 API 转发到 rquant.compat）
+├── STRATEGIES.md          # 10 个策略详细文档
+├── README.md
+├── pyproject.toml / requirements.txt / LICENSE
+│
+├── rquant/                # 主包（5 层）
+│   ├── business/          #   业务层（data/board/portfolio/market）
+│   ├── data_source/       #   数据层（pool/sina/cache）
+│   ├── strategy/          #   策略层（10 个策略 + 路由器）
+│   ├── web/               #   Web 层（app_factory/routes/views）
+│   └── compat/            #   向后兼容
+│
+├── scripts/run.py         # 替代启动入口
+├── tests/                 # 开发期探针
+│   ├── test_api.py
+│   └── test_sina.py
+├── templates/             # Flask 模板
+│   ├── index.html
+│   ├── error.html
+│   └── test_page.html
+├── static/                # 静态资源
 │   └── style.css
-└── data/               # K 线 JSON 缓存（自动生成）+ watchlist / portfolio / trades
+├── data/                  # 业务数据（JSON）
+│   ├── portfolio.json
+│   ├── trades.json
+│   └── watchlist.json
+├── cache/                 # K 线 / 行情缓存（自动生成）
+│   ├── sh600460.json
+│   ├── sh000001.json      # 大盘指数（路由器用）
+│   └── ...
+└── logs/                  # 运行日志
 ```
 
 ## 注意
