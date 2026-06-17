@@ -76,9 +76,7 @@ class SinaKlineSource:
             return []
 
     def _write_cache(self, code: str, rows: list[dict]) -> None:
-        self._cache_path(code).write_text(
-            json.dumps(rows, ensure_ascii=False), encoding="utf-8"
-        )
+        self._cache_path(code).write_text(json.dumps(rows, ensure_ascii=False), encoding="utf-8")
 
     def _need_refresh(self, cached: list[dict]) -> bool:
         if not cached:
@@ -233,9 +231,7 @@ class DataSourcePool:
         if not rows:
             return pd.DataFrame()
         df = pd.DataFrame(rows).rename(columns={"day": "date"})
-        df[list(PRICE_COLS)] = df[list(PRICE_COLS)].apply(
-            pd.to_numeric, errors="coerce"
-        )
+        df[list(PRICE_COLS)] = df[list(PRICE_COLS)].apply(pd.to_numeric, errors="coerce")
         return df[["date", *PRICE_COLS]]
 
     # ----- 行情 -----

@@ -101,9 +101,7 @@ def index():
                 "current_price": round(current, 2),
                 "market_value": round(market_value, 2),
                 "pnl": round(pnl, 2),
-                "pnl_pct": round((current / p["avg_cost"] - 1) * 100, 2)
-                if p["avg_cost"] > 0
-                else 0,
+                "pnl_pct": round((current / p["avg_cost"] - 1) * 100, 2) if p["avg_cost"] > 0 else 0,
             }
         )
         total_cost += p["avg_cost"] * p["shares"]
@@ -266,9 +264,7 @@ def api_boards():
         return jsonify({"type": board_type, "boards": boards, "count": len(boards)})
     except Exception as e:
         _log(f"/api/boards 异常: {e}")
-        return jsonify(
-            {"type": board_type, "boards": [], "count": 0, "error": str(e)}
-        ), 500
+        return jsonify({"type": board_type, "boards": [], "count": 0, "error": str(e)}), 500
 
 
 @app.route("/api/board/<code>/stocks")
@@ -317,9 +313,7 @@ def api_watchlist_toggle():
     if code in codes:
         data.remove_from_watchlist(code)
         _log(f"自选股 移除: {code}")
-        return jsonify(
-            {"ok": True, "code": code, "in_watchlist": False, "action": "removed"}
-        )
+        return jsonify({"ok": True, "code": code, "in_watchlist": False, "action": "removed"})
     data.add_to_watchlist(code)
     # 优先用缓存；无缓存或过期则走数据源池拉取行情
     _ensure_stock_info(code)
