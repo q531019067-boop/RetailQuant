@@ -29,6 +29,17 @@ app.secret_key = "rquant-dev-key"  # 仅本地用
 
 DEFAULT_PORT = int(os.environ.get("RQUANT_PORT", "8080"))
 
+# 策略大类 → 中文名（前端下拉框用）
+CATEGORY_LABELS: dict[str, str] = {
+    "volume_breakout": "📈 量价突破",
+    "turtle": "🐢 海龟/唐奇安",
+    "etf_rotation": "🔄 ETF 轮动",
+    "factor": "📊 多因子选股",
+    "grid": "🕸️ 网格/马丁",
+    "pattern": "🐉 游资形态",
+    "legacy": "🧬 老策略",
+}
+
 
 def _log(msg: str):
     """统一日志输出：带时间戳，写 stderr 确保 waitress 不吞"""
@@ -128,6 +139,17 @@ def index():
     watchlist_codes = data.get_watchlist_codes()
     watchlist_stocks = _build_watchlist_view(watchlist_codes, positions_raw)
 
+    # 6. 策略列表（按大类分组，前端下拉框用）
+    strategies_by_category: dict[str, list[dict]] = {}
+    for s in strategy.all_strategies():
+        strategies_by_category.setdefault(s.category, []).append(
+            {"name": s.name, "description": s.description}
+        )
+    category_options = [
+        {"value": cat, "label": CATEGORY_LABELS.get(cat, cat)}
+        for cat in sorted(strategies_by_category.keys())
+    ]
+
     return render_template(
         "index.html",
         today=datetime.now().strftime("%Y-%m-%d"),
@@ -142,6 +164,8 @@ def index():
         trades=trades,
         watchlist_codes=watchlist_codes,
         watchlist_stocks=watchlist_stocks,
+        category_options=category_options,
+        strategies_by_category=strategies_by_category,
     )
 
 
