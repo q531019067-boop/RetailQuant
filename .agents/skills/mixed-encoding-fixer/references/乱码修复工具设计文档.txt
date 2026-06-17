@@ -1,0 +1,620 @@
+乱码修复工具设计文档（DP 版本）
+1. 引言
+1.1 背景
+本工具旨在为大模型提供外部能力（Skill），用于自动检测并修复 GBK 与 UTF-8 混合编码的文本文件。大模型通过调用此命令行工具，获取文件的编码分析结果、未修复行上下文，然后将修复后的文本通过工具写回文件，从而完成修复任务。工具本身不依赖大模型，而是提供清晰的输入输出接口，便于大模型集成。
+
+1.2 目标
+提供稳定可靠的文件编码分析能力，输出结构化结果（JSON）。
+
+提供自动修复能力（少数编码转换、启发式修复）。
+
+输出无法自动修复的行及其上下文，供大模型处理。
+
+提供应用修复结果的能力，支持将大模型返回的修复文本写回文件。
+
+保持原始换行符、BOM、缩进等格式。
+
+提供详细的错误提示与操作建议，便于大模型理解并调整调用策略。
+
+2. 功能需求
+编号	功能	描述
+FR-01	文件读取	以二进制模式读取文件，自动处理 UTF-8 BOM
+FR-02	可靠分行	基于换行符（CR、LF、CRLF）准确分割行
+FR-03	编码检测	对每行进行编码判定：ANSI、GBK、UTF-8、MIX
+FR-04	主编码统计	统计 GBK 与 UTF-8 行数，多者为主编码（ANSI 不计）
+FR-05	少数编码转换	将少数编码行转换为主编码（可指定目标编码）
+FR-06	MIX 行修复	对混合编码行采用动态规划（DP）算法尝试修复
+FR-07	上下文提取	对仍无法修复的行，提取上下各 N 行（可配置），合并相邻块
+FR-08	分析模式输出	输出 JSON 格式的分析报告，包含编码统计、未修复行块
+FR-09	应用修复模式	接收修复映射（JSON），将修复后的文本替换原行，输出新文件
+FR-10	编码校验	写入前验证文本是否能被目标编码正确编码，无法编码的字符用替换方式处理
+FR-11	自检与报告	提供 --check 模式仅输出统计；修复后输出改善情况
+FR-12	错误处理	提供清晰的错误信息和建议，便于大模型重试或调整参数
+3. 接口设计
+工具提供四种操作模式：分析模式、应用模式、检查模式、自动修复模式。
+
+3.1 分析模式
+用途：分析文件，输出编码统计和未修复行块（供大模型处理）。
+
+命令行格式：
+
+text
+fix_encoding analyze [options] <input>
+选项：
+
+-t, --target <utf8|gbk>：指定目标编码（默认自动选择主编码）
+
+-m, --mix-threshold <float>：GBK 检测阈值（0-1，默认 0.8）
+
+-c, --context-lines <int>：上下文行数（默认 5）
+
+-o, --output <file>：输出分析报告到文件（默认 stdout）
+
+--verbose：输出详细日志到 stderr
+
+输出格式：JSON，包含以下字段：
+
+json
+{
+  "status": "success",
+  "input_file": "/path/to/file",
+  "total_lines": 1000,
+  "target_encoding": "utf8",
+  "statistics": {
+    "original": {"ANSI": 200, "GBK": 500, "UTF-8": 300, "MIX": 0},
+    "after_auto_fix": {"ANSI": 200, "GBK": 600, "UTF-8": 200, "MIX": 0}
+  },
+  "blocks": [
+    {
+      "block_id": 0,
+      "start_line": 10,
+      "end_line": 14,
+      "lines": [
+        "line 10 content",
+        "line 11 content",
+        "line 12 content",
+        "line 13 content",
+        "line 14 content"
+      ]
+    }
+  ],
+  "warnings": []
+}
+若未修复行为 0，则 blocks 为空数组。
+
+3.2 应用模式
+用途：将大模型修复后的文本应用到文件，生成新文件。
+
+命令行格式：
+
+text
+fix_encoding apply [options] <input> <fixes_file> <output>
+参数：
+
+input：原始文件路径
+
+fixes_file：包含修复映射的 JSON 文件（每行一个块，格式同分析模式输出的 blocks 但增加 fixed_lines 字段）
+
+output：输出文件路径
+
+修复映射格式（JSON 行）：
+
+json
+{
+  "block_id": 0,
+  "fixed_lines": [
+    "fixed line 10",
+    "fixed line 11",
+    "fixed line 12",
+    "fixed line 13",
+    "fixed line 14"
+  ]
+}
+输出：应用修复后的文件，同时输出统计信息（如修复了多少行，行数是否匹配等）。
+
+错误处理：若修复行数与原始块行数不匹配，工具会输出错误并停止（可选择 --force 继续）。
+
+3.3 检查模式
+用途：仅输出编码分布，不输出块，便于快速诊断。
+
+命令行格式：
+
+text
+fix_encoding check [options] <input>
+输出：
+
+text
+Encoding distribution:
+  ANSI: 200
+  GBK: 500
+  UTF-8: 300
+  MIX: 0
+3.4 自动修复模式
+用途：执行所有自动修复（少数编码转换 + MIX 启发式修复），不调用大模型，直接输出结果。适用于简单场景。
+
+命令行格式：
+
+text
+fix_encoding auto [options] <input> <output>
+选项：同分析模式中的 -t、-m。
+
+4. 核心算法与实现细节
+4.1 文件读取与 BOM 处理
+工具以二进制模式打开文件，读取全部内容。检查前三个字节是否为 EF BB BF（UTF-8 BOM），如果是则将其剥离，并记录 BOM 信息。之后对剩余的字节流进行分行处理。
+
+python
+def read_and_split(filepath):
+    with open(filepath, 'rb') as f:
+        raw = f.read()
+    bom_info = {'has_bom': False, 'bom_type': None}
+    if raw.startswith(b'\xef\xbb\xbf'):
+        bom_info = {'has_bom': True, 'bom_type': 'utf8'}
+        raw = raw[3:]
+    # 分行
+    lines = []
+    start = 0
+    i = 0
+    while i < len(raw):
+        if raw[i] == 0x0D:  # \r
+            if i+1 < len(raw) and raw[i+1] == 0x0A:
+                sep = b'\r\n'
+                i += 2
+            else:
+                sep = b'\r'
+                i += 1
+        elif raw[i] == 0x0A:  # \n
+            sep = b'\n'
+            i += 1
+        else:
+            i += 1
+            continue
+        line_bytes = raw[start:i-len(sep)]
+        lines.append((line_bytes, sep))
+        start = i
+    if start < len(raw):
+        lines.append((raw[start:], b''))
+    return lines, bom_info
+4.2 单行编码检测
+对于每一行字节 line_bytes，按以下顺序判定：
+
+ANSI：如果所有字节 b <= 0x7F，标记为 ANSI。
+
+UTF-8：尝试用 UTF-8 解码，如果成功且解码结果包含非 ASCII 字符，则标记为 UTF-8。
+
+GBK：通过统计符合 GBK 双字节规则的字节对比例来判断。
+
+第一字节范围：0x81-0xFE
+
+第二字节范围：0x40-0x7E 或 0x80-0xFE
+
+统计非 ASCII 字节数 non_ascii 和有效双字节对数 valid_pairs。
+
+得分 = valid_pairs / (non_ascii / 2)（若 non_ascii 为 0，则得分为 0）。
+
+若得分 >= 阈值（默认 0.8），标记为 GBK。
+
+MIX：否则标记为 MIX。
+
+python
+def is_likely_gbk(data, threshold=0.8):
+    non_ascii = 0
+    valid_pairs = 0
+    i = 0
+    while i < len(data):
+        b = data[i]
+        if b <= 0x7F:
+            i += 1
+            continue
+        non_ascii += 1
+        if 0x81 <= b <= 0xFE and i+1 < len(data):
+            b2 = data[i+1]
+            if (0x40 <= b2 <= 0x7E) or (0x80 <= b2 <= 0xFE):
+                valid_pairs += 1
+                i += 2
+                continue
+        i += 1
+    if non_ascii == 0:
+        return False
+    score = valid_pairs / (non_ascii / 2)
+    return score >= threshold
+4.3 MIX 行修复（动态规划 DP）
+对于标记为 MIX 的行，采用动态规划将字节序列分割成若干段，每段指定一种编码（UTF-8 或 GBK），使得整体得分最大。
+
+4.3.1 得分函数设计
+为每段字节 segment 计算两种编码的得分：
+
+UTF-8 得分：
+
+若按 UTF-8 解码合法，则得分为 len(segment)（鼓励长段）加上字符质量分。
+
+字符质量分：解码后每个字符，若为常用汉字（Unicode 范围 0x4E00-0x9FFF）或字母数字，加 1；控制字符减 1。
+
+若不合法，得分为 -inf。
+
+GBK 得分：
+
+统计段内符合 GBK 双字节规则的对数 valid_pairs，得分 = valid_pairs * 2（每对加 2）加上字符质量分。
+
+字符质量分：解码后每个字符（GBK 解码总是成功），若为常用汉字（GBK 编码的汉字）或字母数字，加 1；罕见字或控制字符减 1。
+
+最终得分 = 长度分 + 字符质量分。
+
+4.3.2 DP 状态转移
+设 dp[i] 为处理到第 i 字节时的最大累积得分，prev[i] 记录上一分段起始位置和所选编码。
+
+初始化 dp[0] = 0。
+
+对于每个结束位置 i（1..n），枚举分段起始 j（max(0, i-max_len) 到 i-1），计算 score = dp[j] + best_score(line_bytes[j:i])，其中 best_score 取 utf8_score 与 gbk_score 的最大值。
+
+更新 dp[i] 和 prev[i]。
+
+最终回溯得到分段方案，按对应编码解码拼接。
+
+4.3.3 实现代码
+python
+def fix_mix_line_dp(line_bytes: bytes, max_seg_len=64) -> str:
+    n = len(line_bytes)
+    # 得分缓存
+    utf8_cache = {}
+    gbk_cache = {}
+    
+    def utf8_score(seg):
+        if seg in utf8_cache:
+            return utf8_cache[seg]
+        try:
+            text = seg.decode('utf-8')
+        except UnicodeDecodeError:
+            utf8_cache[seg] = -float('inf')
+            return -float('inf')
+        # 基础分：长度
+        score = len(seg)
+        # 字符质量分
+        for ch in text:
+            if '\u4e00' <= ch <= '\u9fff':  # 常用汉字
+                score += 1
+            elif ch.isalnum() or ch in ' .,;:!?()[]{}':
+                score += 0.5
+            elif ch in '\t\r\n':
+                pass
+            else:
+                score -= 1
+        utf8_cache[seg] = score
+        return score
+
+    def gbk_score(seg):
+        if seg in gbk_cache:
+            return gbk_cache[seg]
+        # GBK 总是可解码，但可能有乱码
+        text = seg.decode('gbk', errors='replace')
+        score = 0
+        # 基础分：有效双字节对数（每对加2）
+        valid_pairs = 0
+        i = 0
+        while i < len(seg):
+            b = seg[i]
+            if b <= 0x7F:
+                i += 1
+                continue
+            if 0x81 <= b <= 0xFE and i+1 < len(seg):
+                b2 = seg[i+1]
+                if (0x40 <= b2 <= 0x7E) or (0x80 <= b2 <= 0xFE):
+                    valid_pairs += 1
+                    i += 2
+                    continue
+            i += 1
+        score += valid_pairs * 2
+        # 字符质量分
+        for ch in text:
+            if '\u4e00' <= ch <= '\u9fff':
+                score += 1
+            elif ch.isalnum() or ch in ' .,;:!?()[]{}':
+                score += 0.5
+            elif ch in '\t\r\n':
+                pass
+            else:
+                score -= 1
+        gbk_cache[seg] = score
+        return score
+
+    # DP
+    dp = [-float('inf')] * (n + 1)
+    prev = [(-1, None)] * (n + 1)  # (prev_index, encoding)
+    dp[0] = 0
+
+    for i in range(1, n + 1):
+        for j in range(max(0, i - max_seg_len), i):
+            seg = line_bytes[j:i]
+            utf8 = utf8_score(seg)
+            gbk = gbk_score(seg)
+            if utf8 > gbk and utf8 > -float('inf'):
+                cand_score = dp[j] + utf8
+                if cand_score > dp[i]:
+                    dp[i] = cand_score
+                    prev[i] = (j, 'utf-8')
+            elif gbk > -float('inf'):
+                cand_score = dp[j] + gbk
+                if cand_score > dp[i]:
+                    dp[i] = cand_score
+                    prev[i] = (j, 'gbk')
+    # 回溯
+    result = []
+    pos = n
+    while pos > 0:
+        j, enc = prev[pos]
+        seg = line_bytes[j:pos]
+        result.append((enc, seg))
+        pos = j
+    result.reverse()
+    # 解码拼接
+    fixed = ''
+    for enc, seg in result:
+        if enc == 'utf-8':
+            fixed += seg.decode('utf-8', errors='replace')
+        else:
+            fixed += seg.decode('gbk', errors='replace')
+    return fixed
+4.3.4 复杂度与优化
+时间复杂度：O(n * max_seg_len)，n 为行字节数，通常行长度有限（几百字节），因此效率高。
+
+得分函数可进一步优化：预计算常见字符频率表，提升质量分准确性。
+
+若行极长（>10KB），可考虑分块处理，但实际文本行通常较短。
+
+4.4 上下文提取与块合并
+经过自动修复（少数编码转换和 MIX 启发式修复）后，仍标记为 MIX 的行视为未修复。提取这些行的上下文，形成供大模型处理的块。
+
+算法步骤：
+
+收集所有未修复行的索引列表 unrepairable。
+
+初始化一个集合 used 记录已包含的行号。
+
+对每个未修复索引 idx：
+
+如果 idx 已在 used 中，跳过。
+
+计算块范围：start = max(0, idx - context_lines)，end = min(total_lines-1, idx + context_lines)。
+
+将 start 到 end 的行文本收集到 block_lines。
+
+创建块对象，包含 block_id（自增）、start_line（1-based）、end_line（1-based）、lines（字符串列表）。
+
+将 start 到 end 的所有行号加入 used。
+
+将块添加到列表。
+
+python
+def collect_llm_blocks(lines, unrepairable_indices, context_lines):
+    used = set()
+    blocks = []
+    for idx in unrepairable_indices:
+        if idx in used:
+            continue
+        start = max(0, idx - context_lines)
+        end = min(len(lines)-1, idx + context_lines)
+        block_lines = [lines[i]['text'] for i in range(start, end+1)]
+        blocks.append({
+            'block_id': len(blocks),
+            'start_line': start+1,
+            'end_line': end+1,
+            'lines': block_lines
+        })
+        for i in range(start, end+1):
+            used.add(i)
+    return blocks
+4.5 应用修复结果
+应用修复时，需要读取修复映射文件（每行 JSON），对每个块，用 fixed_lines 替换原始对应行的 text，并恢复缩进。
+
+缩进恢复：
+
+提取原始行的前导空白（空格或制表符），用正则 ^[ \t]* 匹配。
+
+将修复行的内容去除前导空白后，拼接原始缩进。
+
+python
+def restore_indent(original_line, fixed_line):
+    import re
+    indent = re.match(r'^[ \t]*', original_line).group(0)
+    fixed_line = fixed_line.lstrip(' \t')
+    return indent + fixed_line
+在应用模式下，工具会逐个块处理，并检查行数是否匹配。若不匹配，根据 --force 选项决定是报错还是继续（若未指定 --force，则报错并退出）。
+
+4.6 编码校验与输出
+写入最终文件前，需要将每行文本按目标编码编码。如果遇到无法编码的字符，使用 errors='replace' 替换为 ?，确保不会因编码问题导致写入失败。最后拼接 BOM（若原始文件有 BOM 且用户选择保留）。
+
+python
+def write_output(filepath, lines, sep_list, target_encoding, keep_bom, bom_info):
+    out_bytes = b''
+    for line, sep in zip(lines, sep_list):
+        try:
+            line_bytes = line['text'].encode(target_encoding)
+        except UnicodeEncodeError:
+            line_bytes = line['text'].encode(target_encoding, errors='replace')
+        out_bytes += line_bytes + sep
+    if keep_bom and bom_info['has_bom']:
+        if bom_info['bom_type'] == 'utf8':
+            out_bytes = b'\xef\xbb\xbf' + out_bytes
+    with open(filepath, 'wb') as f:
+        f.write(out_bytes)
+5. 错误处理与提示
+5.1 错误输出格式
+错误信息采用 JSON 格式输出到 stderr（若使用 -o 指定输出文件，则错误仍输出到 stderr），便于大模型解析：
+
+json
+{
+  "status": "error",
+  "error_code": "INVALID_PARAM",
+  "message": "Input file does not exist",
+  "suggestions": ["Check file path", "Use absolute path"]
+}
+5.2 常见错误码及建议
+错误码	含义	建议
+FILE_NOT_FOUND	输入文件不存在	检查路径，使用绝对路径
+INVALID_PARAM	参数错误	检查参数合法性，如阈值必须在0-1之间
+ENCODING_ERROR	编码检测失败	尝试调整 -m 阈值，或手动指定 -t 目标编码
+MISMATCH_LINES	修复行数与原始块行数不匹配	检查大模型输出格式，确保每块输出行数不变，或使用 --force 强制继续
+IO_ERROR	读写文件失败	检查权限、磁盘空间
+5.3 启发式建议
+在分析模式中，如果检测到 MIX 行比例过高（>30%），会在输出的 warnings 数组中添加一条：
+
+json
+{
+  "warning": "high_mix_ratio",
+  "message": "More than 30% lines are MIX. Consider lowering mix-threshold with -m or enabling auto-fix.",
+  "suggested_action": "Run with --auto to apply heuristic fixes first, or reduce -m to 0.6"
+}
+如果自动修复后仍有 MIX 行，可提示增加上下文行数 -c 或手动检查。
+
+6. 命令行接口完整说明
+6.1 全局帮助
+text
+usage: fix_encoding.py <command> [options] [arguments]
+
+Commands:
+  analyze   分析文件，输出编码统计和未修复行块
+  apply     应用修复映射到文件
+  check     仅输出编码统计（不输出块）
+  auto      自动修复（不依赖大模型）
+
+For help on a specific command: fix_encoding.py <command> -h
+6.2 analyze 命令
+text
+usage: fix_encoding.py analyze [-h] [-t {utf8,gbk}] [-m MIX_THRESHOLD] [-c CONTEXT_LINES]
+                               [-o OUTPUT] [--verbose] input
+
+positional arguments:
+  input                 输入文件路径
+
+options:
+  -h, --help            show this help message and exit
+  -t {utf8,gbk}, --target {utf8,gbk}
+                        目标编码（默认自动检测）
+  -m MIX_THRESHOLD, --mix-threshold MIX_THRESHOLD
+                        GBK 检测阈值（0-1，默认 0.8）
+  -c CONTEXT_LINES, --context-lines CONTEXT_LINES
+                        上下文行数（默认 5）
+  -o OUTPUT, --output OUTPUT
+                        输出分析报告到文件（默认 stdout）
+  --verbose             输出详细日志到 stderr
+6.3 apply 命令
+text
+usage: fix_encoding.py apply [-h] [--force] input fixes_file output
+
+positional arguments:
+  input         原始文件路径
+  fixes_file    包含修复映射的 JSON 文件（每行一个 JSON 对象）
+  output        输出文件路径
+
+options:
+  -h, --help    show this help message and exit
+  --force       即使行数不匹配也继续应用修复
+6.4 check 命令
+text
+usage: fix_encoding.py check [-h] [-t {utf8,gbk}] [-m MIX_THRESHOLD] input
+
+positional arguments:
+  input                 输入文件路径
+
+options:
+  -h, --help            show this help message and exit
+  -t {utf8,gbk}, --target {utf8,gbk}
+                        目标编码（默认自动检测）
+  -m MIX_THRESHOLD, --mix-threshold MIX_THRESHOLD
+                        GBK 检测阈值（0-1，默认 0.8）
+6.5 auto 命令
+text
+usage: fix_encoding.py auto [-h] [-t {utf8,gbk}] [-m MIX_THRESHOLD] input output
+
+positional arguments:
+  input                 输入文件路径
+  output                输出文件路径
+
+options:
+  -h, --help            show this help message and exit
+  -t {utf8,gbk}, --target {utf8,gbk}
+                        目标编码（默认自动检测）
+  -m MIX_THRESHOLD, --mix-threshold MIX_THRESHOLD
+                        GBK 检测阈值（0-1，默认 0.8）
+7. 使用示例
+7.1 大模型调用分析模式获取上下文
+bash
+$ fix_encoding analyze -c 5 mixed.txt
+输出（JSON 示例）：
+
+json
+{
+  "status": "success",
+  "input_file": "mixed.txt",
+  "total_lines": 100,
+  "target_encoding": "utf8",
+  "statistics": {
+    "original": {"ANSI": 20, "GBK": 40, "UTF-8": 30, "MIX": 10},
+    "after_auto_fix": {"ANSI": 20, "GBK": 45, "UTF-8": 30, "MIX": 5}
+  },
+  "blocks": [
+    {
+      "block_id": 0,
+      "start_line": 42,
+      "end_line": 46,
+      "lines": [
+        "line 42 content with some 乱码",
+        "line 43 also has mixed ???",
+        "line 44 ...",
+        "line 45 ...",
+        "line 46 ..."
+      ]
+    }
+  ],
+  "warnings": []
+}
+7.2 大模型根据块生成修复文本
+大模型解析上述 JSON，对每个块生成修复后的文本（保持行数不变）。假设大模型返回：
+
+json
+{"block_id":0,"fixed_lines":["line 42 content with some 修复后文本","line 43 also has mixed 正确内容","line 44 ...","line 45 ...","line 46 ..."]}
+将上述内容保存为 fixes.jsonl（每行一个 JSON）。
+
+7.3 大模型调用应用模式写入修复
+bash
+$ fix_encoding apply mixed.txt fixes.jsonl repaired.txt
+工具输出：
+
+text
+Applying fixes...
+Block 0: 5 lines replaced.
+Total lines fixed: 5
+Output written to repaired.txt
+7.4 仅检查文件编码分布
+bash
+$ fix_encoding check mixed.txt
+输出：
+
+text
+Encoding distribution:
+  ANSI: 20
+  GBK: 40
+  UTF-8: 30
+  MIX: 10
+7.5 自动修复（不依赖大模型）
+bash
+$ fix_encoding auto mixed.txt auto_fixed.txt
+工具自动执行少数编码转换和 MIX 启发式修复，输出文件。
+
+8. 实现注意事项
+所有命令的输出（除 check 外）均应为 JSON 格式，便于大模型解析。
+
+错误信息应包含建议，帮助大模型调整参数或重试。
+
+应用模式需支持大块修复映射文件（可能很大），应逐行读取避免内存爆炸。
+
+保留原始文件备份（可选），但作为 Skill，建议明确输出到新文件，避免意外覆盖。
+
+使用 argparse 的子命令实现，确保参数清晰。
+
+提供完整的单元测试，覆盖各种边界情况（空文件、只有换行符、大文件等）。
+
+DP 修复时限制最大段长（如 64），防止性能问题。
+
+9. 总结
+本工具作为大模型的 Skill，提供了清晰的双阶段接口：先分析后应用。它封装了编码检测、自动修复、上下文提取等复杂逻辑，输出结构化数据，使大模型能够轻松获取需要修复的文本块，并将修复结果写回文件。通过良好的错误处理和提示，大模型可以智能调整调用策略，提高修复成功率。工具设计注重可靠性、可测试性和易用性，为大模型赋能文本处理提供了坚实的基础。
+

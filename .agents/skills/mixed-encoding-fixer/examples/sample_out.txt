@@ -1,0 +1,5 @@
+plain ascii line
+测试GBK行
+UTF-8 你好 🎵 line
+�( broken
+normal ascii end
