@@ -1,7 +1,7 @@
 """
-rQuant.data — 业务数据层（K 线 / 自选股 / 标的池）
-- K 线拉取走 DataSourcePool（datasources.py）
-- 自选股 / 内存股票字典 / 标的池 = 纯本地业务数据
+rquant.business.data — 业务数据层
+- K 线拉取走 DataSourcePool（rquant.data_source）
+- 自选股 / 内存股票字典 / 标的池 = 纯本地业务数据（data/）
 """
 
 from __future__ import annotations
@@ -10,15 +10,16 @@ from pathlib import Path
 
 import pandas as pd
 
-from datasources import pool
+from rquant.data_source import pool
 
-CACHE_DIR = Path(__file__).parent / "data"
-CACHE_DIR.mkdir(exist_ok=True)
+# 业务数据目录（与 cache/ 区分）
+DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data"
+DATA_DIR.mkdir(exist_ok=True)
 
 STALE_DAYS = 5
 
 
-# ============== JSON 工具（被 portfolio.py 复用） ==============
+# ============== JSON 工具（被 portfolio.py 复用）==============
 
 
 def _load_json(path: Path, default):
@@ -35,7 +36,7 @@ def _save_json(path: Path, data) -> None:
     path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
 
 
-# ============== K 线（数据池 wrapper） ==============
+# ============== K 线（数据池 wrapper）==============
 
 
 def fetch_kline(code: str, days: int = 250) -> pd.DataFrame:
@@ -71,10 +72,10 @@ def get_all_stocks() -> dict[str, dict]:
     return dict(_stock_store)
 
 
-# ============== 自选股（仅持久化 code 列表） ==============
+# ============== 自选股（仅持久化 code 列表）==============
 
 
-WATCHLIST_FILE = CACHE_DIR / "watchlist.json"
+WATCHLIST_FILE = DATA_DIR / "watchlist.json"
 
 
 def get_watchlist_codes() -> list[str]:
@@ -102,7 +103,7 @@ def remove_from_watchlist(code: str) -> bool:
     return True
 
 
-# ============== 标的池（用于信号扫描） ==============
+# ============== 标的池（用于信号扫描）==============
 
 
 _DEFAULT_POOL = [

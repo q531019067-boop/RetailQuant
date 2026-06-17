@@ -1,7 +1,7 @@
 """
 rQuant.board — 板块行情业务层
 - 维护板块名 → ETF 代码的映射（SECTOR_ETFS）
-- 行情数据走 DataSourcePool（datasources.py）
+- 行情数据走 DataSourcePool（rquant.data_source）
 - 业务层缓存 2 分钟
 - 对外 API：fetch_sector_boards / fetch_concept_boards / fetch_board_stocks
 """
@@ -11,7 +11,7 @@ import sys
 import time
 from datetime import datetime
 
-from datasources import pool
+from rquant.data_source import pool
 
 # ============== 板块 ETF 池 ==============
 # Sina 不暴露真实"行业板块"或"概念板块"成分股接口；

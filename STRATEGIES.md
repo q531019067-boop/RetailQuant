@@ -802,12 +802,12 @@ state = get_market_regime(my_index_df)
 
 ### 3 步加新策略
 
-1. **创建文件**：`strategies/<category>/<name>.py`
+1. **创建文件**：`rquant/strategy/<category>/<name>.py`
 2. **继承协议**：实现 `signal_buy` + `signal_sell`
 3. **注册**：`@register` 装饰器
 
 ```python
-# strategies/my_category/my_strategy.py
+# rquant/strategy/my_category/my_strategy.py
 from ..base import Signal, ma
 from ..registry import register
 
@@ -850,11 +850,11 @@ class MyStrategy:
         ...
 ```
 
-4. **导入触发注册**：在 `strategies/<category>/__init__.py` 加：
+4. **导入触发注册**：在 `rquant/strategy/<category>/__init__.py` 加：
    ```python
    from . import my_strategy  # noqa: F401
    ```
-5. **顶层导入**：`strategies/__init__.py` 加：
+5. **顶层导入**：`rquant/strategy/__init__.py` 加：
    ```python
    from .my_category import my_strategy  # noqa: F401
    ```
@@ -863,7 +863,7 @@ class MyStrategy:
 
 ### 通用技术指标
 
-`strategies/base.py` 已封装好：
+`rquant/strategy/base.py` 已封装好：
 
 ```python
 ma(df, n)           # N 日 MA

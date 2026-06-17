@@ -1,5 +1,5 @@
 """
-rQuant.strategies — 策略引擎入口
+rQuant.strategy — 策略引擎入口
 - 导入各子模块即触发 @register
 - scan_stock: 跑单只股票的所有策略
 - scan_category: 跑某大类的所有策略

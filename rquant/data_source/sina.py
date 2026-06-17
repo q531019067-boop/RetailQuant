@@ -1,9 +1,7 @@
 """
-rQuant.datasources — 数据源池
-- 抽象层：KlineSource / QuoteSource Protocol
-- 实现：SinaKlineSource / SinaQuoteSource（默认）
-- 池：DataSourcePool — 优先级路由、健康度跟踪、自动 failover
-- 旧业务代码（data.py / board.py）通过 `pool` 单例访问，签名不变
+rquant.data_source.sina — Sina 数据源实现
+- SinaKlineSource: K 线 + 本地 JSON 缓存
+- SinaQuoteSource: 实时行情 + 30s 批量缓存
 """
 
 from __future__ import annotations
@@ -12,45 +10,20 @@ import re
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Protocol
+from typing import Optional
 
-import pandas as pd
-import requests
-
-CACHE_DIR = Path(__file__).parent / "data"
-CACHE_DIR.mkdir(exist_ok=True)
-
-SINA_KLINE_URL = "https://money.finance.sina.com.cn/quotes_service/api/json_v2.php/CN_MarketData.getKLineData"
-SINA_QUOTE_URL = "https://hq.sinajs.cn/list="
-SINA_HEADERS = {"Referer": "https://finance.sina.com.cn/"}
-
-STALE_DAYS = 5
-PRICE_COLS = ("open", "high", "low", "close", "volume")
-DEFAULT_TIMEOUT = 8
-
-# 单源失败后冷却时间（秒）—— 避免短时间内反复打
-UNHEALTHY_COOLDOWN = 60
+from .cache import (
+    CACHE_DIR,
+    DEFAULT_TIMEOUT,
+    SINA_HEADERS,
+    SINA_KLINE_URL,
+    SINA_QUOTE_URL,
+    STALE_DAYS,
+    UNHEALTHY_COOLDOWN,
+)
 
 
-# ============== 数据源协议 ==============
-
-
-class KlineSource(Protocol):
-    name: str
-
-    def fetch(self, code: str, days: int) -> list[dict]: ...
-    def healthy(self) -> bool: ...
-
-
-class QuoteSource(Protocol):
-    name: str
-
-    def fetch(self, code: str) -> dict | None: ...
-    def fetch_batch(self, codes: list[str]) -> dict[str, dict]: ...
-    def healthy(self) -> bool: ...
-
-
-# ============== Sina K 线源 ==============
+# ============== K 线源 ==============
 
 
 class SinaKlineSource:
@@ -95,7 +68,7 @@ class SinaKlineSource:
 
         try:
             url = f"{SINA_KLINE_URL}?symbol={code}&scale=240&ma=no&datalen={days}"
-            r = requests.get(url, timeout=self.timeout)
+            r = __import__("requests").get(url, timeout=self.timeout)
             if r.status_code == 200 and r.text.strip():
                 fresh = r.json()
                 if isinstance(fresh, list) and fresh:
@@ -117,7 +90,7 @@ class SinaKlineSource:
         return time.time() > self._unhealthy_until
 
 
-# ============== Sina 行情源 ==============
+# ============== 行情源 ==============
 
 
 class SinaQuoteSource:
@@ -148,7 +121,7 @@ class SinaQuoteSource:
         if to_fetch:
             try:
                 url = SINA_QUOTE_URL + ",".join(to_fetch)
-                r = requests.get(url, headers=SINA_HEADERS, timeout=self.timeout)
+                r = __import__("requests").get(url, headers=SINA_HEADERS, timeout=self.timeout)
                 if r.status_code == 200:
                     for c in to_fetch:
                         item = self._parse_line(c, r.text)
@@ -160,10 +133,10 @@ class SinaQuoteSource:
                 self._unhealthy_until = time.time() + UNHEALTHY_COOLDOWN
         return result
 
-    def fetch(self, code: str) -> dict | None:
+    def fetch(self, code: str) -> Optional[dict]:
         return self.fetch_batch([code]).get(code)
 
-    def _parse_line(self, code: str, text: str) -> dict | None:
+    def _parse_line(self, code: str, text: str) -> Optional[dict]:
         m = re.search(rf'var hq_str_{code}="([^"]*)"', text)
         if not m:
             return None
@@ -187,88 +160,3 @@ class SinaQuoteSource:
 
     def healthy(self) -> bool:
         return time.time() > self._unhealthy_until
-
-
-# ============== 数据源池 ==============
-
-
-class DataSourcePool:
-    """管理多个 K 线 / 行情源，按优先级和健康度路由，自动 failover"""
-
-    def __init__(self):
-        self._kline: list[KlineSource] = [SinaKlineSource()]
-        self._quote: list[QuoteSource] = [SinaQuoteSource()]
-
-    # ----- 注册源 -----
-
-    def add_kline(self, source: KlineSource, priority: int = 0) -> None:
-        """priority 越小越优先"""
-        self._kline.insert(min(priority, len(self._kline)), source)
-
-    def add_quote(self, source: QuoteSource, priority: int = 0) -> None:
-        self._quote.insert(min(priority, len(self._quote)), source)
-
-    # ----- K 线 -----
-
-    def fetch_kline(self, code: str, days: int = 250) -> list[dict]:
-        last_err: Exception | None = None
-        for src in self._kline:
-            if not src.healthy():
-                continue
-            try:
-                rows = src.fetch(code, days)
-                if rows:
-                    return rows
-            except Exception as e:
-                last_err = e
-        if last_err:
-            raise last_err
-        return []
-
-    def to_dataframe(self, code: str, days: int = 250) -> pd.DataFrame:
-        """便捷：fetch_kline + 转 DataFrame（列：date, open, high, low, close, volume）"""
-        rows = self.fetch_kline(code, days)
-        if not rows:
-            return pd.DataFrame()
-        df = pd.DataFrame(rows).rename(columns={"day": "date"})
-        df[list(PRICE_COLS)] = df[list(PRICE_COLS)].apply(pd.to_numeric, errors="coerce")
-        return df[["date", *PRICE_COLS]]
-
-    # ----- 行情 -----
-
-    def fetch_quote(self, code: str) -> dict | None:
-        for src in self._quote:
-            if not src.healthy():
-                continue
-            try:
-                item = src.fetch(code)
-                if item is not None:
-                    return item
-            except Exception:
-                continue
-        return None
-
-    def fetch_quotes(self, codes: list[str]) -> dict[str, dict]:
-        """批量拉行情：走优先级最高的健康源"""
-        for src in self._quote:
-            if not src.healthy():
-                continue
-            try:
-                result = src.fetch_batch(codes)
-                if result:
-                    return result
-            except Exception:
-                continue
-        return {}
-
-    # ----- 健康度面板 -----
-
-    def status(self) -> dict:
-        return {
-            "kline": [{"name": s.name, "healthy": s.healthy()} for s in self._kline],
-            "quote": [{"name": s.name, "healthy": s.healthy()} for s in self._quote],
-        }
-
-
-# 全局单例
-pool = DataSourcePool()
