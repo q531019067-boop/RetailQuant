@@ -10,6 +10,7 @@ rQuant.app — Flask Web（默认端口 8080）
 from __future__ import annotations
 import os
 import sys
+import time
 from datetime import datetime
 from pathlib import Path
 
@@ -320,11 +321,47 @@ def api_watchlist_toggle():
             {"ok": True, "code": code, "in_watchlist": False, "action": "removed"}
         )
     data.add_to_watchlist(code)
-    info = data.get_stock(code)
-    if info.get("name"):
-        data.upsert_stock(code, name=info["name"])
+    # 优先用缓存；无缓存或过期则走数据源池拉取行情
+    _ensure_stock_info(code)
     _log(f"自选股 添加: {code}")
     return jsonify({"ok": True, "code": code, "in_watchlist": True, "action": "added"})
+
+
+def _ensure_stock_info(code: str) -> bool:
+    """确保内存字典中有该股票的最新行情（缓存有效则跳过，否则走数据源池→K线兜底）。
+    返回 True 表示命中了有效缓存。
+    """
+    cached = data.get_stock(code)
+    cache_age = time.time() - cached.get("_updated_at", 0) if cached.get("_updated_at") else 9999
+    if cache_age < 300 and cached.get("price"):
+        return True
+
+    name = cached.get("name", code)
+    price = cached.get("price", 0)
+    change_pct = cached.get("change_pct", 0)
+
+    try:
+        quote = pool.fetch_quote(code)
+        if quote:
+            name = quote.get("name", name)
+            price = quote.get("price", price)
+            change_pct = quote.get("change_pct", change_pct)
+    except Exception:
+        pass
+
+    if not price:
+        try:
+            df = data.fetch_kline(code, 5)
+            if not df.empty and len(df) >= 2:
+                price = float(df["close"].iloc[-1])
+                prev = float(df["close"].iloc[-2])
+                if prev > 0:
+                    change_pct = round((price - prev) / prev * 100, 2)
+        except Exception:
+            pass
+
+    data.upsert_stock(code, name=name, price=price, change_pct=change_pct)
+    return False
 
 
 @app.route("/api/watchlist/stocks")
@@ -334,6 +371,116 @@ def api_watchlist_stocks():
     rows = _build_watchlist_view(codes, pf.get_positions())
     _log(f"自选股 行情 API: {len(rows)} 只")
     return jsonify({"stocks": rows, "count": len(rows)})
+
+
+# ============== 自选股 添加（含行情拉取） ==============
+
+
+@app.route("/api/watchlist/add_with_info", methods=["POST"])
+def api_watchlist_add_with_info():
+    """添加自选股并拉取最新行情（优先用缓存，超过5分钟则刷新）"""
+    payload = request.get_json(silent=True) or {}
+    code = (payload.get("code", "") or "").strip().lower()
+    if not code:
+        return jsonify({"ok": False, "error": "缺少 code"}), 400
+
+    # 1. 检查内存缓存是否有效（5 分钟内）
+    cached = data.get_stock(code)
+    cache_age = time.time() - cached.get("_updated_at", 0) if cached.get("_updated_at") else 9999
+    if cache_age < 300 and cached.get("price"):
+        # 缓存有效，直接加入自选
+        added = data.add_to_watchlist(code)
+        return jsonify({
+            "ok": True, "code": code, "added": added,
+            "name": cached.get("name", code),
+            "price": cached.get("price", 0),
+            "change_pct": cached.get("change_pct", 0),
+            "sector": cached.get("sector", ""),
+            "from_cache": True,
+        })
+
+    # 2. 拉取最新行情
+    name = cached.get("name", code)
+    price = cached.get("price", 0)
+    change_pct = cached.get("change_pct", 0)
+
+    try:
+        quote = pool.fetch_quote(code)
+        if quote:
+            name = quote.get("name", name)
+            price = quote.get("price", price)
+            change_pct = quote.get("change_pct", change_pct)
+    except Exception:
+        pass
+
+    # 3. 如果行情拉不到，从 K 线提取
+    if not price:
+        try:
+            df = data.fetch_kline(code, 5)
+            if not df.empty and len(df) >= 2:
+                price = float(df["close"].iloc[-1])
+                prev = float(df["close"].iloc[-2])
+                if prev > 0:
+                    change_pct = round((price - prev) / prev * 100, 2)
+        except Exception:
+            pass
+
+    # 4. 写入内存字典
+    data.upsert_stock(code, name=name, price=price, change_pct=change_pct)
+
+    # 5. 加入自选股
+    added = data.add_to_watchlist(code)
+    _log(f"自选股 添加(含行情): {code} name={name} price={price}")
+    return jsonify({
+        "ok": True, "code": code, "added": added,
+        "name": name, "price": price,
+        "change_pct": change_pct,
+        "sector": cached.get("sector", ""),
+        "from_cache": False,
+    })
+
+
+# ============== 自选股 策略分析 ==============
+
+
+@app.route("/api/watchlist/analyze/<code>", methods=["POST"])
+def api_watchlist_analyze(code):
+    """对单只自选股运行策略分析，返回买卖信号"""
+    code = code.strip().lower()
+
+    # 1. 拉 K 线
+    df = data.fetch_kline(code, 70)
+    if df.empty or len(df) < 25:
+        return jsonify({"ok": True, "code": code, "buy_signals": [], "sell_signal": None, "error": "K线数据不足"})
+
+    # 2. 获取股票信息
+    info = data.get_stock(code)
+    name = info.get("name", code)
+    sector = info.get("sector", "")
+
+    # 3. 买入信号
+    buy_signals = []
+    for sig in strategy.scan_stock(code, name, sector, df):
+        buy_signals.append({
+            "code": sig.code, "name": sig.name, "sector": sig.sector,
+            "strategy": sig.strategy, "current_price": sig.current_price,
+            "suggested_buy": sig.suggested_buy, "stop_loss": sig.stop_loss,
+            "take_profit": sig.take_profit, "reason": sig.reason,
+            "confidence": sig.confidence,
+        })
+
+    # 4. 卖出信号（如果持仓）
+    sell_signal = None
+    positions = pf.get_positions()
+    for p in positions:
+        if p["code"] == code:
+            sig = strategy.sell_signal(p, df)
+            if sig:
+                sell_signal = {**sig, "code": code, "name": p["name"]}
+            break
+
+    _log(f"自选股 分析: {code} buy={len(buy_signals)} sell={bool(sell_signal)}")
+    return jsonify({"ok": True, "code": code, "buy_signals": buy_signals, "sell_signal": sell_signal})
 
 
 # ============== 错误 ==============
@@ -371,3 +518,7 @@ if __name__ == "__main__":
     except ImportError:
         # Flask dev server 不支持双 listen，回退到单 host
         app.run(host="127.0.0.1", port=DEFAULT_PORT, debug=True)
+
+
+# 运行时添加数据池引用（供 API 使用）
+from datasources import pool

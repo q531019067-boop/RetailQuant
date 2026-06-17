@@ -73,8 +73,9 @@
 
     <!-- 信号区 -->
     <div class="row">
-      <div class="box">
-        <h2>📉 卖出提示 <span class="badge red">{{ sell_signals|length }}</span></h2>
+      <div class="box" id="sell-signals-box">
+        <h2>📉 卖出提示 <span class="badge red" id="sell-badge">{{ sell_signals|length }}</span></h2>
+        <div id="sell-signals-list">
         {% if sell_signals %}
           {% for s in sell_signals %}
           <div class="signal sig-{{ s.urgency }}">
@@ -87,12 +88,14 @@
           </div>
           {% endfor %}
         {% else %}
-          <p class="empty">✅ 无（持仓健康）</p>
+          <p class="empty" id="sell-empty">✅ 无（持仓健康）</p>
         {% endif %}
+        </div>
       </div>
 
-      <div class="box">
-        <h2>🔥 买入信号 <span class="badge green">{{ buy_signals|length }}</span></h2>
+      <div class="box" id="buy-signals-box">
+        <h2>🔥 买入信号 <span class="badge green" id="buy-badge">{{ buy_signals|length }}</span></h2>
+        <div id="buy-signals-list">
         {% if buy_signals %}
           {% for s in buy_signals %}
           <div class="signal">
@@ -108,8 +111,9 @@
           </div>
           {% endfor %}
         {% else %}
-          <p class="empty">📭 今日无信号</p>
+          <p class="empty" id="buy-empty">📭 今日无信号</p>
         {% endif %}
+        </div>
       </div>
     </div>
 
@@ -164,11 +168,18 @@
 
     <!-- 自选股 -->
     <div class="box" id="watchlist-box">
-      <h2>⭐ 自选股 <span class="badge green" id="watchlist-badge">{{ watchlist_stocks|length }}</span></h2>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
+        <h2 style="margin:0;">⭐ 自选股 <span class="badge green" id="watchlist-badge">{{ watchlist_stocks|length }}</span></h2>
+        <input type="text" id="watchlist-input" placeholder="代码 sh600460" pattern="(sh|sz)\d{6}"
+               style="padding:6px 10px;background:#1a1a2e;border:1px solid #333;color:#e0e0e0;border-radius:4px;width:140px;font-family:monospace;"
+               onkeydown="if(event.key==='Enter')addToWatchlist()">
+        <button type="button" onclick="addToWatchlist()" class="btn-primary btn-sm">+ 添加</button>
+        <span id="watchlist-add-status" style="font-size:12px;color:#78909c;display:none;"></span>
+      </div>
       {% if watchlist_stocks %}
       <table>
         <thead>
-          <tr><th>代码</th><th>名称</th><th>现价</th><th>涨幅</th><th>板块</th><th>操作</th></tr>
+          <tr><th>代码</th><th>名称</th><th>现价</th><th>涨幅</th><th>板块</th><th>操作</th><th>分析</th></tr>
         </thead>
         <tbody id="watchlist-tbody">
           {% for w in watchlist_stocks %}
@@ -186,6 +197,9 @@
               {% else %}
               <button type="button" onclick="showAddForCode('{{ w.code }}', {{ w.price }})" class="btn-primary btn-sm">买入</button>
               {% endif %}
+            </td>
+            <td>
+              <button type="button" onclick="analyzeStock('{{ w.code }}')" class="btn-sm" title="策略分析">🔍</button>
             </td>
           </tr>
           {% endfor %}
@@ -485,6 +499,18 @@
   // ========== 自选股 ==========
 
   let watchlistCodes = new Set({{ watchlist_codes|tojson }});
+  // 跟踪已渲染的信号，避免重复（key=code|strategy 用于买入，code 用于卖出）
+  let renderedBuyKeys = new Set();
+  let renderedSellCodes = new Set();
+  // 初始化：从服务端渲染的信号中提取
+  (() => {
+    document.querySelectorAll('#buy-signals-list .signal').forEach(el => {
+      const b = el.querySelector('b'); if (b) renderedBuyKeys.add(b.textContent);
+    });
+    document.querySelectorAll('#sell-signals-list .signal').forEach(el => {
+      const b = el.querySelector('b'); if (b) renderedSellCodes.add(b.textContent);
+    });
+  })();
   // 页面加载时获取最新自选股行情（填补无服务端渲染数据的股票）
   reloadWatchlist();
 
@@ -537,6 +563,7 @@
           const action = w.is_held
             ? '<span class="held-tag">已持仓</span>'
             : `<button type="button" onclick="showAddForCode('${w.code}', ${w.price})" class="btn-primary btn-sm">买入</button>`;
+          const analyze = `<button type="button" onclick="analyzeStock('${w.code}')" class="btn-sm" style="margin-left:4px;" title="策略分析">🔍</button>`;
           return `<tr>
             <td><code>${w.code}</code></td>
             <td>${w.name}</td>
@@ -544,6 +571,7 @@
             <td class="${color}">${sign}${pct.toFixed(2)}%</td>
             <td>${w.sector}</td>
             <td>${action}</td>
+            <td>${analyze}</td>
           </tr>`;
         }).join('');
       }
@@ -557,6 +585,102 @@
     document.querySelector('#add-form input[name="code"]').value = code;
     if (price > 0) document.querySelector('#add-form input[name="price"]').value = price.toFixed(2);
     document.querySelector('#add-form input[name="shares"]').focus();
+  }
+
+  async function addToWatchlist() {
+    const input = document.getElementById('watchlist-input');
+    const status = document.getElementById('watchlist-add-status');
+    const code = input.value.trim().toLowerCase();
+    if (!code) { status.textContent = '请输入代码'; status.style.display = 'inline'; return; }
+    if (!/^(sh|sz)\d{6}$/.test(code)) { status.textContent = '格式：sh600460'; status.style.display = 'inline'; return; }
+    status.textContent = '查询中…'; status.style.display = 'inline'; status.style.color = '#78909c';
+    try {
+      const resp = await fetch('/api/watchlist/add_with_info', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({code: code})
+      });
+      const data = await resp.json();
+      if (!data.ok) { status.textContent = data.error || '添加失败'; status.style.color = '#ff5252'; return; }
+      watchlistCodes.add(code);
+      status.textContent = data.added ? `✅ 已添加 ${data.name}` : '已在自选列表中';
+      status.style.color = '#00e676';
+      input.value = '';
+      reloadWatchlist();
+      setTimeout(() => { status.style.display = 'none'; }, 2000);
+    } catch (e) {
+      status.textContent = '网络错误'; status.style.color = '#ff5252';
+    }
+  }
+
+  async function analyzeStock(code) {
+    try {
+      const resp = await fetch('/api/watchlist/analyze/' + code, {method: 'POST'});
+      const data = await resp.json();
+      if (!data.ok) return;
+
+      for (const sig of (data.buy_signals || [])) {
+        const key = sig.code + '|' + sig.strategy;
+        if (renderedBuyKeys.has(key)) continue;
+        renderedBuyKeys.add(key);
+        appendBuySignal(sig);
+      }
+
+      if (data.sell_signal) {
+        const sc = data.sell_signal.code;
+        if (!renderedSellCodes.has(sc)) {
+          renderedSellCodes.add(sc);
+          appendSellSignal(data.sell_signal);
+        }
+      }
+
+      const rows = document.querySelectorAll('#watchlist-tbody tr');
+      rows.forEach(tr => {
+        const c = tr.querySelector('code');
+        if (c && c.textContent === code) {
+          tr.style.background = '#1a3a2e';
+          setTimeout(() => { tr.style.background = ''; }, 800);
+        }
+      });
+    } catch (e) {
+      console.error('analyzeStock failed:', e);
+    }
+  }
+
+  function appendBuySignal(sig) {
+    const list = document.getElementById('buy-signals-list');
+    const empty = document.getElementById('buy-empty');
+    const badge = document.getElementById('buy-badge');
+    if (empty) empty.style.display = 'none';
+    const div = document.createElement('div');
+    div.className = 'signal';
+    div.innerHTML = `<div class="sig-head">
+      <span><b>${sig.code}</b> ${sig.name} · ${sig.sector}</span>
+      <span class="strat-tag">${sig.strategy}</span>
+    </div>
+    <div class="sig-reason">${sig.reason}</div>
+    <div class="sig-detail">
+      现价 ¥${sig.current_price.toFixed(2)} → 买 ¥${sig.suggested_buy.toFixed(2)}
+      · 止损 ¥${sig.stop_loss.toFixed(2)} · 止盈 ¥${sig.take_profit.toFixed(2)}
+    </div>`;
+    list.appendChild(div);
+    if (badge) badge.textContent = list.querySelectorAll('.signal').length;
+  }
+
+  function appendSellSignal(sig) {
+    const list = document.getElementById('sell-signals-list');
+    const empty = document.getElementById('sell-empty');
+    const badge = document.getElementById('sell-badge');
+    if (empty) empty.style.display = 'none';
+    const div = document.createElement('div');
+    div.className = 'signal sig-' + (sig.urgency || 'normal');
+    div.innerHTML = `<div class="sig-head">
+      <span><b>${sig.code}</b> ${sig.name}</span>
+      <span class="urgency-tag urgency-${sig.urgency || 'normal'}">${sig.urgency || 'normal'}</span>
+    </div>
+    <div class="sig-reason">${sig.reason}</div>
+    <div class="sig-detail">建议卖 ¥${sig.suggested_price.toFixed(2)}</div>`;
+    list.appendChild(div);
+    if (badge) badge.textContent = list.querySelectorAll('.signal').length;
   }
   </script>
 </body>

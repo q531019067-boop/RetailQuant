@@ -57,8 +57,9 @@ _stock_store: dict[str, dict] = {}
 
 
 def upsert_stock(code: str, **kwargs) -> None:
-    """将股票信息写入全局内存字典（合并更新）"""
+    """将股票信息写入全局内存字典（合并更新），自动记录更新时间戳"""
     _stock_store.setdefault(code, {}).update(kwargs)
+    import time; _stock_store[code]["_updated_at"] = time.time()
 
 
 def get_stock(code: str) -> dict:
