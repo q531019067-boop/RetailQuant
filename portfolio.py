@@ -85,9 +85,7 @@ def list_trades() -> list[dict]:
     return _load_json(TRADES_FILE, [])
 
 
-def add_trade(
-    side: str, code: str, name: str, shares: int, price: float, note: str = ""
-) -> dict:
+def add_trade(side: str, code: str, name: str, shares: int, price: float, note: str = "") -> dict:
     trades = list_trades()
     now = datetime.now()
     trade = {
