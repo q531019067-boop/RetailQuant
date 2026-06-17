@@ -142,12 +142,9 @@ def index():
     # 6. 策略列表（按大类分组，前端下拉框用）
     strategies_by_category: dict[str, list[dict]] = {}
     for s in strategy.all_strategies():
-        strategies_by_category.setdefault(s.category, []).append(
-            {"name": s.name, "description": s.description}
-        )
+        strategies_by_category.setdefault(s.category, []).append({"name": s.name, "description": s.description})
     category_options = [
-        {"value": cat, "label": CATEGORY_LABELS.get(cat, cat)}
-        for cat in sorted(strategies_by_category.keys())
+        {"value": cat, "label": CATEGORY_LABELS.get(cat, cat)} for cat in sorted(strategies_by_category.keys())
     ]
 
     return render_template(

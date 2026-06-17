@@ -16,9 +16,10 @@
   - [DividendLowvolRotation — 红利低波轮动](#4-dividendlowvolrotation--红利低波轮动)
   - [MultiFactor — 多因子选股](#5-multifactor--多因子选股)
   - [GridMartingale — 网格/马丁格尔](#6-gridmartingale--网格马丁格尔)
-  - [DragonTigerPattern — 游资形态（涨停/连板）](#7-dragontigerpattern--游资形态涨停连板)
+- [DragonTigerPattern — 游资形态（涨停/连板）](#7-dragontigerpattern--游资形态涨停连板)
   - [ChanLun2B — 缠论二买（优化版）](#8-chanlun2b--缠论二买优化版)
   - [BuyHold — 低吸（优化版）](#9-buyhold--低吸优化版)
+  - [ScenarioRouter — 场景路由器（牛/熊/震荡 → 子策略）](#10-scenariorouter--场景路由器牛熊震荡--子策略)
 - [策略对比矩阵](#策略对比矩阵)
 - [组合建议](#组合建议)
 - [扩展新策略](#扩展新策略)
@@ -649,6 +650,91 @@ STOP_LOSS = -0.10
 
 ---
 
+### 10. ScenarioRouter — 场景路由器（牛/熊/震荡 → 子策略）
+
+**定位**：根据大盘状态（牛/熊/震荡）动态选择子策略组合，避免"无差别触发"。
+
+#### 大盘状态识别
+
+基于指数 K 线（默认 sh000001 上证指数）的 MA60/MA120/close 关系：
+
+| 状态 | 条件 | 描述 |
+|---|---|---|
+| `STRONG_BULL` | MA60 > MA120 × 1.02 + close > MA120 × 1.05 | 强进攻 |
+| `BULL` | MA60 > MA120 + close > MA120 | 进攻 |
+| `SIDEWAYS` | 其他 | 震荡 |
+| `BEAR` | MA60 < MA120 + close < MA120 | 防守 |
+| `STRONG_BEAR` | MA60 < MA120 × 0.95 + close < MA120 × 0.95 | 极致防守 |
+
+**严格时序**：所有指标只看 ≤ 当日 K 线。
+
+**按日缓存**：`get_market_regime()` 每天只算一次，避免每只股票重复调。
+
+#### 状态 → 子策略映射
+
+| 状态 | 启用的子策略 | 思路 |
+|---|---|---|
+| `STRONG_BULL` | turtle + volume_breakout + factor | 趋势 + 突破 + 横截面选股（强进攻） |
+| `BULL` | + etf_rotation | 加入 ETF 板块轮动 |
+| `SIDEWAYS` | factor + grid + etf_rotation | 多因子 + 网格 + ETF（无趋势） |
+| `BEAR` | etf_rotation + grid + legacy | ETF + 网格 + 老策略低吸（防守） |
+| `STRONG_BEAR` | etf_rotation + legacy | 只剩红利 + 低吸（极致防守） |
+
+#### 触发逻辑
+
+```python
+# 1. 算大盘状态
+state = get_market_regime()  # 按日缓存
+
+# 2. 取该状态下的子策略类别
+sub_cats = ROUTING_TABLE[state.regime]
+
+# 3. 跑这些子策略
+sigs = []
+for strat in strategies_in_categories(sub_cats):
+    sigs.append(strat.signal_buy(code, name, sector, df))
+
+# 4. 取 confidence 最高的（多个子策略都触发时取最强）
+best = max(sigs, key=lambda s: s.confidence)
+best.extra["router_regime"] = state.regime
+best.extra["router_sub_cats"] = sub_cats
+```
+
+#### 卖出
+
+复用 `scan_sell()`——跑所有策略的卖出信号（路由器不限制卖出，只限制买入）。
+
+#### 适用场景
+
+- ✅ 想让策略"看天吃饭"（牛用进攻策略，熊用防守策略）
+- ✅ 减少震荡市假信号（路由器在 SIDEWAYS 禁用 turtle + volume_breakout）
+
+#### 不适用场景
+
+- ❌ 个股独立判断（路由器需要大盘视角，看的是指数）
+- ❌ 频繁切换（按日缓存，当天状态稳定）
+
+#### 调用方式
+
+```python
+# 方式 1: 用路由器
+from strategies import get
+router = get("ScenarioRouter")
+sig = router.signal_buy(code, name, sector, df)
+
+# 方式 2: 直接看市场状态
+from strategies.router import get_market_regime
+state = get_market_regime()
+print(state.regime, state.description)
+
+# 方式 3: 测试时强制重算
+from strategies.router import get_market_regime, clear_regime_cache
+clear_regime_cache()
+state = get_market_regime(my_index_df)
+```
+
+---
+
 ## 策略对比矩阵
 
 | 策略 | 大类 | 触发频率 | 适合行情 | 信心度 | 持仓周期 | 风险点 |
@@ -662,6 +748,7 @@ STOP_LOSS = -0.10
 | **DragonTigerPattern** | 游资 | 低 | 题材爆发 | 60-90 | 1-3 日 | 涨停板不可买入 |
 | **ChanLun2B** | 趋势 | 中 | 上升趋势 | 60-90 | 1-4 周 | 复杂难调 |
 | **BuyHold** | 抄底 | 极低 | 暴跌反弹 | 50-85 | 1-3 月 | 接飞刀 |
+| **ScenarioRouter** | 路由器 | - | 全部 | 取决于子策略 | 取决于子策略 | 需大盘 K 线 |
 
 ---
 

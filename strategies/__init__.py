@@ -18,6 +18,7 @@ from .factor import multi_factor  # noqa: F401
 from .grid import grid_martingale  # noqa: F401
 from .legacy import buyhold, chanlun2b  # noqa: F401
 from .pattern import dragon_tiger  # noqa: F401
+from .router import market_regime, scenario_router  # noqa: F401
 from .turtle import donchian  # noqa: F401
 from .volume_breakout import vp_breakout  # noqa: F401
 
@@ -85,12 +86,12 @@ __all__ = [
     "scan_sell",
     "scan_stock",
     "atr",
-    "ma",
-    "prev_ma",
+    "change_pct",
     "highest",
     "lowest",
-    "rsi",
+    "ma",
     "momentum",
+    "prev_ma",
+    "rsi",
     "vol_ratio",
-    "change_pct",
 ]
