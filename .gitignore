@@ -15,3 +15,10 @@ Thumbs.db
 cache/*.db
 cache/*.db-shm
 cache/*.db-wal
+
+# Runtime data (local only, do not commit)
+data/portfolio.json
+data/trades.json
+data/funds.json
+data/users.json
+data/parquet/
