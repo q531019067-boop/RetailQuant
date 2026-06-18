@@ -23,6 +23,7 @@ from __future__ import annotations
 import argparse
 import sys
 import time
+
 # (date/datetime 未直接使用，akshare 内部依赖)
 from pathlib import Path
 
@@ -36,10 +37,7 @@ sys.path.insert(0, str(_PROJ_ROOT))
 from rquant.data_source.parquet_store import info, list_codes, write  # noqa: E402
 
 # Sina K 线接口
-_SINA_KLINE_URL = (
-    "https://money.finance.sina.com.cn/quotes_service/api/json_v2.php/"
-    "CN_MarketData.getKLineData"
-)
+_SINA_KLINE_URL = "https://money.finance.sina.com.cn/quotes_service/api/json_v2.php/CN_MarketData.getKLineData"
 # 拉到最大深度（实测 5000 条覆盖 2005 年至今）
 _MAX_DATALEN = 5000
 _REQUEST_TIMEOUT = 15
@@ -88,14 +86,16 @@ def fetch_one(code: str, start: str | None, end: str | None, retries: int = 2) -
 
     # Sina 返回: {day, open, high, low, close, volume}
     df = pd.DataFrame(raw)
-    df = df.rename(columns={
-        "day": "date",
-        "open": "open",
-        "high": "high",
-        "low": "low",
-        "close": "close",
-        "volume": "volume",
-    })
+    df = df.rename(
+        columns={
+            "day": "date",
+            "open": "open",
+            "high": "high",
+            "low": "low",
+            "close": "close",
+            "volume": "volume",
+        }
+    )
 
     # 标准化类型
     df["date"] = pd.to_datetime(df["date"])
@@ -153,7 +153,9 @@ def main():
             for c in codes:
                 inf = info(c)
                 if inf:
-                    print(f"  {c:12s}  {inf['rows']:5d} 行  {inf['date_from']} ~ {inf['date_to']}  {inf['size_kb']:6.1f} KB")
+                    print(
+                        f"  {c:12s}  {inf['rows']:5d} 行  {inf['date_from']} ~ {inf['date_to']}  {inf['size_kb']:6.1f} KB"
+                    )
         return
 
     # --info

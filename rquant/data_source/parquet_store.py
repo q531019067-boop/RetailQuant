@@ -25,14 +25,14 @@ _COLUMNS = ["date", "open", "high", "low", "close", "volume", "amount", "turnove
 # Parquet schema（显式类型，兼容所有 Parquet 读取器）
 _SCHEMA = pa.schema(
     [
-        ("date", pa.date32()),          # 交易日
-        ("open", pa.float64()),         # 开盘价
-        ("high", pa.float64()),         # 最高价
-        ("low", pa.float64()),          # 最低价
-        ("close", pa.float64()),        # 收盘价
-        ("volume", pa.int64()),         # 成交量（股）
-        ("amount", pa.float64()),       # 成交额（元）
-        ("turnover", pa.float64()),     # 换手率（%）
+        ("date", pa.date32()),  # 交易日
+        ("open", pa.float64()),  # 开盘价
+        ("high", pa.float64()),  # 最高价
+        ("low", pa.float64()),  # 最低价
+        ("close", pa.float64()),  # 收盘价
+        ("volume", pa.int64()),  # 成交量（股）
+        ("amount", pa.float64()),  # 成交额（元）
+        ("turnover", pa.float64()),  # 换手率（%）
     ]
 )
 
@@ -103,9 +103,7 @@ def write(code: str, df: pd.DataFrame, mode: str = "replace") -> None:
 def list_codes() -> list[str]:
     """列出所有已缓存的股票代码"""
     _ensure_dir()
-    return sorted(
-        [f.stem for f in _PARQUET_DIR.glob("*.parquet")]
-    )
+    return sorted([f.stem for f in _PARQUET_DIR.glob("*.parquet")])
 
 
 def info(code: str) -> Optional[dict]:

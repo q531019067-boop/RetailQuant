@@ -336,12 +336,14 @@ def register_routes(app: Flask) -> None:
             return jsonify({"ok": False, "error": "金额必须大于0"}), 400
         result = funds.topup_funds(uid, amount)
         _log(f"充值: +{amount:,.0f}，总资金 {result['total_funds']:,.0f}，可用 {result['available_funds']:,.0f}")
-        return jsonify({
-            "ok": True,
-            "added": round(amount, 2),
-            "total_funds": round(result["total_funds"], 2),
-            "available_funds": round(result["available_funds"], 2),
-        })
+        return jsonify(
+            {
+                "ok": True,
+                "added": round(amount, 2),
+                "total_funds": round(result["total_funds"], 2),
+                "available_funds": round(result["available_funds"], 2),
+            }
+        )
 
     @app.route("/api/funds/withdraw", methods=["POST"])
     def api_funds_withdraw():
@@ -357,10 +359,12 @@ def register_routes(app: Flask) -> None:
             _log(f"提现: 请求 {amount:,.0f}，实际 {actual:,.0f}（可用资金不足，已清零）")
         else:
             _log(f"提现: -{actual:,.0f}，总资金 {result['total_funds']:,.0f}，可用 {result['available_funds']:,.0f}")
-        return jsonify({
-            "ok": True,
-            "requested": round(amount, 2),
-            "withdrawn": actual,
-            "total_funds": round(result["total_funds"], 2),
-            "available_funds": round(result["available_funds"], 2),
-        })
+        return jsonify(
+            {
+                "ok": True,
+                "requested": round(amount, 2),
+                "withdrawn": actual,
+                "total_funds": round(result["total_funds"], 2),
+                "available_funds": round(result["available_funds"], 2),
+            }
+        )
