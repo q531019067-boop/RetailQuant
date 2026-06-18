@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """多轮错存逆向：对单行 Unicode 尝试有限深度（默认≤3）的 encode→decode 链，用于合并/局部乱码。"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass

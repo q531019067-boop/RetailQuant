@@ -13,6 +13,7 @@ Agent：在仓库内可用相对路径执行，例如::
 
     python .cursor/skills/mixed-encoding-fixer/scripts/resolve_skill_root.py --json
 """
+
 from __future__ import annotations
 
 import argparse

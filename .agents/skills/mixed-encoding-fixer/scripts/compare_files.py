@@ -5,6 +5,7 @@
 stdout 为一行 JSON：``equal``, ``size_a``, ``size_b``, ``sha256_a``, ``sha256_b``。
 任一路径不存在或非文件时 stderr JSON，退出码 2。
 """
+
 from __future__ import annotations
 
 import argparse

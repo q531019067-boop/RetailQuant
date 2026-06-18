@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """Windows 下尽量将标准流设为 UTF-8，减轻中文路径与标签在控制台的乱码。"""
+
 from __future__ import annotations
 
 import sys

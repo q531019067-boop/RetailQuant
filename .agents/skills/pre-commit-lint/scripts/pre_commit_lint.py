@@ -48,13 +48,15 @@ def _parse_check_output(stdout: str) -> list[dict]:
             continue
         m = re.match(r"^(.+?):(\d+):(\d+):\s*(\w+)\s+(.+)$", line)
         if m:
-            errors.append({
-                "file": m.group(1),
-                "line": int(m.group(2)),
-                "col": int(m.group(3)),
-                "code": m.group(4),
-                "message": m.group(5),
-            })
+            errors.append(
+                {
+                    "file": m.group(1),
+                    "line": int(m.group(2)),
+                    "col": int(m.group(3)),
+                    "code": m.group(4),
+                    "message": m.group(5),
+                }
+            )
     return errors
 
 
@@ -64,7 +66,7 @@ def _parse_format_output(stderr: str) -> list[str]:
     for line in stderr.splitlines():
         line = line.strip()
         if line.startswith("Would reformat:"):
-            path = line[len("Would reformat:"):].strip()
+            path = line[len("Would reformat:") :].strip()
             unformatted.append(path)
     return unformatted
 

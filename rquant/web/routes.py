@@ -293,6 +293,7 @@ def register_routes(app: Flask) -> None:
     @app.errorhandler(500)
     def server_error(e):
         return render_template("error.html", code=500, message=str(e)), 500
+
     # ============== 系统状态 API（参考图新增） ==============
 
     @app.route("/api/market_status")

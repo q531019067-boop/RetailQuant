@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """损坏与可修复性评估（UTF-8 替换序列、严格 UTF-8、verdict）。"""
+
 from __future__ import annotations
 
 from typing import Any, Dict, List
@@ -28,9 +29,7 @@ _SUGGEST_REPLACEMENT = (
 _SUGGEST_GIT = "优先从 git 历史、备份或导出机取未损坏的源文件。"
 _SUGGEST_DOC = "若无备份，对照设计文档/常量表重写注释；勿凭猜测修改业务逻辑。"
 _SUGGEST_LUA_HINTS = "Lua 可使用 analyze --reconstruction-hints 抽取连续 `--` 注释块供 LLM 重建。"
-_SUGGEST_MIXED = (
-    "多行严格 UTF-8 解码失败且存在 MIX/DP 回退，可能为二进制级混合损坏；建议人工或 LLM 对照上下文重建。"
-)
+_SUGGEST_MIXED = "多行严格 UTF-8 解码失败且存在 MIX/DP 回退，可能为二进制级混合损坏；建议人工或 LLM 对照上下文重建。"
 
 
 def _strict_utf8_line_fails(line_bytes: bytes) -> bool:
@@ -90,8 +89,7 @@ def assess_corruption(
             suggestions = [_SUGGEST_MIXED, _SUGGEST_GIT, _SUGGEST_DOC]
 
     auto_recommended = (
-        verdict == _VERDICT_RECOVERABLE
-        and decode_dp_fallback_lines <= MAX_DP_FALLBACK_FOR_AUTO_RECOMMENDED
+        verdict == _VERDICT_RECOVERABLE and decode_dp_fallback_lines <= MAX_DP_FALLBACK_FOR_AUTO_RECOMMENDED
     )
 
     return {

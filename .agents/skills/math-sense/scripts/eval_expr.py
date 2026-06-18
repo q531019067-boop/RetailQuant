@@ -19,6 +19,7 @@ eval_expr.py — 安全表达式求值器
     - 支持 --table 模式批量求值
     - 支持 --precision 高精度 decimal 模式
 """
+
 import sys, json, ast, math, operator, argparse
 from decimal import Decimal, getcontext
 
@@ -26,25 +27,54 @@ from decimal import Decimal, getcontext
 # ====================== SafeEval Core ======================
 
 ALLOWED_FUNCTIONS = {
-    'sin': math.sin, 'cos': math.cos, 'tan': math.tan,
-    'asin': math.asin, 'acos': math.acos, 'atan': math.atan, 'atan2': math.atan2,
-    'sinh': math.sinh, 'cosh': math.cosh, 'tanh': math.tanh,
-    'sqrt': math.sqrt, 'log': math.log, 'log10': math.log10, 'log2': math.log2,
-    'exp': math.exp, 'pow': pow,
-    'fabs': math.fabs, 'abs': abs, 'floor': math.floor, 'ceil': math.ceil,
-    'trunc': math.trunc, 'fmod': math.fmod,
-    'degrees': math.degrees, 'radians': math.radians,
-    'hypot': math.hypot, 'erf': math.erf, 'erfc': math.erfc,
-    'gamma': math.gamma, 'lgamma': math.lgamma,
-    'max': max, 'min': min, 'round': round,
-    'int': int, 'float': float, 'bool': bool,
-    'sum': sum, 'len': len,
+    "sin": math.sin,
+    "cos": math.cos,
+    "tan": math.tan,
+    "asin": math.asin,
+    "acos": math.acos,
+    "atan": math.atan,
+    "atan2": math.atan2,
+    "sinh": math.sinh,
+    "cosh": math.cosh,
+    "tanh": math.tanh,
+    "sqrt": math.sqrt,
+    "log": math.log,
+    "log10": math.log10,
+    "log2": math.log2,
+    "exp": math.exp,
+    "pow": pow,
+    "fabs": math.fabs,
+    "abs": abs,
+    "floor": math.floor,
+    "ceil": math.ceil,
+    "trunc": math.trunc,
+    "fmod": math.fmod,
+    "degrees": math.degrees,
+    "radians": math.radians,
+    "hypot": math.hypot,
+    "erf": math.erf,
+    "erfc": math.erfc,
+    "gamma": math.gamma,
+    "lgamma": math.lgamma,
+    "max": max,
+    "min": min,
+    "round": round,
+    "int": int,
+    "float": float,
+    "bool": bool,
+    "sum": sum,
+    "len": len,
 }
 
 ALLOWED_CONSTANTS = {
-    'pi': math.pi, 'e': math.e, 'tau': math.tau,
-    'inf': math.inf, 'nan': math.nan,
-    'True': True, 'False': False, 'None': None,
+    "pi": math.pi,
+    "e": math.e,
+    "tau": math.tau,
+    "inf": math.inf,
+    "nan": math.nan,
+    "True": True,
+    "False": False,
+    "None": None,
 }
 
 
@@ -52,14 +82,40 @@ class SafeEval:
     """安全的表达式求值器，使用 ast 白名单"""
 
     ALLOWED_NODES = {
-        ast.Expression, ast.Constant, ast.Name, ast.Load,
-        ast.BinOp, ast.UnaryOp, ast.USub, ast.UAdd, ast.Not,
-        ast.Add, ast.Sub, ast.Mult, ast.Div, ast.FloorDiv, ast.Mod, ast.Pow,
-        ast.Compare, ast.Eq, ast.NotEq, ast.Lt, ast.LtE, ast.Gt, ast.GtE,
-        ast.BoolOp, ast.And, ast.Or,
-        ast.IfExp, ast.Call, ast.keyword,
-        ast.Attribute, ast.Subscript, ast.Slice,
-        ast.List, ast.Tuple,
+        ast.Expression,
+        ast.Constant,
+        ast.Name,
+        ast.Load,
+        ast.BinOp,
+        ast.UnaryOp,
+        ast.USub,
+        ast.UAdd,
+        ast.Not,
+        ast.Add,
+        ast.Sub,
+        ast.Mult,
+        ast.Div,
+        ast.FloorDiv,
+        ast.Mod,
+        ast.Pow,
+        ast.Compare,
+        ast.Eq,
+        ast.NotEq,
+        ast.Lt,
+        ast.LtE,
+        ast.Gt,
+        ast.GtE,
+        ast.BoolOp,
+        ast.And,
+        ast.Or,
+        ast.IfExp,
+        ast.Call,
+        ast.keyword,
+        ast.Attribute,
+        ast.Subscript,
+        ast.Slice,
+        ast.List,
+        ast.Tuple,
     }
 
     def __init__(self, vars_dict=None):
@@ -84,9 +140,12 @@ class SafeEval:
             left = self._eval_node(node.left)
             right = self._eval_node(node.right)
             ops = {
-                ast.Add: operator.add, ast.Sub: operator.sub,
-                ast.Mult: operator.mul, ast.Div: operator.truediv,
-                ast.FloorDiv: operator.floordiv, ast.Mod: operator.mod,
+                ast.Add: operator.add,
+                ast.Sub: operator.sub,
+                ast.Mult: operator.mul,
+                ast.Div: operator.truediv,
+                ast.FloorDiv: operator.floordiv,
+                ast.Mod: operator.mod,
                 ast.Pow: operator.pow,
             }
             return ops[type(node.op)](left, right)
@@ -99,9 +158,12 @@ class SafeEval:
             for op, comp in zip(node.ops, node.comparators):
                 right = self._eval_node(comp)
                 cmps = {
-                    ast.Eq: operator.eq, ast.NotEq: operator.ne,
-                    ast.Lt: operator.lt, ast.LtE: operator.le,
-                    ast.Gt: operator.gt, ast.GtE: operator.ge,
+                    ast.Eq: operator.eq,
+                    ast.NotEq: operator.ne,
+                    ast.Lt: operator.lt,
+                    ast.LtE: operator.le,
+                    ast.Gt: operator.gt,
+                    ast.GtE: operator.ge,
                 }
                 if not cmps[type(op)](left, right):
                     return False
@@ -119,12 +181,12 @@ class SafeEval:
                 return ALLOWED_FUNCTIONS[node.func.id](*args, **kwargs)
             if isinstance(node.func, ast.Attribute):
                 obj = self._eval_node(node.func.value)
-                if node.func.attr in ('real', 'imag', 'conjugate'):
+                if node.func.attr in ("real", "imag", "conjugate"):
                     return getattr(obj, node.func.attr)
             raise ValueError(f"不允许的函数调用: {ast.dump(node.func)}")
         elif isinstance(node, ast.Attribute):
             obj = self._eval_node(node.value)
-            if node.attr in ('real', 'imag'):
+            if node.attr in ("real", "imag"):
                 return getattr(obj, node.attr)
             raise ValueError(f"不允许的属性访问: {node.attr}")
         elif isinstance(node, ast.Subscript):
@@ -148,12 +210,13 @@ class SafeEval:
         raise ValueError(f"不支持的节点类型: {type(node).__name__}")
 
     def eval(self, expr_str):
-        tree = ast.parse(expr_str.strip(), mode='eval')
+        tree = ast.parse(expr_str.strip(), mode="eval")
         self._check_node(tree)
         return self._eval_node(tree.body)
 
 
 # ====================== Decimal 高精度模式 ======================
+
 
 def eval_decimal(expr_str, vars_dict, precision=50):
     """使用 decimal 高精度求值"""
@@ -162,14 +225,17 @@ def eval_decimal(expr_str, vars_dict, precision=50):
     dec_vars = {}
     for k, v in (vars_dict or {}).items():
         dec_vars[k] = Decimal(str(v))
-    dec_vars.update({
-        'pi': Decimal(str(math.pi)),
-        'e': Decimal(str(math.e)),
-    })
+    dec_vars.update(
+        {
+            "pi": Decimal(str(math.pi)),
+            "e": Decimal(str(math.e)),
+        }
+    )
 
     # 限制可用的操作
     import re
-    safe_expr = re.sub(r'[^0-9a-zA-Z_\+\-\*\/\(\)\.\,\s]', '', expr_str)
+
+    safe_expr = re.sub(r"[^0-9a-zA-Z_\+\-\*\/\(\)\.\,\s]", "", expr_str)
     for k in dec_vars:
         safe_expr = safe_expr.replace(k, f'dec_vars["{k}"]')
 
@@ -181,6 +247,7 @@ def eval_decimal(expr_str, vars_dict, precision=50):
 
 
 # ====================== 序列化辅助 ======================
+
 
 def to_json_safe(obj):
     """将结果转为 JSON 可序列化"""
@@ -195,6 +262,7 @@ def to_json_safe(obj):
     # numpy
     try:
         import numpy as np
+
         if isinstance(obj, np.ndarray):
             return obj.tolist()
         if isinstance(obj, (np.floating, np.integer)):
@@ -206,6 +274,7 @@ def to_json_safe(obj):
 
 # ====================== 主入口 ======================
 
+
 def main():
     parser = argparse.ArgumentParser(
         description="安全表达式求值器 — 基于 ast 白名单",
@@ -216,14 +285,14 @@ def main():
   python eval_expr.py --expr "x**2 + 2*x + 1" --vars '{"x":3}'
   python eval_expr.py --table --expr "x+y" --vars '[{"x":1,"y":2},{"x":3,"y":4}]'
   python eval_expr.py --precision 50 --expr "1/3"
-        """
+        """,
     )
-    parser.add_argument('json_input', nargs='?', help='JSON 输入字符串')
-    parser.add_argument('--expr', '-e', help='表达式字符串')
-    parser.add_argument('--vars', '-v', help='变量 JSON (dict 或 list)')
-    parser.add_argument('--table', '-t', action='store_true', help='表格模式: vars 为 list，逐行求值')
-    parser.add_argument('--precision', '-p', type=int, default=0, help='Decimal 高精度位数')
-    parser.add_argument('--compact', '-c', action='store_true', help='紧凑输出（减少空格）')
+    parser.add_argument("json_input", nargs="?", help="JSON 输入字符串")
+    parser.add_argument("--expr", "-e", help="表达式字符串")
+    parser.add_argument("--vars", "-v", help="变量 JSON (dict 或 list)")
+    parser.add_argument("--table", "-t", action="store_true", help="表格模式: vars 为 list，逐行求值")
+    parser.add_argument("--precision", "-p", type=int, default=0, help="Decimal 高精度位数")
+    parser.add_argument("--compact", "-c", action="store_true", help="紧凑输出（减少空格）")
 
     args = parser.parse_args()
 
@@ -247,13 +316,13 @@ def main():
                 sys.exit(1)
 
     # 命令行参数覆盖
-    expr = args.expr or input_data.get('expr', '')
+    expr = args.expr or input_data.get("expr", "")
     vars_data = None
 
     if args.vars:
         vars_data = json.loads(args.vars)
-    elif 'vars' in input_data:
-        vars_data = input_data['vars']
+    elif "vars" in input_data:
+        vars_data = input_data["vars"]
 
     if not expr:
         print(json.dumps({"ok": False, "error": "缺少表达式 (--expr 或 JSON 中的 'expr')"}, ensure_ascii=False))
@@ -274,8 +343,13 @@ def main():
                 results.append({"ok": True, "result": to_json_safe(val)})
             except Exception as e:
                 results.append({"ok": False, "error": str(e)})
-        print(json.dumps({"ok": True, "results": results, "count": len(results), "expr": expr},
-                         ensure_ascii=False, indent=None if args.compact else 2))
+        print(
+            json.dumps(
+                {"ok": True, "results": results, "count": len(results), "expr": expr},
+                ensure_ascii=False,
+                indent=None if args.compact else 2,
+            )
+        )
         return
 
     # 单次求值
@@ -292,5 +366,5 @@ def main():
         sys.exit(1)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

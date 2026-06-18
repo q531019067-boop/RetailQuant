@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """diff2fixes / recover：用 UTF-8 参考稿与损坏稿对齐行号，生成 fixes 或一步写出修复文件。"""
+
 from __future__ import annotations
 
 import json
@@ -30,9 +31,7 @@ def read_lines_as_unicode(path: str, *, golden: bool, mix_threshold: float) -> L
     return _build_unicode_lines(line_bytes_list, cls, mix_threshold, None)
 
 
-def diff_to_fix_blocks(
-    old_lines: List[str], new_lines: List[str]
-) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
+def diff_to_fix_blocks(old_lines: List[str], new_lines: List[str]) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
     if len(old_lines) != len(new_lines):
         raise ValueError(
             f"line count mismatch: damaged={len(old_lines)} golden={len(new_lines)}; "

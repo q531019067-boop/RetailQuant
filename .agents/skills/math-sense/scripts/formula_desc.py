@@ -17,13 +17,13 @@ formula_desc.py — 公式↔几何语言描述 双向转换系统
 支持的操作:
     lookup, describe, search, method, list, categories
 """
+
 import sys, json, argparse
 
 
 # ====================== 公式知识库 ======================
 
 KNOWLEDGE_BASE = {
-
     "calculus": {
         "title": "微积分",
         "entries": [
@@ -179,7 +179,6 @@ KNOWLEDGE_BASE = {
             },
         ],
     },
-
     "trigonometry": {
         "title": "三角学",
         "entries": [
@@ -234,7 +233,6 @@ KNOWLEDGE_BASE = {
             },
         ],
     },
-
     "algebra_geometry": {
         "title": "代数与几何",
         "entries": [
@@ -332,7 +330,6 @@ KNOWLEDGE_BASE = {
             },
         ],
     },
-
     "probability_statistics": {
         "title": "概率论与统计学",
         "entries": [
@@ -511,7 +508,6 @@ KNOWLEDGE_BASE = {
             },
         ],
     },
-
     "complex_analysis": {
         "title": "复数与复变函数",
         "entries": [
@@ -567,7 +563,6 @@ KNOWLEDGE_BASE = {
             },
         ],
     },
-
     "non_euclidean_geometry": {
         "title": "非欧几何与球面几何",
         "entries": [
@@ -603,7 +598,6 @@ KNOWLEDGE_BASE = {
             },
         ],
     },
-
     "math_in_cs": {
         "title": "信息科技中的数学（《数学之美》方法论）",
         "entries": [
@@ -686,7 +680,6 @@ KNOWLEDGE_BASE = {
             },
         ],
     },
-
     "methods": {
         "title": "方法论（证明 + 应用）",
         "entries": [
@@ -739,7 +732,17 @@ KNOWLEDGE_BASE = {
                 "id": "method_optimization",
                 "name": "极值与优化",
                 "when_to_use": "寻找最大值/最小值、最优配置、最佳参数",
-                "problem_patterns": ["最大", "最小", "最优", "最佳", "极值", "最低成本", "最高收益", "最短路径", "最快时间"],
+                "problem_patterns": [
+                    "最大",
+                    "最小",
+                    "最优",
+                    "最佳",
+                    "极值",
+                    "最低成本",
+                    "最高收益",
+                    "最短路径",
+                    "最快时间",
+                ],
                 "strength": "strong",
                 "why_it_fits": "优化问题的本质是目标函数在约束条件下的极值求解。一阶导数为零给出临界点，二阶导数判定极值类型。多变量带约束时使用拉格朗日乘数法。",
                 "counter_example": "如果目标函数不可导——考虑动态规划或整数规划。如果是NP难问题——考虑启发式算法（遗传算法、模拟退火）。",
@@ -898,24 +901,36 @@ KNOWLEDGE_BASE = {
 
 # ====================== 操作实现 ======================
 
+
 def _match_score(entry, query):
     """计算查询与条目的匹配分数（支持方法论的 problem_patterns 等新字段）"""
     score = 0
     ql = query.lower()
-    if ql in entry.get('name', '').lower(): score += 10
-    if ql in entry.get('id', '').lower(): score += 5
-    if ql in entry.get('formula', '').lower(): score += 3
-    if ql in entry.get('geometric', '').lower(): score += 2
-    if ql in entry.get('visual', '').lower(): score += 1
-    if ql in entry.get('when_to_use', '').lower(): score += 4
-    if ql in entry.get('why_it_fits', '').lower(): score += 3
-    if ql in entry.get('game_example', '').lower(): score += 2
-    for tag in entry.get('tags', []):
-        if ql in tag.lower(): score += 5
-    for pattern in entry.get('problem_patterns', []):
-        if ql in pattern.lower(): score += 4
-    for app in entry.get('applications', []):
-        if ql in app.lower(): score += 3
+    if ql in entry.get("name", "").lower():
+        score += 10
+    if ql in entry.get("id", "").lower():
+        score += 5
+    if ql in entry.get("formula", "").lower():
+        score += 3
+    if ql in entry.get("geometric", "").lower():
+        score += 2
+    if ql in entry.get("visual", "").lower():
+        score += 1
+    if ql in entry.get("when_to_use", "").lower():
+        score += 4
+    if ql in entry.get("why_it_fits", "").lower():
+        score += 3
+    if ql in entry.get("game_example", "").lower():
+        score += 2
+    for tag in entry.get("tags", []):
+        if ql in tag.lower():
+            score += 5
+    for pattern in entry.get("problem_patterns", []):
+        if ql in pattern.lower():
+            score += 4
+    for app in entry.get("applications", []):
+        if ql in app.lower():
+            score += 3
     return score
 
 
@@ -923,21 +938,26 @@ def op_lookup(query, category=None):
     """查找公式（正向：名称→公式+描述）"""
     results = []
     for cat_key, cat_data in KNOWLEDGE_BASE.items():
-        if cat_key == 'methods': continue
-        if category and cat_key != category: continue
-        for entry in cat_data['entries']:
+        if cat_key == "methods":
+            continue
+        if category and cat_key != category:
+            continue
+        for entry in cat_data["entries"]:
             score = _match_score(entry, query)
             if score > 0:
-                results.append({
-                    "id": entry['id'], "name": entry['name'],
-                    "category": cat_data['title'],
-                    "formula": entry['formula'],
-                    "latex": entry['latex'],
-                    "geometric": entry['geometric'],
-                    "visual": entry['visual'],
-                    "score": score,
-                })
-    results.sort(key=lambda x: x['score'], reverse=True)
+                results.append(
+                    {
+                        "id": entry["id"],
+                        "name": entry["name"],
+                        "category": cat_data["title"],
+                        "formula": entry["formula"],
+                        "latex": entry["latex"],
+                        "geometric": entry["geometric"],
+                        "visual": entry["visual"],
+                        "score": score,
+                    }
+                )
+    results.sort(key=lambda x: x["score"], reverse=True)
     return {"query": query, "results": results[:5], "found": len(results)}
 
 
@@ -945,20 +965,39 @@ def op_describe(formula_str):
     """描述公式（输入公式→输出几何意义）"""
     results = []
     for cat_key, cat_data in KNOWLEDGE_BASE.items():
-        if cat_key == 'methods': continue
-        for entry in cat_data['entries']:
+        if cat_key == "methods":
+            continue
+        for entry in cat_data["entries"]:
             score = _match_score(entry, formula_str)
             if score > 0:
-                results.append({
-                    "id": entry['id'], "name": entry['name'],
-                    "formula": entry['formula'],
-                    "geometric": entry['geometric'],
-                    "visual": entry['visual'],
-                    "applications": entry['applications'],
-                })
+                results.append(
+                    {
+                        "id": entry["id"],
+                        "name": entry["name"],
+                        "formula": entry["formula"],
+                        "geometric": entry["geometric"],
+                        "visual": entry["visual"],
+                        "applications": entry["applications"],
+                    }
+                )
     if results:
-        best = max(results, key=lambda x: _match_score(
-            next(e for e in KNOWLEDGE_BASE[next(c for c in KNOWLEDGE_BASE if KNOWLEDGE_BASE[c]['title'] == r.get('category',''))]['entries'] if e['id']==r['id']), formula_str) if False else 0)
+        best = max(
+            results,
+            key=lambda x: (
+                _match_score(
+                    next(
+                        e
+                        for e in KNOWLEDGE_BASE[
+                            next(c for c in KNOWLEDGE_BASE if KNOWLEDGE_BASE[c]["title"] == r.get("category", ""))
+                        ]["entries"]
+                        if e["id"] == r["id"]
+                    ),
+                    formula_str,
+                )
+                if False
+                else 0
+            ),
+        )
         return {"formula": formula_str, "match": results[0], "alternatives": results[1:3]}
     return {"formula": formula_str, "note": "未在知识库中找到匹配。可尝试用 sympy 分析该表达式。"}
 
@@ -967,35 +1006,41 @@ def op_search(description):
     """反向搜索（自然语言→公式）"""
     all_results = []
     for cat_key, cat_data in KNOWLEDGE_BASE.items():
-        if cat_key == 'methods': continue
-        for entry in cat_data['entries']:
+        if cat_key == "methods":
+            continue
+        for entry in cat_data["entries"]:
             score = _match_score(entry, description)
             if score > 0:
-                all_results.append({
-                    "id": entry['id'], "name": entry['name'],
-                    "category": cat_data['title'],
-                    "formula": entry['formula'],
-                    "geometric": entry['geometric'],
-                    "score": score,
-                })
-    all_results.sort(key=lambda x: x['score'], reverse=True)
+                all_results.append(
+                    {
+                        "id": entry["id"],
+                        "name": entry["name"],
+                        "category": cat_data["title"],
+                        "formula": entry["formula"],
+                        "geometric": entry["geometric"],
+                        "score": score,
+                    }
+                )
+    all_results.sort(key=lambda x: x["score"], reverse=True)
     return {"query": description, "results": all_results[:5], "found": len(all_results)}
 
 
 def op_method(problem_desc):
     """推荐证明方法（问题特征→方法）"""
     results = []
-    for entry in KNOWLEDGE_BASE['methods']['entries']:
+    for entry in KNOWLEDGE_BASE["methods"]["entries"]:
         score = _match_score(entry, problem_desc)
         if score > 0:
-            results.append({
-                "method": entry['name'],
-                "when_to_use": entry.get('when_to_use', ''),
-                "steps": entry.get('steps', entry.get('why_it_fits', '')),
-                "visual": entry.get('visual', ''),
-                "score": score,
-            })
-    results.sort(key=lambda x: x['score'], reverse=True)
+            results.append(
+                {
+                    "method": entry["name"],
+                    "when_to_use": entry.get("when_to_use", ""),
+                    "steps": entry.get("steps", entry.get("why_it_fits", "")),
+                    "visual": entry.get("visual", ""),
+                    "score": score,
+                }
+            )
+    results.sort(key=lambda x: x["score"], reverse=True)
     return {"problem": problem_desc, "recommended_methods": results, "found": len(results)}
 
 
@@ -1003,14 +1048,18 @@ def op_list(category=None):
     """列出所有条目"""
     items = []
     for cat_key, cat_data in KNOWLEDGE_BASE.items():
-        if category and cat_key != category: continue
-        for entry in cat_data.get('entries', []):
-            items.append({
-                "id": entry['id'], "name": entry['name'],
-                "category": cat_data['title'],
-                "formula": entry.get('formula', ''),
-                "tags": entry.get('tags', []),
-            })
+        if category and cat_key != category:
+            continue
+        for entry in cat_data.get("entries", []):
+            items.append(
+                {
+                    "id": entry["id"],
+                    "name": entry["name"],
+                    "category": cat_data["title"],
+                    "formula": entry.get("formula", ""),
+                    "tags": entry.get("tags", []),
+                }
+            )
     return {"items": items, "count": len(items), "categories": list(KNOWLEDGE_BASE.keys())}
 
 
@@ -1018,13 +1067,17 @@ def op_categories():
     """列出所有类别"""
     cats = {}
     for k, v in KNOWLEDGE_BASE.items():
-        cats[k] = {"title": v['title'], "entry_count": len(v.get('entries', []))}
+        cats[k] = {"title": v["title"], "entry_count": len(v.get("entries", []))}
     return {"categories": cats}
 
 
 OPERATIONS = {
-    'lookup': op_lookup, 'describe': op_describe, 'search': op_search,
-    'method': op_method, 'list': op_list, 'categories': op_categories,
+    "lookup": op_lookup,
+    "describe": op_describe,
+    "search": op_search,
+    "method": op_method,
+    "list": op_list,
+    "categories": op_categories,
 }
 
 
@@ -1040,39 +1093,42 @@ def main():
   python formula_desc.py --op "method" --problem "证明三角函数正交"
   python formula_desc.py --op "list" --category "calculus"
   python formula_desc.py --op "categories"
-""")
-    parser.add_argument('--op', '-o', help='操作名称')
-    parser.add_argument('--query', '-q', help='查询关键词')
-    parser.add_argument('--formula', '-f', help='公式字符串')
-    parser.add_argument('--problem', '-p', help='问题描述')
-    parser.add_argument('--category', '-c', help='类别筛选')
-    parser.add_argument('--compact', action='store_true', help='紧凑输出')
-    parser.add_argument('json_input', nargs='?', help='JSON 输入')
+""",
+    )
+    parser.add_argument("--op", "-o", help="操作名称")
+    parser.add_argument("--query", "-q", help="查询关键词")
+    parser.add_argument("--formula", "-f", help="公式字符串")
+    parser.add_argument("--problem", "-p", help="问题描述")
+    parser.add_argument("--category", "-c", help="类别筛选")
+    parser.add_argument("--compact", action="store_true", help="紧凑输出")
+    parser.add_argument("json_input", nargs="?", help="JSON 输入")
 
     args = parser.parse_args()
     input_data = {}
-    if args.json_input: input_data = json.loads(args.json_input)
+    if args.json_input:
+        input_data = json.loads(args.json_input)
     elif not sys.stdin.isatty():
         raw = sys.stdin.read().strip()
-        if raw: input_data = json.loads(raw)
+        if raw:
+            input_data = json.loads(raw)
 
-    op = args.op or input_data.get('op', '')
+    op = args.op or input_data.get("op", "")
     if not op or op not in OPERATIONS:
-        names = ', '.join(OPERATIONS.keys())
+        names = ", ".join(OPERATIONS.keys())
         print(json.dumps({"ok": False, "error": f"不支持: {op}，可用: {names}"}, ensure_ascii=False))
         sys.exit(1)
 
     try:
         kwargs = {}
-        if op in ('lookup', 'search'):
-            kwargs['query'] = args.query or input_data.get('query', '')
-            kwargs['category'] = args.category or input_data.get('category')
-        elif op == 'describe':
-            kwargs['formula_str'] = args.formula or input_data.get('formula', '')
-        elif op == 'method':
-            kwargs['problem_desc'] = args.problem or input_data.get('problem', '')
-        elif op == 'list':
-            kwargs['category'] = args.category or input_data.get('category')
+        if op in ("lookup", "search"):
+            kwargs["query"] = args.query or input_data.get("query", "")
+            kwargs["category"] = args.category or input_data.get("category")
+        elif op == "describe":
+            kwargs["formula_str"] = args.formula or input_data.get("formula", "")
+        elif op == "method":
+            kwargs["problem_desc"] = args.problem or input_data.get("problem", "")
+        elif op == "list":
+            kwargs["category"] = args.category or input_data.get("category")
 
         result = OPERATIONS[op](**kwargs)
         output = {"ok": True, "op": op, **result}
@@ -1082,5 +1138,5 @@ def main():
         sys.exit(1)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

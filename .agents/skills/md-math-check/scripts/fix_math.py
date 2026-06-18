@@ -97,6 +97,7 @@ def fix_math_spacing(line: str) -> str:
 
 def fix_inline_math(line: str) -> str:
     """修复行内公式中的常见问题。"""
+
     def _fix_math_content(m):
         prefix = m.group(1)  # 开头的 $
         content = m.group(2)  # 公式内容
@@ -135,6 +136,7 @@ def fix_inline_math(line: str) -> str:
 
 def fix_block_math_in_line(line: str) -> str:
     """修复同一行内 $$...$$ 块公式中的内容。"""
+
     def _fix_block_content(m):
         content = m.group(1)
 
@@ -173,6 +175,7 @@ def fix_table_math(line: str) -> str:
 
 def fix_multiline_block_math(content: str) -> str:
     """修复跨行的 $$...$$ 块级公式内容。"""
+
     def _fix_block(m):
         block = m.group(0)
         inner = m.group(1)
@@ -230,7 +233,8 @@ def main():
         help="直接修改原文件（谨慎使用）",
     )
     parser.add_argument(
-        "-o", "--output",
+        "-o",
+        "--output",
         help="输出文件路径（仅对单个文件有效）",
     )
 

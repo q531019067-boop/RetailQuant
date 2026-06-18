@@ -56,11 +56,7 @@ def _has_utf8_multibyte_pattern(data: bytes) -> bool:
             i += 2
             continue
         if 0xE0 <= b <= 0xEF:
-            if (
-                i + 2 < n
-                and 0x80 <= data[i + 1] <= 0xBF
-                and 0x80 <= data[i + 2] <= 0xBF
-            ):
+            if i + 2 < n and 0x80 <= data[i + 1] <= 0xBF and 0x80 <= data[i + 2] <= 0xBF:
                 return True
             i += 3
             continue

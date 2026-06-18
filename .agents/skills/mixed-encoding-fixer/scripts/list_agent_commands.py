@@ -12,6 +12,7 @@
 
 与 SKILL.md「Agent 工具指令」同步维护；工作流列表唯一源：``mixed_encoding_fixer/skill_meta.py`` 中 ``AGENT_WORKFLOWS``。
 """
+
 from __future__ import annotations
 
 import argparse
@@ -89,7 +90,9 @@ def main() -> int:
     ap.add_argument("--out", default="<OUT>", metavar="PATH", help="Substitute <OUT>")
     ap.add_argument("--golden", default="<GOLDEN>", metavar="PATH", help="Substitute <GOLDEN>")
     ap.add_argument("--fixes", default="<FIXES>", metavar="PATH", help="Substitute <FIXES> (apply / diff2fixes)")
-    ap.add_argument("--file-b", default="<FILE_B>", metavar="PATH", dest="file_b", help="Substitute <FILE_B> (compare_files)")
+    ap.add_argument(
+        "--file-b", default="<FILE_B>", metavar="PATH", dest="file_b", help="Substitute <FILE_B> (compare_files)"
+    )
     ap.add_argument("--format", choices=("json", "lines", "ps1"), default="json")
     args = ap.parse_args()
 

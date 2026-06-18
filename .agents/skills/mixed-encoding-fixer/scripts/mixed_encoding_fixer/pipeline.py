@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """分析、自动修复、块收集、应用修复（FR-05～FR-07、FR-09～FR-11）。"""
+
 from __future__ import annotations
 
 import json
@@ -128,15 +129,10 @@ def _build_unicode_lines(
     mix_threshold: float,
     dp_fallback_stats: Optional[Dict[str, int]] = None,
 ) -> List[str]:
-    return [
-        bytes_to_unicode(b, c, mix_threshold, dp_fallback_stats)
-        for b, c in zip(line_bytes_list, classifications)
-    ]
+    return [bytes_to_unicode(b, c, mix_threshold, dp_fallback_stats) for b, c in zip(line_bytes_list, classifications)]
 
 
-def _after_stats(
-    unicode_lines: List[str], tgt_enc: str, mix_threshold: float
-) -> Tuple[Dict[str, int], List[str]]:
+def _after_stats(unicode_lines: List[str], tgt_enc: str, mix_threshold: float) -> Tuple[Dict[str, int], List[str]]:
     after_cls = []
     for u in unicode_lines:
         bb = u.encode(tgt_enc, errors="replace")
@@ -160,9 +156,7 @@ def _analyze_core(
         tgt_key = "utf8"
     tgt_enc = target_enc_name(tgt_key)
     dp_fallback_stats: Dict[str, int] = {}
-    unicode_lines = _build_unicode_lines(
-        line_bytes_list, orig_cls, mix_threshold, dp_fallback_stats
-    )
+    unicode_lines = _build_unicode_lines(line_bytes_list, orig_cls, mix_threshold, dp_fallback_stats)
     after_counts, after_cls = _after_stats(unicode_lines, tgt_enc, mix_threshold)
     unrepairable = [i for i, c in enumerate(after_cls) if c == "MIX"]
     line_dicts = [{"text": unicode_lines[i]} for i in range(len(unicode_lines))]
@@ -302,9 +296,7 @@ def apply_fixed_lines_to_document(
     line_bytes_list = [r[0] for r in raw_rows]
     seps = [r[1] for r in raw_rows]
     classifications = [classify_line_bytes(b, mix_threshold) for b in line_bytes_list]
-    unicode_lines = _build_unicode_lines(
-        line_bytes_list, classifications, mix_threshold, None
-    )
+    unicode_lines = _build_unicode_lines(line_bytes_list, classifications, mix_threshold, None)
     original = list(unicode_lines)
     total_fixed = 0
     blocks_applied = 0

@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """本地启发式修复：整文件编码尝试、逆向链自动落盘（减少对 LLM 的依赖）。"""
+
 from __future__ import annotations
 
 from typing import Any, Dict, List, Optional, Set, Tuple

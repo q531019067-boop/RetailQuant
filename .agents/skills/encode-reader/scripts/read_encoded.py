@@ -22,6 +22,7 @@ def detect_encoding(filepath: str) -> str:
     # 1) 尝试 chardet
     try:
         import chardet
+
         with open(filepath, "rb") as f:
             raw = f.read(100_000)
         result = chardet.detect(raw)
@@ -122,7 +123,10 @@ def main() -> None:
             i += 1
 
     if not remaining:
-        print("用法: python read_encoded.py <文件路径> [--detect-only] [--encoding xxx] [--start N] [--lines N]", file=sys.stderr)
+        print(
+            "用法: python read_encoded.py <文件路径> [--detect-only] [--encoding xxx] [--start N] [--lines N]",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
     filepath = remaining[0]

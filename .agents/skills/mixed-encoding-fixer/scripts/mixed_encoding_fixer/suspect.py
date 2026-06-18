@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """按行标记「可疑乱码行」：替换字节、严格 UTF-8 失败、行级标签孤岛、MIX 等。"""
+
 from __future__ import annotations
 
 from typing import Any, Dict, List, Optional, Tuple
@@ -91,6 +92,9 @@ def build_suspect_report(path: str, mix_threshold: float) -> Dict[str, Any]:
     """
     rows, bom_info, raw_without_bom = read_and_split(path)
     return build_suspect_report_from_rows(
-        rows, mix_threshold,
-        input_file=path, bom_info=bom_info, raw_without_bom=raw_without_bom,
+        rows,
+        mix_threshold,
+        input_file=path,
+        bom_info=bom_info,
+        raw_without_bom=raw_without_bom,
     )

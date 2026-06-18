@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """fix_encoding 子命令：analyze / check / auto / apply。"""
+
 from __future__ import annotations
 
 import json
@@ -168,9 +169,7 @@ def _agent_next_steps_zh(corruption: Dict[str, Any], n_dp: int) -> List[str]:
     v = corruption.get("verdict") or ""
     out: List[str] = []
     if v == "needs_reconstruction":
-        out.append(
-            "文件含 UTF-8 替换序列 EF BF BD（常见为曾用 U+FFFD 落盘），勿指望 auto 恢复中文语义。"
-        )
+        out.append("文件含 UTF-8 替换序列 EF BF BD（常见为曾用 U+FFFD 落盘），勿指望 auto 恢复中文语义。")
         out.append(
             "仍可先本地试：try-decodings（整文件 gb18030/gbk）、local-repair（整文件尝试 + reverse-apply）；"
             "无 U+FFFD 的乱码行 reverse-apply 常能自动修。"
@@ -178,9 +177,7 @@ def _agent_next_steps_zh(corruption: Dict[str, Any], n_dp: int) -> List[str]:
         out.append(
             "先跑 suspect-lines 聚焦异常行；对无替换字节的乱码行可试 reverse-try / reverse-apply --only-suspect。"
         )
-        out.append(
-            "若有同逻辑行数的 UTF-8 参考稿（golden），可一步：fix_encoding recover <损坏> <golden> <输出>。"
-        )
+        out.append("若有同逻辑行数的 UTF-8 参考稿（golden），可一步：fix_encoding recover <损坏> <golden> <输出>。")
         out.append(
             "需看磁盘原始字节时用子命令 byte-inspect（含 EF BF BD 计数与前几行 hex），勿手写 python -c 读二进制。"
         )
@@ -189,13 +186,9 @@ def _agent_next_steps_zh(corruption: Dict[str, Any], n_dp: int) -> List[str]:
         out.append("多行严格 UTF-8 失败且存在 MIX/DP 回退，auto 风险高。")
         out.append("建议 full analyze 查看 blocks，再 fixes.jsonl + apply 或结合上下文人工重建。")
     else:
-        out.append(
-            "损坏评估为可转码级：可先 local-repair 或 auto -t utf8/-t gbk，仍乱再 analyze / reverse-apply。"
-        )
+        out.append("损坏评估为可转码级：可先 local-repair 或 auto -t utf8/-t gbk，仍乱再 analyze / reverse-apply。")
     if n_dp > 0:
-        out.append(
-            f"有 {n_dp} 行在名义编码下严格解码失败、已走行内 DP；详情见完整 analyze 的 statistics.hints。"
-        )
+        out.append(f"有 {n_dp} 行在名义编码下严格解码失败、已走行内 DP；详情见完整 analyze 的 statistics.hints。")
     return out
 
 
@@ -501,9 +494,7 @@ def cmd_auto(args) -> int:
     if not auto_ok:
         sug = corruption.get("suggestions") or []
         out["auto_discouraged_reason"] = (
-            sug[0]
-            if sug
-            else "auto 不推荐用于本文件；请查看 corruption.verdict 与 corruption.suggestions。"
+            sug[0] if sug else "auto 不推荐用于本文件；请查看 corruption.verdict 与 corruption.suggestions。"
         )
     _print_json(out)
     return 0
@@ -575,12 +566,8 @@ def cmd_diff2fixes(args) -> int:
     if (e := _require_mix(args.mix_threshold)) is not None:
         return e
     try:
-        old_l = read_lines_as_unicode(
-            args.damaged_path, golden=False, mix_threshold=args.mix_threshold
-        )
-        new_l = read_lines_as_unicode(
-            args.golden_path, golden=True, mix_threshold=args.mix_threshold
-        )
+        old_l = read_lines_as_unicode(args.damaged_path, golden=False, mix_threshold=args.mix_threshold)
+        new_l = read_lines_as_unicode(args.golden_path, golden=True, mix_threshold=args.mix_threshold)
         blocks, meta = diff_to_fix_blocks(old_l, new_l)
     except ValueError as ex:
         return _fail(
@@ -623,12 +610,8 @@ def cmd_recover(args) -> int:
     if (e := _require_mix(args.mix_threshold)) is not None:
         return e
     try:
-        old_l = read_lines_as_unicode(
-            args.damaged_path, golden=False, mix_threshold=args.mix_threshold
-        )
-        new_l = read_lines_as_unicode(
-            args.golden_path, golden=True, mix_threshold=args.mix_threshold
-        )
+        old_l = read_lines_as_unicode(args.damaged_path, golden=False, mix_threshold=args.mix_threshold)
+        new_l = read_lines_as_unicode(args.golden_path, golden=True, mix_threshold=args.mix_threshold)
         blocks, meta = diff_to_fix_blocks(old_l, new_l)
         detail = apply_fixed_lines_to_document(
             args.damaged_path,

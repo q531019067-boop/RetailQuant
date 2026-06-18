@@ -19,14 +19,15 @@ verify.py — 交叉验证框架
   "consensus": "all"
 }
 """
+
 import sys, json, math, subprocess, os, argparse, time
 
 
 def run_method(method, timeout_sec=30):
     """运行单个验证方法"""
-    name = method.get('name', 'unknown')
-    tool_cmd = method.get('tool', '')
-    inp = method.get('input', {})
+    name = method.get("name", "unknown")
+    tool_cmd = method.get("tool", "")
+    inp = method.get("input", {})
     inp_json = json.dumps(inp)
 
     try:
@@ -36,8 +37,10 @@ def run_method(method, timeout_sec=30):
 
         # 传递 JSON 到 stdin
         r = subprocess.run(
-            cmd_parts + ['--compact'],
-            input=inp_json, capture_output=True, text=True,
+            cmd_parts + ["--compact"],
+            input=inp_json,
+            capture_output=True,
+            text=True,
             timeout=timeout_sec,
         )
         stdout = r.stdout.strip()
@@ -56,7 +59,7 @@ def run_method(method, timeout_sec=30):
         except json.JSONDecodeError:
             data = {"raw": stdout}
 
-        result_value = data.get('result') if 'result' in data else data
+        result_value = data.get("result") if "result" in data else data
 
         return {
             "method": name,
@@ -75,41 +78,41 @@ def run_method(method, timeout_sec=30):
 def compare_results(results, expected, tolerance=0.0):
     """比较结果与期望值"""
     for r in results:
-        if r['status'] != 'ok':
-            r['match'] = None
-            r['error_val'] = None
+        if r["status"] != "ok":
+            r["match"] = None
+            r["error_val"] = None
             continue
 
-        actual = r.get('result')
+        actual = r.get("result")
         if expected is None:
-            r['match'] = True
-            r['error_val'] = 0
+            r["match"] = True
+            r["error_val"] = 0
             continue
 
         try:
             actual_f = float(actual)
             expected_f = float(expected)
             error = abs(actual_f - expected_f)
-            r['error_val'] = error
-            r['match'] = error <= tolerance or math.isclose(actual_f, expected_f, rel_tol=max(tolerance, 1e-10))
+            r["error_val"] = error
+            r["match"] = error <= tolerance or math.isclose(actual_f, expected_f, rel_tol=max(tolerance, 1e-10))
         except (TypeError, ValueError):
-            r['match'] = str(actual) == str(expected)
-            r['error_val'] = None
+            r["match"] = str(actual) == str(expected)
+            r["error_val"] = None
 
     return results
 
 
-def compute_consensus(results, consensus_mode='all'):
+def compute_consensus(results, consensus_mode="all"):
     """计算一致性"""
-    ok_count = sum(1 for r in results if r.get('match') is True)
+    ok_count = sum(1 for r in results if r.get("match") is True)
     total = len(results)
-    errored = sum(1 for r in results if r.get('match') is None)
+    errored = sum(1 for r in results if r.get("match") is None)
 
-    if consensus_mode == 'all':
+    if consensus_mode == "all":
         passed = ok_count == total and total > 0
-    elif consensus_mode == 'majority':
+    elif consensus_mode == "majority":
         passed = ok_count > total / 2
-    elif consensus_mode == 'any':
+    elif consensus_mode == "any":
         passed = ok_count >= 1
     else:
         passed = ok_count == total
@@ -120,7 +123,7 @@ def compute_consensus(results, consensus_mode='all'):
         "ok_count": ok_count,
         "total": total,
         "errored": errored,
-        "summary": f"{ok_count}/{total} methods passed (consensus: {consensus_mode})"
+        "summary": f"{ok_count}/{total} methods passed (consensus: {consensus_mode})",
     }
 
 
@@ -132,20 +135,20 @@ def main():
 示例:
   echo '{"name":"test","methods":[...]}' | python verify.py
   python verify.py --file verify_plan.json
-    """
+    """,
     )
-    parser.add_argument('json_input', nargs='?', help='JSON 输入')
-    parser.add_argument('--file', '-f', help='验证计划 JSON 文件')
-    parser.add_argument('--timeout', type=int, default=30, help='每个方法超时(秒)')
-    parser.add_argument('--compact', '-c', action='store_true', help='紧凑输出')
-    parser.add_argument('--verbose', '-v', action='store_true', help='详细输出')
+    parser.add_argument("json_input", nargs="?", help="JSON 输入")
+    parser.add_argument("--file", "-f", help="验证计划 JSON 文件")
+    parser.add_argument("--timeout", type=int, default=30, help="每个方法超时(秒)")
+    parser.add_argument("--compact", "-c", action="store_true", help="紧凑输出")
+    parser.add_argument("--verbose", "-v", action="store_true", help="详细输出")
 
     args = parser.parse_args()
 
     # 读取输入
     plan = {}
     if args.file:
-        with open(args.file, 'r', encoding='utf-8') as f:
+        with open(args.file, "r", encoding="utf-8") as f:
             plan = json.load(f)
     elif args.json_input:
         plan = json.loads(args.json_input)
@@ -154,14 +157,14 @@ def main():
         if raw:
             plan = json.loads(raw)
 
-    if not plan or 'methods' not in plan:
+    if not plan or "methods" not in plan:
         print(json.dumps({"ok": False, "error": "需要 methods 列表"}, ensure_ascii=False))
         sys.exit(1)
 
-    name = plan.get('name', '未命名验证')
-    methods = plan.get('methods', [])
-    consensus_mode = plan.get('consensus', 'all')
-    tolerance = plan.get('tolerance', 0.0)
+    name = plan.get("name", "未命名验证")
+    methods = plan.get("methods", [])
+    consensus_mode = plan.get("consensus", "all")
+    tolerance = plan.get("tolerance", 0.0)
 
     if args.verbose:
         print(f"验证: {name}", file=sys.stderr)
@@ -176,17 +179,17 @@ def main():
         results.append(r)
 
     # 比较结果
-    expected = plan.get('expected')
+    expected = plan.get("expected")
     results = compare_results(results, expected, tolerance)
 
     # 一致性
     consensus = compute_consensus(results, consensus_mode)
 
     # 异常检测
-    discrepancies = [r for r in results if r.get('match') is False]
+    discrepancies = [r for r in results if r.get("match") is False]
 
     report = {
-        "ok": consensus['passed'],
+        "ok": consensus["passed"],
         "name": name,
         "consensus": consensus,
         "results": results,
@@ -197,9 +200,9 @@ def main():
 
     print(json.dumps(report, ensure_ascii=False, indent=None if args.compact else 2, default=str))
 
-    if not consensus['passed']:
+    if not consensus["passed"]:
         sys.exit(1)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

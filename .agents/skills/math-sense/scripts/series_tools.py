@@ -11,16 +11,19 @@ series_tools.py — 级数工具（泰勒展开 / FFT / 牛顿迭代 / 二分法
 支持的操作:
     taylor, fft, ifft, dft, newton, bisect, fixed_point, secant
 """
+
 import sys, json, math, argparse, cmath
 
 try:
     import numpy as np
+
     HAS_NUMPY = True
 except ImportError:
     HAS_NUMPY = False
 
 try:
     import sympy as sp
+
     HAS_SYMPY = True
 except ImportError:
     HAS_SYMPY = False
@@ -30,12 +33,20 @@ def _eval_math(expr_str, vars_dict):
     """安全表达式求值"""
     import ast as _ast
     import operator as _op
+
     ALLOWED = {
-        'sin': math.sin, 'cos': math.cos, 'tan': math.tan,
-        'exp': math.exp, 'log': math.log, 'sqrt': math.sqrt,
-        'abs': abs, 'pow': pow, 'pi': math.pi, 'e': math.e,
+        "sin": math.sin,
+        "cos": math.cos,
+        "tan": math.tan,
+        "exp": math.exp,
+        "log": math.log,
+        "sqrt": math.sqrt,
+        "abs": abs,
+        "pow": pow,
+        "pi": math.pi,
+        "e": math.e,
     }
-    tree = _ast.parse(expr_str.strip(), mode='eval')
+    tree = _ast.parse(expr_str.strip(), mode="eval")
 
     def _ev(node):
         if isinstance(node, _ast.Constant):
@@ -48,8 +59,7 @@ def _eval_math(expr_str, vars_dict):
             raise NameError(node.id)
         if isinstance(node, _ast.BinOp):
             l, r = _ev(node.left), _ev(node.right)
-            ops = {_ast.Add: _op.add, _ast.Sub: _op.sub, _ast.Mult: _op.mul,
-                   _ast.Div: _op.truediv, _ast.Pow: _op.pow}
+            ops = {_ast.Add: _op.add, _ast.Sub: _op.sub, _ast.Mult: _op.mul, _ast.Div: _op.truediv, _ast.Pow: _op.pow}
             return ops[type(node.op)](l, r)
         if isinstance(node, _ast.UnaryOp):
             v = _ev(node.operand)
@@ -65,6 +75,7 @@ def _eval_math(expr_str, vars_dict):
 
 # ====================== 泰勒展开 ======================
 
+
 def op_taylor(expr, var, point=0, order=5):
     """泰勒展开"""
     if not HAS_SYMPY:
@@ -76,8 +87,8 @@ def op_taylor(expr, var, point=0, order=5):
     poly = series.removeO()
 
     # 数值验证：在展开点附近比较
-    f_lambdify = sp.lambdify(x, f, 'numpy')
-    p_lambdify = sp.lambdify(x, poly, 'numpy')
+    f_lambdify = sp.lambdify(x, f, "numpy")
+    p_lambdify = sp.lambdify(x, poly, "numpy")
     verification = []
     for offset in [-0.5, -0.2, -0.1, 0.1, 0.2, 0.5]:
         xv = point + offset
@@ -93,9 +104,10 @@ def op_taylor(expr, var, point=0, order=5):
     # R_n = f^{(n+1)}(xi) / (n+1)! * (x-point)^{n+1}
     try:
         deriv = sp.diff(f, x, order + 1)
-        d_lambdify = sp.lambdify(x, deriv, 'numpy')
+        d_lambdify = sp.lambdify(x, deriv, "numpy")
         max_deriv = max(abs(d_lambdify(point + offset)) for offset in [-0.5, 0.5])
         import math as _math
+
         remainder_bound = max_deriv / _math.factorial(order + 1) * (0.5) ** (order + 1)
     except Exception:
         remainder_bound = None
@@ -104,13 +116,15 @@ def op_taylor(expr, var, point=0, order=5):
         "series": str(series),
         "polynomial": str(poly),
         "latex": sp.latex(series),
-        "point": point, "order": order,
+        "point": point,
+        "order": order,
         "verification": verification,
         "remainder_bound": float(remainder_bound) if remainder_bound else None,
     }
 
 
 # ====================== FFT ======================
+
 
 def op_fft(data, dt=1.0):
     """快速傅里叶变换。data: 时域采样值列表。dt: 采样间隔"""
@@ -136,16 +150,17 @@ def op_fft(data, dt=1.0):
         else:
             main_freq, main_amp = 0, pos_mag[0]
 
-        total_power = float(np.sum(magnitude ** 2))
+        total_power = float(np.sum(magnitude**2))
 
         return {
-            "frequencies": pos_freqs[:min(50, len(pos_freqs))],
-            "magnitude": pos_mag[:min(50, len(pos_mag))],
-            "phase": pos_phase[:min(50, len(pos_phase))],
+            "frequencies": pos_freqs[: min(50, len(pos_freqs))],
+            "magnitude": pos_mag[: min(50, len(pos_mag))],
+            "phase": pos_phase[: min(50, len(pos_phase))],
             "main_frequency": float(main_freq),
             "main_amplitude": float(main_amp),
             "total_power": total_power,
-            "n_samples": n, "dt": dt,
+            "n_samples": n,
+            "dt": dt,
         }
     else:
         # 纯 Python DFT
@@ -158,10 +173,11 @@ def op_fft(data, dt=1.0):
         mag = [abs(s) for s in spectrum]
         main_idx = max(range(1, n // 2 + 1), key=lambda i: mag[i], default=0)
         return {
-            "magnitude": mag[:n // 2 + 1],
+            "magnitude": mag[: n // 2 + 1],
             "main_index": main_idx,
             "main_amplitude": mag[main_idx],
-            "n_samples": n, "dt": dt,
+            "n_samples": n,
+            "dt": dt,
             "hint": "安装 numpy 可获得更快的 FFT",
         }
 
@@ -172,6 +188,7 @@ def op_dft(data, dt=1.0):
 
 
 # ====================== 求根方法 ======================
+
 
 def op_newton(expr, var, guess, tol=1e-10, max_iter=100):
     """牛顿迭代法"""
@@ -235,46 +252,67 @@ def op_bisect(expr, var, a, b, tol=1e-10, max_iter=200):
     }
 
 
-def op_convolve(a, b, mode='full'):
+def op_convolve(a, b, mode="full"):
     """一维离散卷积 y[n]=sum_k a[k]*b[n-k]。滑动加权和——信号处理核心操作。"""
     if HAS_NUMPY:
-        a=np.array(a,dtype=float); b=np.array(b,dtype=float)
-        r=np.convolve(a,b,mode=mode)
-        return {"convolved":r.tolist(),"len_a":len(a),"len_b":len(b),"len_result":len(r),"mode":mode,
-                "geometric":"卷积=滑动加权和:把b翻转后滑过a,每个位置计算重合部分的乘积之和。时域卷积=频域乘积(FFT加速)。"}
+        a = np.array(a, dtype=float)
+        b = np.array(b, dtype=float)
+        r = np.convolve(a, b, mode=mode)
+        return {
+            "convolved": r.tolist(),
+            "len_a": len(a),
+            "len_b": len(b),
+            "len_result": len(r),
+            "mode": mode,
+            "geometric": "卷积=滑动加权和:把b翻转后滑过a,每个位置计算重合部分的乘积之和。时域卷积=频域乘积(FFT加速)。",
+        }
     # 纯Python
-    a=list(a); b=list(b); n_out=len(a)+len(b)-1; r=[]
+    a = list(a)
+    b = list(b)
+    n_out = len(a) + len(b) - 1
+    r = []
     for n in range(n_out):
-        total=0
-        for k in range(max(0,n-len(b)+1),min(n+1,len(a))):
-            total+=a[k]*b[n-k]
+        total = 0
+        for k in range(max(0, n - len(b) + 1), min(n + 1, len(a))):
+            total += a[k] * b[n - k]
         r.append(total)
-    if mode=='same':
-        start=(n_out-len(a))//2; r=r[start:start+len(a)]
-    elif mode=='valid':
-        r=r[len(b)-1:len(a)] if len(a)>=len(b) else []
-    return {"convolved":r,"len_a":len(a),"len_b":len(b),"len_result":len(r),"mode":mode,
-            "geometric":"卷积=滑动加权和。时域卷积=频域乘积(可用FFT加速O(N log N))"}
+    if mode == "same":
+        start = (n_out - len(a)) // 2
+        r = r[start : start + len(a)]
+    elif mode == "valid":
+        r = r[len(b) - 1 : len(a)] if len(a) >= len(b) else []
+    return {
+        "convolved": r,
+        "len_a": len(a),
+        "len_b": len(b),
+        "len_result": len(r),
+        "mode": mode,
+        "geometric": "卷积=滑动加权和。时域卷积=频域乘积(可用FFT加速O(N log N))",
+    }
 
 
 def op_fft_convolve(a, b):
     """FFT快速卷积: ifft(fft(a)*fft(b))。O(N log N)，适合长数组。"""
-    if not HAS_NUMPY: return {"error":"need numpy"}
-    a=np.array(a); b=np.array(b); n=len(a)+len(b)-1
-    A=np.fft.fft(a,n); B=np.fft.fft(b,n)
-    r=np.real(np.fft.ifft(A*B))
-    return {"convolved_fft":r.tolist(),"len_result":len(r),"note":"FFT加速 O(N log N),长数组>1000建议使用"}
+    if not HAS_NUMPY:
+        return {"error": "need numpy"}
+    a = np.array(a)
+    b = np.array(b)
+    n = len(a) + len(b) - 1
+    A = np.fft.fft(a, n)
+    B = np.fft.fft(b, n)
+    r = np.real(np.fft.ifft(A * B))
+    return {"convolved_fft": r.tolist(), "len_result": len(r), "note": "FFT加速 O(N log N),长数组>1000建议使用"}
 
 
 OPERATIONS = {
-    'taylor': op_taylor,
-    'fft': op_fft,
-    'ifft': op_fft,  # 简化
-    'dft': op_dft,
-    'newton': op_newton,
-    'bisect': op_bisect,
-    'convolve': op_convolve,
-    'fft_convolve': op_fft_convolve,
+    "taylor": op_taylor,
+    "fft": op_fft,
+    "ifft": op_fft,  # 简化
+    "dft": op_dft,
+    "newton": op_newton,
+    "bisect": op_bisect,
+    "convolve": op_convolve,
+    "fft_convolve": op_fft_convolve,
 }
 
 
@@ -288,21 +326,21 @@ def main():
   python series_tools.py --op "fft" --data "[0,1,0,-1]" --dt 1.0
   python series_tools.py --op "newton" --expr "x**3-2*x-5" --guess 2
   python series_tools.py --op "bisect" --expr "x**3-2*x-5" --a 2 --b 3
-        """
+        """,
     )
-    parser.add_argument('json_input', nargs='?', help='JSON 输入')
-    parser.add_argument('--op', '-o', help='操作名称')
-    parser.add_argument('--expr', '-e', help='表达式')
-    parser.add_argument('--var', default='x', help='变量名')
-    parser.add_argument('--point', type=float, default=0, help='展开点')
-    parser.add_argument('--order', type=int, default=5, help='展开阶数')
-    parser.add_argument('--data', help='采样数据 JSON')
-    parser.add_argument('--dt', type=float, default=1.0, help='采样间隔')
-    parser.add_argument('--guess', type=float, help='初始猜测')
-    parser.add_argument('--a', type=float, help='二分左端点')
-    parser.add_argument('--b', type=float, help='二分右端点')
-    parser.add_argument('--tol', type=float, default=1e-10, help='容差')
-    parser.add_argument('--compact', '-c', action='store_true', help='紧凑输出')
+    parser.add_argument("json_input", nargs="?", help="JSON 输入")
+    parser.add_argument("--op", "-o", help="操作名称")
+    parser.add_argument("--expr", "-e", help="表达式")
+    parser.add_argument("--var", default="x", help="变量名")
+    parser.add_argument("--point", type=float, default=0, help="展开点")
+    parser.add_argument("--order", type=int, default=5, help="展开阶数")
+    parser.add_argument("--data", help="采样数据 JSON")
+    parser.add_argument("--dt", type=float, default=1.0, help="采样间隔")
+    parser.add_argument("--guess", type=float, help="初始猜测")
+    parser.add_argument("--a", type=float, help="二分左端点")
+    parser.add_argument("--b", type=float, help="二分右端点")
+    parser.add_argument("--tol", type=float, default=1e-10, help="容差")
+    parser.add_argument("--compact", "-c", action="store_true", help="紧凑输出")
 
     args = parser.parse_args()
 
@@ -314,32 +352,32 @@ def main():
         if raw:
             input_data = json.loads(raw)
 
-    op = args.op or input_data.get('op', '')
+    op = args.op or input_data.get("op", "")
     if not op or op not in OPERATIONS:
         print(json.dumps({"ok": False, "error": f"不支持: {op}，可用: {list(OPERATIONS.keys())}"}, ensure_ascii=False))
         sys.exit(1)
 
     try:
         kwargs = {}
-        if op == 'taylor':
-            kwargs['expr'] = args.expr or input_data.get('expr', '')
-            kwargs['var'] = args.var or input_data.get('var', 'x')
-            kwargs['point'] = args.point or input_data.get('point', 0)
-            kwargs['order'] = args.order or input_data.get('order', 5)
-        elif op in ('fft', 'ifft', 'dft'):
-            kwargs['data'] = json.loads(args.data) if args.data else input_data.get('data', [])
-            kwargs['dt'] = args.dt or input_data.get('dt', 1.0)
-        elif op in ('newton',):
-            kwargs['expr'] = args.expr or input_data.get('expr', '')
-            kwargs['var'] = args.var or input_data.get('var', 'x')
-            kwargs['guess'] = args.guess or input_data.get('guess', 0)
-            kwargs['tol'] = args.tol or input_data.get('tol', 1e-10)
-        elif op in ('bisect',):
-            kwargs['expr'] = args.expr or input_data.get('expr', '')
-            kwargs['var'] = args.var or input_data.get('var', 'x')
-            kwargs['a'] = args.a or input_data.get('a', 0)
-            kwargs['b'] = args.b or input_data.get('b', 0)
-            kwargs['tol'] = args.tol or input_data.get('tol', 1e-10)
+        if op == "taylor":
+            kwargs["expr"] = args.expr or input_data.get("expr", "")
+            kwargs["var"] = args.var or input_data.get("var", "x")
+            kwargs["point"] = args.point or input_data.get("point", 0)
+            kwargs["order"] = args.order or input_data.get("order", 5)
+        elif op in ("fft", "ifft", "dft"):
+            kwargs["data"] = json.loads(args.data) if args.data else input_data.get("data", [])
+            kwargs["dt"] = args.dt or input_data.get("dt", 1.0)
+        elif op in ("newton",):
+            kwargs["expr"] = args.expr or input_data.get("expr", "")
+            kwargs["var"] = args.var or input_data.get("var", "x")
+            kwargs["guess"] = args.guess or input_data.get("guess", 0)
+            kwargs["tol"] = args.tol or input_data.get("tol", 1e-10)
+        elif op in ("bisect",):
+            kwargs["expr"] = args.expr or input_data.get("expr", "")
+            kwargs["var"] = args.var or input_data.get("var", "x")
+            kwargs["a"] = args.a or input_data.get("a", 0)
+            kwargs["b"] = args.b or input_data.get("b", 0)
+            kwargs["tol"] = args.tol or input_data.get("tol", 1e-10)
 
         result = OPERATIONS[op](**kwargs)
         output = {"ok": True, "op": op, **result}
@@ -350,5 +388,5 @@ def main():
         sys.exit(1)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

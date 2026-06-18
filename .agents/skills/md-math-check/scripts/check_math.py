@@ -47,9 +47,7 @@ THOUSANDS_SEP_RE = re.compile(r"\{,\}")
 SIGMA_RE = re.compile(r"\\Sigma")
 
 # \frac 同时包含 \text{} 含中文 CJK 字符
-FRAC_TEXT_CJK_RE = re.compile(
-    r"\\frac\{[^}]*\}\{[^}]*\\text\{[^}]*[\u4e00-\u9fff][^}]*\}[^}]*\}"
-)
+FRAC_TEXT_CJK_RE = re.compile(r"\\frac\{[^}]*\}\{[^}]*\\text\{[^}]*[\u4e00-\u9fff][^}]*\}[^}]*\}")
 
 # $$ 未独占行 — 前面或后面紧接非空白文本
 BLOCK_NOT_ALONE_BEFORE_RE = re.compile(r"[^\s]\$\$")
@@ -60,9 +58,7 @@ SPACE_AFTER_DOLLAR_RE = re.compile(r"\$\s+[^$\s]")
 SPACE_BEFORE_DOLLAR_RE = re.compile(r"[^\s]\s+\$")
 
 # \mathrm{} 或 \textrm{} 包含 CJK 字符
-MATHRM_CJK_RE = re.compile(
-    r"\\(?:mathrm|textrm)\{[^}]*[\u4e00-\u9fff][^}]*\}"
-)
+MATHRM_CJK_RE = re.compile(r"\\(?:mathrm|textrm)\{[^}]*[\u4e00-\u9fff][^}]*\}")
 
 # 表格行检测
 TABLE_ROW_RE = re.compile(r"^\s*\|", re.MULTILINE)
@@ -77,15 +73,15 @@ def find_inline_math_spans(line: str):
     spans = []
     i = 0
     while i < len(line):
-        if line[i] == '$':
+        if line[i] == "$":
             # 跳过 $$
-            if i + 1 < len(line) and line[i + 1] == '$':
+            if i + 1 < len(line) and line[i + 1] == "$":
                 i += 2
                 continue
             # 找配对的 $
             j = i + 1
             while j < len(line):
-                if line[j] == '$' and (j == 0 or line[j - 1] != '\\'):
+                if line[j] == "$" and (j == 0 or line[j - 1] != "\\"):
                     spans.append((i, j + 1))
                     i = j + 1
                     break
@@ -125,23 +121,27 @@ def check_file(filepath: str) -> list[Issue]:
             pos = m.start()
             # 如果这是行内 $$formula$$ 的第二个 $$，跳过
             # 简化处理：检查前后是否有非空白
-            if pos > 0 and line[pos - 1] not in (' ', '\t', ''):
-                issues.append(Issue(
-                    line_no=line_no,
-                    severity=Severity.ERROR,
-                    rule="block-math-not-alone",
-                    description="$$ 前面有文本，块级公式必须独占一行",
-                    snippet=line.strip(),
-                ))
+            if pos > 0 and line[pos - 1] not in (" ", "\t", ""):
+                issues.append(
+                    Issue(
+                        line_no=line_no,
+                        severity=Severity.ERROR,
+                        rule="block-math-not-alone",
+                        description="$$ 前面有文本，块级公式必须独占一行",
+                        snippet=line.strip(),
+                    )
+                )
             end_pos = m.end()
-            if end_pos < len(line) and line[end_pos] not in (' ', '\t', ''):
-                issues.append(Issue(
-                    line_no=line_no,
-                    severity=Severity.ERROR,
-                    rule="block-math-not-alone",
-                    description="$$ 后面有文本，块级公式必须独占一行",
-                    snippet=line.strip(),
-                ))
+            if end_pos < len(line) and line[end_pos] not in (" ", "\t", ""):
+                issues.append(
+                    Issue(
+                        line_no=line_no,
+                        severity=Severity.ERROR,
+                        rule="block-math-not-alone",
+                        description="$$ 后面有文本，块级公式必须独占一行",
+                        snippet=line.strip(),
+                    )
+                )
 
     # ------------------------------------------------------------------
     # 逐行检查
@@ -152,9 +152,9 @@ def check_file(filepath: str) -> list[Issue]:
         stripped = line.strip()
 
         # 跟踪是否在表格中
-        if stripped.startswith('|'):
+        if stripped.startswith("|"):
             in_table = True
-        elif in_table and not stripped.startswith('|') and stripped != '':
+        elif in_table and not stripped.startswith("|") and stripped != "":
             in_table = False
 
         # 提取行内公式
@@ -166,87 +166,103 @@ def check_file(filepath: str) -> list[Issue]:
 
             # 规则 1: {,} 千分位模式
             if THOUSANDS_SEP_RE.search(inner):
-                issues.append(Issue(
-                    line_no=line_no,
-                    severity=Severity.ERROR,
-                    rule="thousands-separator",
-                    description="公式中使用了 {,} 千分位模式，应移除逗号",
-                    snippet=math_text,
-                ))
+                issues.append(
+                    Issue(
+                        line_no=line_no,
+                        severity=Severity.ERROR,
+                        rule="thousands-separator",
+                        description="公式中使用了 {,} 千分位模式，应移除逗号",
+                        snippet=math_text,
+                    )
+                )
 
             # 规则 2: \mid 在表格中
             if in_table and MID_IN_TABLE_RE.search(inner):
-                issues.append(Issue(
-                    line_no=line_no,
-                    severity=Severity.ERROR,
-                    rule="mid-in-table",
-                    description="表格中的公式使用了 \\mid，应替换为 \\vert",
-                    snippet=math_text,
-                ))
+                issues.append(
+                    Issue(
+                        line_no=line_no,
+                        severity=Severity.ERROR,
+                        rule="mid-in-table",
+                        description="表格中的公式使用了 \\mid，应替换为 \\vert",
+                        snippet=math_text,
+                    )
+                )
 
             # 规则 2b: 裸 | 在表格公式中
             if in_table and BARE_PIPE_IN_MATH_RE.search(inner):
-                issues.append(Issue(
-                    line_no=line_no,
-                    severity=Severity.ERROR,
-                    rule="pipe-in-table-math",
-                    description="表格公式中的 | 会与表格语法冲突，应替换为 \\vert",
-                    snippet=math_text,
-                ))
+                issues.append(
+                    Issue(
+                        line_no=line_no,
+                        severity=Severity.ERROR,
+                        rule="pipe-in-table-math",
+                        description="表格公式中的 | 会与表格语法冲突，应替换为 \\vert",
+                        snippet=math_text,
+                    )
+                )
 
             # 规则 3: \Sigma 应使用 \sum
             if SIGMA_RE.search(inner):
-                issues.append(Issue(
-                    line_no=line_no,
-                    severity=Severity.WARNING,
-                    rule="sigma-vs-sum",
-                    description="使用了 \\Sigma，建议替换为 \\sum（求和符号）",
-                    snippet=math_text,
-                ))
+                issues.append(
+                    Issue(
+                        line_no=line_no,
+                        severity=Severity.WARNING,
+                        rule="sigma-vs-sum",
+                        description="使用了 \\Sigma，建议替换为 \\sum（求和符号）",
+                        snippet=math_text,
+                    )
+                )
 
             # 规则 4: 行内公式含 \frac + \text{} 含中文
             if FRAC_TEXT_CJK_RE.search(inner):
-                issues.append(Issue(
-                    line_no=line_no,
-                    severity=Severity.WARNING,
-                    rule="complex-inline-math",
-                    description="行内公式同时包含 \\frac 和含中文的 \\text{}，建议转为块级公式或文字",
-                    snippet=math_text,
-                ))
+                issues.append(
+                    Issue(
+                        line_no=line_no,
+                        severity=Severity.WARNING,
+                        rule="complex-inline-math",
+                        description="行内公式同时包含 \\frac 和含中文的 \\text{}，建议转为块级公式或文字",
+                        snippet=math_text,
+                    )
+                )
 
             # 规则 6: $ 后或前有空格
             inner_stripped = inner
             if inner_stripped != inner_stripped.strip():
-                issues.append(Issue(
-                    line_no=line_no,
-                    severity=Severity.WARNING,
-                    rule="math-spacing",
-                    description="$ 与公式内容之间有多余空格",
-                    snippet=math_text,
-                ))
+                issues.append(
+                    Issue(
+                        line_no=line_no,
+                        severity=Severity.WARNING,
+                        rule="math-spacing",
+                        description="$ 与公式内容之间有多余空格",
+                        snippet=math_text,
+                    )
+                )
 
             # 规则 8: \mathrm{} 或 \textrm{} 含中文
             if MATHRM_CJK_RE.search(inner):
-                issues.append(Issue(
-                    line_no=line_no,
-                    severity=Severity.WARNING,
-                    rule="mathrm-cjk",
-                    description="\\mathrm{} 或 \\textrm{} 包含中文字符，应使用 \\text{}",
-                    snippet=math_text,
-                ))
+                issues.append(
+                    Issue(
+                        line_no=line_no,
+                        severity=Severity.WARNING,
+                        rule="mathrm-cjk",
+                        description="\\mathrm{} 或 \\textrm{} 包含中文字符，应使用 \\text{}",
+                        snippet=math_text,
+                    )
+                )
 
         # 规则 7: 不匹配的 $（忽略 $$ 后奇数个 $）
         # 去掉所有 $$ 后检查剩余 $ 的数量
-        line_no_dollar = line.replace('$$', '')
-        dollar_count = line_no_dollar.count('$')
+        line_no_dollar = line.replace("$$", "")
+        dollar_count = line_no_dollar.count("$")
         if dollar_count % 2 != 0:
-            issues.append(Issue(
-                line_no=line_no,
-                severity=Severity.ERROR,
-                rule="unmatched-dollar",
-                description=f"该行有奇数个 $（{dollar_count}个），存在未匹配的 $",
-                snippet=line.strip(),
-            ))
+            issues.append(
+                Issue(
+                    line_no=line_no,
+                    severity=Severity.ERROR,
+                    rule="unmatched-dollar",
+                    description=f"该行有奇数个 $（{dollar_count}个），存在未匹配的 $",
+                    snippet=line.strip(),
+                )
+            )
 
     return issues
 
@@ -270,8 +286,8 @@ def scan_directory(directory: str, recursive: bool = False) -> list[tuple[str, l
 
 
 SEVERITY_COLOR = {
-    Severity.ERROR: "\033[91m",   # 红色
-    Severity.WARNING: "\033[93m", # 黄色
+    Severity.ERROR: "\033[91m",  # 红色
+    Severity.WARNING: "\033[93m",  # 黄色
 }
 RESET_COLOR = "\033[0m"
 
@@ -282,17 +298,14 @@ def print_results(results: list[tuple[str, list[Issue]]], use_color: bool = True
     total_warnings = 0
 
     for filepath, issues in results:
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print(f"文件: {filepath}")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
 
         for issue in sorted(issues, key=lambda x: x.line_no):
             color = SEVERITY_COLOR.get(issue.severity, "") if use_color else ""
             reset = RESET_COLOR if use_color else ""
-            print(
-                f"  {color}{issue.severity.value}{reset} "
-                f"L{issue.line_no} [{issue.rule}]"
-            )
+            print(f"  {color}{issue.severity.value}{reset} L{issue.line_no} [{issue.rule}]")
             print(f"    {issue.description}")
             print(f"    >> {issue.snippet}")
             print()
@@ -303,10 +316,9 @@ def print_results(results: list[tuple[str, list[Issue]]], use_color: bool = True
                 total_warnings += 1
 
     # 总结
-    print(f"\n{'='*60}")
-    print(f"扫描完成: {len(results)} 个文件, "
-          f"{total_errors} 个错误, {total_warnings} 个警告")
-    print(f"{'='*60}")
+    print(f"\n{'=' * 60}")
+    print(f"扫描完成: {len(results)} 个文件, {total_errors} 个错误, {total_warnings} 个警告")
+    print(f"{'=' * 60}")
 
     return total_errors, total_warnings
 
@@ -333,7 +345,8 @@ def main():
         help="要检查的 .md 文件或目录路径",
     )
     parser.add_argument(
-        "-r", "--recursive",
+        "-r",
+        "--recursive",
         action="store_true",
         help="递归扫描子目录",
     )

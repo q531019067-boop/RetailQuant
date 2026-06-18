@@ -10,3 +10,8 @@ __pycache__/
 # OS
 .DS_Store
 Thumbs.db
+
+# Local cache databases
+cache/*.db
+cache/*.db-shm
+cache/*.db-wal

@@ -227,9 +227,7 @@ def _comments_with_lines_lua(text: str):
                 if end_long is not None:
                     end = end_long
                     line_num = _line_number_of(line_starts, start)
-                    results.append(
-                        (start, end, line_num, COMMENT_KIND_BLOCK, text[start:end])
-                    )
+                    results.append((start, end, line_num, COMMENT_KIND_BLOCK, text[start:end]))
                     i = end
                     continue
             i += 2
@@ -237,9 +235,7 @@ def _comments_with_lines_lua(text: str):
                 i += 1
             end = i
             line_num = _line_number_of(line_starts, start)
-            results.append(
-                (start, end, line_num, COMMENT_KIND_LINE, text[start:end])
-            )
+            results.append((start, end, line_num, COMMENT_KIND_LINE, text[start:end]))
             continue
         i += 1
     return results
@@ -333,6 +329,7 @@ def _comments_with_lines(text: str, dialect: str = "cpp"):
 # Git helpers
 # ---------------------------------------------------------------------------
 
+
 def run_git(args: list, cwd: str = None) -> bytes:
     result = subprocess.run(
         ["git"] + args,
@@ -383,6 +380,7 @@ def git_cat_head(filepath: str, root: str = None) -> bytes:
 # Comment mapping: SimHash + non-crossing bipartite match
 # ---------------------------------------------------------------------------
 
+
 def _fnv1a_64(data: bytes) -> int:
     """FNV-1a 64-bit hash."""
     h = 0xCBF29CE484222325
@@ -394,7 +392,7 @@ def _fnv1a_64(data: bytes) -> int:
 
 def _simhash(text: str, bits: int = 64) -> int:
     """Compute 64-bit simhash of text: tokenize, FNV-1a hash each token, bit-vote."""
-    tokens = re.split(r'[^a-zA-Z0-9\u4e00-\u9fff]+', text)
+    tokens = re.split(r"[^a-zA-Z0-9\u4e00-\u9fff]+", text)
     tokens = [t for t in tokens if t]
     if not tokens:
         return 0
@@ -409,7 +407,7 @@ def _simhash(text: str, bits: int = 64) -> int:
     result = 0
     for b in range(bits):
         if acc[b] > 0:
-            result |= (1 << b)
+            result |= 1 << b
     return result
 
 
@@ -418,19 +416,19 @@ def _simhash_distance(h1: int, h2: int) -> int:
     return bin(h1 ^ h2).count("1")
 
 
-def _extract_context_lines(lines: list, comment_line_start: int,
-                           comment_line_end: int, N: int = 5,
-                           dialect: str = "cpp") -> str:
+def _extract_context_lines(
+    lines: list, comment_line_start: int, comment_line_end: int, N: int = 5, dialect: str = "cpp"
+) -> str:
     """
     Extract N non-empty, non-comment code lines before and after a comment block.
     Returns concatenated context string with whitespace and inline comments stripped.
     """
+
     def _is_pure_comment_line(line_text: str) -> bool:
         stripped = line_text.strip()
         if dialect == "lua":
             return stripped.startswith("--")
-        return (stripped.startswith("//") or stripped.startswith("/*") or
-                stripped.startswith("*") or stripped == "*/")
+        return stripped.startswith("//") or stripped.startswith("/*") or stripped.startswith("*") or stripped == "*/"
 
     def _strip_inline_comment(line_text: str) -> str:
         if dialect == "lua":
@@ -531,8 +529,7 @@ def _should_replace_first_line_from_reference(first_line: str) -> bool:
     return not (s.startswith("#") or s.startswith("/"))
 
 
-def apply_first_line_from_reference(curr_text: str, ref_text: str,
-                                    dialect: str = "cpp") -> tuple:
+def apply_first_line_from_reference(curr_text: str, ref_text: str, dialect: str = "cpp") -> tuple:
     """
     C/C++ only: replace the first line from reference when it does not look
     like #... or /... (BOM conversion junk). Lua uses many valid starters
@@ -563,15 +560,10 @@ def count_mapped_comment_mismatches(curr_text: str, comment_maps: list) -> int:
 
 def select_mismatch_comment_replacements(curr_text: str, comment_maps: list) -> list:
     """All matched pairs where current comment text != reference."""
-    return [
-        (start, end, ref_c)
-        for start, end, ref_c in comment_maps
-        if curr_text[start:end] != ref_c
-    ]
+    return [(start, end, ref_c) for start, end, ref_c in comment_maps if curr_text[start:end] != ref_c]
 
 
-def _code_line_before_comment(text: str, comment_pos: int,
-                              dialect: str = "cpp") -> str:
+def _code_line_before_comment(text: str, comment_pos: int, dialect: str = "cpp") -> str:
     """Code on the same line before the comment token (strip // or -- tail)."""
     line_start = text.rfind("\n", 0, comment_pos) + 1
     prefix = text[line_start:comment_pos]
@@ -586,8 +578,7 @@ def _code_line_before_comment(text: str, comment_pos: int,
     return prefix.strip()
 
 
-def build_comment_map(ref_text: str, curr_text: str, verbose: bool = False,
-                      dialect: str = "cpp") -> list:
+def build_comment_map(ref_text: str, curr_text: str, verbose: bool = False, dialect: str = "cpp") -> list:
     """
     Map each comment span in curr_text to the corresponding reference comment.
 
@@ -611,10 +602,8 @@ def build_comment_map(ref_text: str, curr_text: str, verbose: bool = False,
         return _line_number_of(line_starts, pos) - 1
 
     # Phase 1: Code prefix matching
-    ref_prefixes = [_code_line_before_comment(ref_text, rs, dialect)
-                    for rs, _re, _rl, _rk, _rt in ref_comments]
-    curr_prefixes = [_code_line_before_comment(curr_text, cs, dialect)
-                     for cs, _ce, _cl, _ck, _ct in curr_comments]
+    ref_prefixes = [_code_line_before_comment(ref_text, rs, dialect) for rs, _re, _rl, _rk, _rt in ref_comments]
+    curr_prefixes = [_code_line_before_comment(curr_text, cs, dialect) for cs, _ce, _cl, _ck, _ct in curr_comments]
 
     n_ref = len(ref_comments)
     n_curr = len(curr_comments)
@@ -652,16 +641,14 @@ def build_comment_map(ref_text: str, curr_text: str, verbose: bool = False,
     for rs, re_, _rline, _rkind, _rtext in ref_comments:
         rline_start = _pos_to_line_0(line_starts_ref, rs)
         rline_end = _pos_to_line_0(line_starts_ref, re_)
-        ctx = _extract_context_lines(ref_lines, rline_start, rline_end, N=5,
-                                      dialect=dialect)
+        ctx = _extract_context_lines(ref_lines, rline_start, rline_end, N=5, dialect=dialect)
         ref_hashes.append(_simhash(ctx))
 
     curr_hashes = []
     for cs, ce, _cline, _ckind, _ctext in curr_comments:
         cline_start = _pos_to_line_0(line_starts_curr, cs)
         cline_end = _pos_to_line_0(line_starts_curr, ce)
-        ctx = _extract_context_lines(curr_lines, cline_start, cline_end, N=5,
-                                      dialect=dialect)
+        ctx = _extract_context_lines(curr_lines, cline_start, cline_end, N=5, dialect=dialect)
         curr_hashes.append(_simhash(ctx))
 
     # Build similarity matrix only for unmatched comments
@@ -681,8 +668,7 @@ def build_comment_map(ref_text: str, curr_text: str, verbose: bool = False,
                 row.append(similarity)
             sim_matrix.append(row)
 
-        raw_matches = _non_crossing_match(
-            sim_matrix, threshold=SIMHASH_MATCH_THRESHOLD)
+        raw_matches = _non_crossing_match(sim_matrix, threshold=SIMHASH_MATCH_THRESHOLD)
         for ri, ci in raw_matches:
             a_idx = unmatched_ref_idx[ri]
             b_idx = unmatched_curr_idx[ci]
@@ -701,19 +687,14 @@ def build_comment_map(ref_text: str, curr_text: str, verbose: bool = False,
                 print(f"    - curr L{cline:>4} -> ref L{rline:<4} (prefix)")
         if simhash_matches:
             print(
-                "  [DEBUG] SimHash matched "
-                f"{len(simhash_matches)} comment pairs "
-                f"(threshold={SIMHASH_MATCH_THRESHOLD})"
+                f"  [DEBUG] SimHash matched {len(simhash_matches)} comment pairs (threshold={SIMHASH_MATCH_THRESHOLD})"
             )
             for a_idx, b_idx in simhash_matches:
                 rs, re_, rline, rkind, _rt = ref_comments[a_idx]
                 cs, ce, cline, ckind, _ct = curr_comments[b_idx]
                 dist = _simhash_distance(ref_hashes[a_idx], curr_hashes[b_idx])
                 sim = 1.0 - dist / 64.0
-                print(
-                    f"    - curr L{cline:>4} ({ckind}) -> ref L{rline:<4} ({rkind}) "
-                    f"sim={sim:.2f} hamming={dist}"
-                )
+                print(f"    - curr L{cline:>4} ({ckind}) -> ref L{rline:<4} ({rkind}) sim={sim:.2f} hamming={dist}")
 
     return mappings
 
@@ -744,6 +725,7 @@ def filter_comment_maps_for_fix(curr_text: str, comment_maps: list) -> list:
 # ---------------------------------------------------------------------------
 # File discovery
 # ---------------------------------------------------------------------------
+
 
 def find_target_files(path: str) -> list:
     """If path is a directory, recursively collect supported extensions."""
@@ -784,8 +766,8 @@ def get_reference_raw(filepath: str, backup_path: str = None) -> bytes:
 # Main logic
 # ---------------------------------------------------------------------------
 
-def process_file(filepath: str, root: str, backup_path: str = None,
-                 dry_run: bool = False, verbose: bool = False):
+
+def process_file(filepath: str, root: str, backup_path: str = None, dry_run: bool = False, verbose: bool = False):
     """
     Re-encode to match reference when needed; restore comments using mapped diff
     counts and first-line garbage fix (see apply_first_line_from_reference).
@@ -834,14 +816,12 @@ def process_file(filepath: str, root: str, backup_path: str = None,
     else:
         print("  [INFO] Encoding matches reference.")
 
-    curr_text, first_line_fixed = apply_first_line_from_reference(
-        curr_text, ref_text, dialect)
+    curr_text, first_line_fixed = apply_first_line_from_reference(curr_text, ref_text, dialect)
     if first_line_fixed:
         print("  [FIXED] Replaced malformed first line from reference (# or / expected).")
 
     # --- Step 2: Fix comments ---
-    comment_maps = build_comment_map(
-        ref_text, curr_text, verbose=verbose, dialect=dialect)
+    comment_maps = build_comment_map(ref_text, curr_text, verbose=verbose, dialect=dialect)
     mismatch_n = count_mapped_comment_mismatches(curr_text, comment_maps)
     filtered_maps = filter_comment_maps_for_fix(curr_text, comment_maps)
 
@@ -855,8 +835,10 @@ def process_file(filepath: str, root: str, backup_path: str = None,
             print("  [OK] All mapped comments match reference.")
 
     if filtered_maps:
-        print(f"  [INFO] Bulk comment diffs ({mismatch_n} > "
-              f"{COMMENT_MISMATCH_TRIGGER_COUNT}); fixing {len(filtered_maps)} comments.")
+        print(
+            f"  [INFO] Bulk comment diffs ({mismatch_n} > "
+            f"{COMMENT_MISMATCH_TRIGGER_COUNT}); fixing {len(filtered_maps)} comments."
+        )
         curr_text = fix_comments(curr_text, filtered_maps)
         print(f"  [FIXED] Replaced {len(filtered_maps)} comments.")
     elif mismatch_n > COMMENT_MISMATCH_TRIGGER_COUNT:
@@ -875,22 +857,24 @@ def process_file(filepath: str, root: str, backup_path: str = None,
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Fix encoding and comments of C/C++ and Lua source files."
+    parser = argparse.ArgumentParser(description="Fix encoding and comments of C/C++ and Lua source files.")
+    parser.add_argument(
+        "path",
+        nargs="?",
+        help="File or directory to process. "
+        "No-backup mode: only modified files (git status). "
+        "Backup mode: recursive scan.",
     )
-    parser.add_argument("path", nargs="?",
-                        help="File or directory to process. "
-                             "No-backup mode: only modified files (git status). "
-                             "Backup mode: recursive scan.")
-    parser.add_argument("--backup", "-b", metavar="PATH",
-                        help="Backup file/directory to use as reference instead of Git HEAD. "
-                             "Each target file is matched by relative path or filename.")
-    parser.add_argument("--dry-run", "-n", action="store_true",
-                        help="Only report, don't write.")
-    parser.add_argument("--verbose", "-v", action="store_true",
-                        help="Verbose output.")
-    parser.add_argument("--self-check", action="store_true",
-                        help="Run in-memory mapping smoke tests and exit.")
+    parser.add_argument(
+        "--backup",
+        "-b",
+        metavar="PATH",
+        help="Backup file/directory to use as reference instead of Git HEAD. "
+        "Each target file is matched by relative path or filename.",
+    )
+    parser.add_argument("--dry-run", "-n", action="store_true", help="Only report, don't write.")
+    parser.add_argument("--verbose", "-v", action="store_true", help="Verbose output.")
+    parser.add_argument("--self-check", action="store_true", help="Run in-memory mapping smoke tests and exit.")
     args = parser.parse_args()
 
     if args.self_check:
@@ -939,8 +923,7 @@ def main():
 
     for filepath in files:
         try:
-            process_file(filepath, root, backup_path=backup_path,
-                         dry_run=args.dry_run, verbose=args.verbose)
+            process_file(filepath, root, backup_path=backup_path, dry_run=args.dry_run, verbose=args.verbose)
         except Exception as e:
             print(f"  [ERROR] {filepath}: {e}", file=sys.stderr)
 

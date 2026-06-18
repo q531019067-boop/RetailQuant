@@ -58,6 +58,7 @@ def _run_git(*args: str) -> subprocess.CompletedProcess[str]:
 def _should_ignore(path: str) -> bool:
     """检查路径是否匹配忽略模式。"""
     import fnmatch
+
     for pattern in IGNORE_PATTERNS:
         if fnmatch.fnmatch(path, pattern) or pattern in path:
             return True
@@ -135,10 +136,12 @@ def check_large_files(staged: list[dict]) -> list[dict]:
             try:
                 size = full_path.stat().st_size
                 if size > LARGE_FILE_THRESHOLD:
-                    large.append({
-                        "path": path,
-                        "size_mb": round(size / 1_000_000, 2),
-                    })
+                    large.append(
+                        {
+                            "path": path,
+                            "size_mb": round(size / 1_000_000, 2),
+                        }
+                    )
             except OSError:
                 pass
     return large
@@ -160,16 +163,12 @@ def generate_warnings(
     if unstaged:
         names = [f["path"] for f in unstaged[:5]]
         suffix = " ..." if len(unstaged) > 5 else ""
-        warnings.append(
-            f"存在 {len(unstaged)} 个未暂存的变更: {', '.join(names)}{suffix}"
-        )
+        warnings.append(f"存在 {len(unstaged)} 个未暂存的变更: {', '.join(names)}{suffix}")
 
     if untracked:
         names = untracked[:5]
         suffix = " ..." if len(untracked) > 5 else ""
-        warnings.append(
-            f"存在 {len(untracked)} 个未跟踪文件: {', '.join(names)}{suffix}"
-        )
+        warnings.append(f"存在 {len(untracked)} 个未跟踪文件: {', '.join(names)}{suffix}")
 
     if large_files:
         for lf in large_files:
@@ -188,11 +187,7 @@ def main() -> None:
     large_files = check_large_files(staged)
     warnings = generate_warnings(staged, unstaged, untracked, conflicts, large_files)
 
-    all_clear = (
-        len(conflicts) == 0
-        and len(large_files) == 0
-        and len(staged) > 0
-    )
+    all_clear = len(conflicts) == 0 and len(large_files) == 0 and len(staged) > 0
 
     result = {
         "staged": staged,

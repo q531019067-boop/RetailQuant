@@ -4,7 +4,9 @@
     python hello.py <名字>
     python hello.py 张三
 """
+
 import sys
+
 
 def main():
     if len(sys.argv) < 2:
@@ -14,5 +16,6 @@ def main():
     name = sys.argv[1]
     print(f"你好，{name}！")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()

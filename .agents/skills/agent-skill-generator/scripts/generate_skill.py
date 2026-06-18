@@ -11,15 +11,16 @@ import argparse
 import sys
 from pathlib import Path
 
+
 # 处理命令行参数编码
 def get_encoded_arg(arg):
     if isinstance(arg, bytes):
         try:
             # 尝试GBK编码（Windows默认）
-            return arg.decode('gbk', errors='replace')
+            return arg.decode("gbk", errors="replace")
         except:
             #  fallback到utf-8
-            return arg.decode('utf-8', errors='replace')
+            return arg.decode("utf-8", errors="replace")
     return arg
 
 
@@ -31,92 +32,76 @@ def parse_description(description):
     """
     import re
     import time
-    
+
     # 定义Skill类型及其关键词（注意：hybrid类型需要放在前面，因为"专家"关键词优先级较高）
     skill_types = {
-        'hybrid': {
-            'keywords': ['专家', '复合', '多功能', '综合'],
-            'prefix': 'expert',
-            'name_suffix': 'expert'
+        "hybrid": {"keywords": ["专家", "复合", "多功能", "综合"], "prefix": "expert", "name_suffix": "expert"},
+        "converter": {
+            "keywords": ["转换", "编码", "乱码", "批处理", "批量处理", "批量总结", "文档生成", "生成器"],
+            "prefix": "converter",
+            "name_suffix": "converter",
         },
-        'converter': {
-            'keywords': ['转换', '编码', '乱码', '批处理', '批量处理', '批量总结', '文档生成', '生成器'],
-            'prefix': 'converter',
-            'name_suffix': 'converter'
+        "knowledge_base": {
+            "keywords": ["知识库", "文档", "回答", "查询", "解释", "说明"],
+            "prefix": "kb",
+            "name_suffix": "knowledge-base",
         },
-        'knowledge_base': {
-            'keywords': ['知识库', '文档', '回答', '查询', '解释', '说明'],
-            'prefix': 'kb',
-            'name_suffix': 'knowledge-base'
+        "tester": {"keywords": ["测试", "验证", "检测", "试运行"], "prefix": "test", "name_suffix": "tester"},
+        "checker": {"keywords": ["检查", "校验", "审查", "核对", "排查"], "prefix": "check", "name_suffix": "checker"},
+        "guide": {"keywords": ["指导", "指引", "调用", "使用", "协助"], "prefix": "guide", "name_suffix": "guide"},
+        "planner": {
+            "keywords": ["计划", "规划", "流程", "步骤", "方案", "ReAct"],
+            "prefix": "plan",
+            "name_suffix": "planner",
         },
-        'tester': {
-            'keywords': ['测试', '验证', '检测', '试运行'],
-            'prefix': 'test',
-            'name_suffix': 'tester'
+        "tool": {
+            "keywords": ["处理", "管理", "编辑", "创建", "修改", "读取", "批量", "导出"],
+            "prefix": "tool",
+            "name_suffix": "tool",
         },
-        'checker': {
-            'keywords': ['检查', '校验', '审查', '核对', '排查'],
-            'prefix': 'check',
-            'name_suffix': 'checker'
-        },
-        'guide': {
-            'keywords': ['指导', '指引', '调用', '使用', '协助'],
-            'prefix': 'guide',
-            'name_suffix': 'guide'
-        },
-        'planner': {
-            'keywords': ['计划', '规划', '流程', '步骤', '方案', 'ReAct'],
-            'prefix': 'plan',
-            'name_suffix': 'planner'
-        },
-        'tool': {
-            'keywords': ['处理', '管理', '编辑', '创建', '修改', '读取', '批量', '导出'],
-            'prefix': 'tool',
-            'name_suffix': 'tool'
-        }
     }
-    
+
     # 常见的数据类型关键词
     data_keywords = {
-        '玩家': 'player',
-        '数据': 'data',
-        'NPC': 'npc',
-        '技能': 'skill',
-        '任务': 'quest',
-        '物品': 'item',
-        '属性': 'attribute',
-        '副本': 'dungeon',
-        'CD': 'cooldown',
-        '配置': 'config',
-        '脚本': 'script',
-        '文件': 'file',
-        '编码': 'encoding',
-        '乱码': 'garbled',
-        '代码': 'code',
-        '文档': 'doc'
+        "玩家": "player",
+        "数据": "data",
+        "NPC": "npc",
+        "技能": "skill",
+        "任务": "quest",
+        "物品": "item",
+        "属性": "attribute",
+        "副本": "dungeon",
+        "CD": "cooldown",
+        "配置": "config",
+        "脚本": "script",
+        "文件": "file",
+        "编码": "encoding",
+        "乱码": "garbled",
+        "代码": "code",
+        "文档": "doc",
     }
-    
+
     # 检测Skill类型
     detected_type = None
     for skill_type, config in skill_types.items():
-        for keyword in config['keywords']:
+        for keyword in config["keywords"]:
             if keyword in description:
                 detected_type = skill_type
                 break
         if detected_type:
             break
-    
+
     # 如果没有检测到类型，默认为tool
     if not detected_type:
-        detected_type = 'tool'
-    
+        detected_type = "tool"
+
     # 提取数据类型关键词
     data_match = None
     for keyword, english in data_keywords.items():
         if keyword in description:
             data_match = english
             break
-    
+
     # 生成skill名称
     type_config = skill_types[detected_type]
     if data_match:
@@ -125,18 +110,18 @@ def parse_description(description):
         # 如果没有提取到数据类型，使用时间戳
         timestamp = int(time.time())
         skill_name = f"{type_config['prefix']}-{timestamp}"
-    
+
     # 确保名称符合规范
-    skill_name = re.sub(r'[^a-z0-9-]', '', skill_name)
-    
+    skill_name = re.sub(r"[^a-z0-9-]", "", skill_name)
+
     # 确保名称不为空
     if not skill_name:
-        skill_name = 'auto-generated-skill'
-    
+        skill_name = "auto-generated-skill"
+
     return skill_name, description, detected_type
 
 
-def create_skill_structure(skill_name, skill_description, skill_type='tool'):
+def create_skill_structure(skill_name, skill_description, skill_type="tool"):
     """
     创建Skill目录结构和文件
     :param skill_name: Skill名称
@@ -146,35 +131,35 @@ def create_skill_structure(skill_name, skill_description, skill_type='tool'):
     """
     # 获取工作目录
     workspace_folder = Path(os.getcwd()).parent.parent.parent
-    skill_dir = workspace_folder / 'SKILLS' / skill_name
-    
+    skill_dir = workspace_folder / "SKILLS" / skill_name
+
     # 创建目录结构
-    (skill_dir / 'scripts').mkdir(parents=True, exist_ok=True)
-    (skill_dir / 'examples').mkdir(parents=True, exist_ok=True)
-    (skill_dir / 'references').mkdir(parents=True, exist_ok=True)
-    
+    (skill_dir / "scripts").mkdir(parents=True, exist_ok=True)
+    (skill_dir / "examples").mkdir(parents=True, exist_ok=True)
+    (skill_dir / "references").mkdir(parents=True, exist_ok=True)
+
     # 生成examples目录的必需文件
     generate_examples_files(skill_dir, skill_name, skill_description, skill_type)
-    
+
     # 根据Skill类型生成不同的内容
-    if skill_type == 'converter':
+    if skill_type == "converter":
         generate_converter_skill(skill_dir, skill_name, skill_description)
-    elif skill_type == 'knowledge_base':
+    elif skill_type == "knowledge_base":
         generate_knowledge_base_skill(skill_dir, skill_name, skill_description)
-    elif skill_type == 'tester':
+    elif skill_type == "tester":
         generate_tester_skill(skill_dir, skill_name, skill_description)
-    elif skill_type == 'checker':
+    elif skill_type == "checker":
         generate_checker_skill(skill_dir, skill_name, skill_description)
-    elif skill_type == 'guide':
+    elif skill_type == "guide":
         generate_guide_skill(skill_dir, skill_name, skill_description)
-    elif skill_type == 'planner':
+    elif skill_type == "planner":
         generate_planner_skill(skill_dir, skill_name, skill_description)
-    elif skill_type == 'hybrid':
+    elif skill_type == "hybrid":
         generate_hybrid_skill(skill_dir, skill_name, skill_description)
     else:
         # 默认生成工具类型Skill
         generate_tool_skill(skill_dir, skill_name, skill_description)
-    
+
     return skill_dir
 
 
@@ -186,26 +171,26 @@ def generate_examples_files(skill_dir, skill_name, skill_description, skill_type
     :param skill_description: Skill描述
     :param skill_type: Skill类型
     """
-    examples_dir = skill_dir / 'examples'
-    
+    examples_dir = skill_dir / "examples"
+
     # 1. 生成 usage-guide.md - Python命令行使用指南
     usage_guide_content = generate_usage_guide_content(skill_name, skill_description, skill_type)
-    with open(examples_dir / 'usage-guide.md', 'w', encoding='utf-8') as f:
+    with open(examples_dir / "usage-guide.md", "w", encoding="utf-8") as f:
         f.write(usage_guide_content)
-    
+
     # 2. 生成 scenario-examples.md - 使用场景举例
     scenario_examples_content = generate_scenario_examples_content(skill_name, skill_description, skill_type)
-    with open(examples_dir / 'scenario-examples.md', 'w', encoding='utf-8') as f:
+    with open(examples_dir / "scenario-examples.md", "w", encoding="utf-8") as f:
         f.write(scenario_examples_content)
-    
+
     # 3. 生成 usage-scenarios.md - 使用场景说明
     usage_scenarios_content = generate_usage_scenarios_content(skill_name, skill_description, skill_type)
-    with open(examples_dir / 'usage-scenarios.md', 'w', encoding='utf-8') as f:
+    with open(examples_dir / "usage-scenarios.md", "w", encoding="utf-8") as f:
         f.write(usage_scenarios_content)
-    
+
     # 4. 生成 efficient-usage.md - 最高效的使用方式
     efficient_usage_content = generate_efficient_usage_content(skill_name, skill_description, skill_type)
-    with open(examples_dir / 'efficient-usage.md', 'w', encoding='utf-8') as f:
+    with open(examples_dir / "efficient-usage.md", "w", encoding="utf-8") as f:
         f.write(efficient_usage_content)
 
 
@@ -224,9 +209,9 @@ def generate_usage_guide_content(skill_name, skill_description, skill_type):
 ## 脚本列表
 
 """
-    
+
     # 根据不同类型生成不同的脚本说明
-    if skill_type == 'converter':
+    if skill_type == "converter":
         content += """### main.py - 编码转换工具
 **功能说明**：批量转换文件编码格式
 
@@ -277,7 +262,7 @@ python fix_garbled.py --input garbled.txt --encoding utf-8 --output fixed.txt
 python batch_process.py --config workflow.json --input ./data --output ./result
 ```
 """
-    elif skill_type == 'tool':
+    elif skill_type == "tool":
         content += """### main.py - 数据处理工具
 **功能说明**：处理相关数据，支持读取、修改、批量操作
 
@@ -299,7 +284,7 @@ python main.py --input data.txt --action update --output new_data.txt
 python main.py --input ./data --action batch --filter "type=1"
 ```
 """
-    elif skill_type == 'tester':
+    elif skill_type == "tester":
         content += """### main.py - 测试工具
 **功能说明**：测试配置文件和脚本的正确性
 
@@ -319,7 +304,7 @@ python main.py --target config
 python main.py --target config --verbose
 ```
 """
-    elif skill_type == 'checker':
+    elif skill_type == "checker":
         content += """### main.py - 检查工具
 **功能说明**：检查配置文件的正确性和完整性
 
@@ -340,22 +325,22 @@ python main.py --dir ./config
 python main.py --dir ./config --strict
 ```
 """
-    elif skill_type == 'knowledge_base':
+    elif skill_type == "knowledge_base":
         content += """注意：知识库类型Skill主要通过SKILL.md中的知识内容提供帮助，不需要命令行工具。
 
 如需查询特定信息，请参考SKILL.md中的核心知识和使用指南部分。
 """
-    elif skill_type == 'guide':
+    elif skill_type == "guide":
         content += """注意：指导器类型Skill主要通过SKILL.md中的指导内容提供帮助，不需要命令行工具。
 
 如需指导信息，请参考SKILL.md中的使用指南部分。
 """
-    elif skill_type == 'planner':
+    elif skill_type == "planner":
         content += """注意：流程专家类型Skill主要通过SKILL.md中的流程模板提供帮助，不需要命令行工具。
 
 如需流程规划，请参考SKILL.md中的流程模板部分。
 """
-    elif skill_type == 'hybrid':
+    elif skill_type == "hybrid":
         content += """### main.py - 查询工具
 **功能说明**：查询相关配置和数据
 
@@ -405,7 +390,7 @@ python main.py --input data.txt
 python main.py --input data.txt --output result.txt
 ```
 """
-    
+
     content += """
 ## 常见问题
 
@@ -427,7 +412,7 @@ python main.py --input "my data.txt"
 python main.py --dir ./data
 ```
 """
-    
+
     return content
 
 
@@ -444,9 +429,9 @@ def generate_scenario_examples_content(skill_name, skill_description, skill_type
 类型：{skill_type}
 
 """
-    
+
     # 根据不同类型生成不同的场景举例
-    if skill_type == 'converter':
+    if skill_type == "converter":
         content += """## 场景1：批量转换GBK文件为UTF-8
 
 ### 需求
@@ -509,7 +494,7 @@ python batch_process.py --config workflow.json --input ./raw_data --output ./pro
 - 每步处理完成后进行验证
 - 输出最终结果
 """
-    elif skill_type == 'tool':
+    elif skill_type == "tool":
         content += """## 场景1：读取并分析数据
 
 ### 需求
@@ -549,7 +534,7 @@ python main.py --input ./data --action batch --filter "type=1" --output ./update
 - 批量修改指定字段
 - 输出修改后的数据
 """
-    elif skill_type == 'checker':
+    elif skill_type == "checker":
         content += """## 场景1：检查单个配置文件
 
 ### 需求
@@ -590,7 +575,7 @@ python main.py --dir ./config
 - 汇总检查结果
 - 标记问题文件
 """
-    elif skill_type == 'tester':
+    elif skill_type == "tester":
         content += """## 场景1：测试配置文件
 
 ### 需求
@@ -630,7 +615,7 @@ python main.py
 - 显示详细测试信息
 - 生成测试报告
 """
-    elif skill_type == 'knowledge_base':
+    elif skill_type == "knowledge_base":
         content += """## 场景1：查询配置信息
 
 ### 需求
@@ -659,7 +644,7 @@ python main.py
 2. 查看references/faq.md
 3. 结合实际配置示例理解
 """
-    elif skill_type == 'guide':
+    elif skill_type == "guide":
         content += """## 场景1：学习如何使用其他Skill
 
 ### 需求
@@ -688,7 +673,7 @@ python main.py
 2. 理解Skill之间的协作关系
 3. 按照流程组织任务
 """
-    elif skill_type == 'planner':
+    elif skill_type == "planner":
         content += """## 场景1：生成ReAct工作流程
 
 ### 需求
@@ -717,7 +702,7 @@ python main.py
 2. 分析现有流程的瓶颈
 3. 应用优化建议
 """
-    elif skill_type == 'hybrid':
+    elif skill_type == "hybrid":
         content += """## 场景1：查询配置信息
 
 ### 需求
@@ -774,7 +759,7 @@ python main.py --input data.txt
 - 处理输入数据
 - 输出处理结果
 """
-    
+
     return content
 
 
@@ -791,9 +776,9 @@ def generate_usage_scenarios_content(skill_name, skill_description, skill_type):
 类型：{skill_type}
 
 """
-    
+
     # 根据不同类型生成不同的使用场景说明
-    if skill_type == 'converter':
+    if skill_type == "converter":
         content += """## 场景分类
 
 ### 1. 批量转换场景
@@ -839,7 +824,7 @@ def generate_usage_scenarios_content(skill_name, skill_description, skill_type):
 - 处理过程中监控进度
 - 处理完成后检查输出结果
 """
-    elif skill_type == 'tool':
+    elif skill_type == "tool":
         content += """## 场景分类
 
 ### 1. 单文件处理场景
@@ -885,7 +870,7 @@ def generate_usage_scenarios_content(skill_name, skill_description, skill_type):
 - 注意数据类型转换
 - 避免修改关键字段
 """
-    elif skill_type == 'checker':
+    elif skill_type == "checker":
         content += """## 场景分类
 
 ### 1. 单文件检查场景
@@ -916,7 +901,7 @@ def generate_usage_scenarios_content(skill_name, skill_description, skill_type):
 - 注意检查结果的优先级
 - 修复一个问题后重新检查
 """
-    elif skill_type == 'tester':
+    elif skill_type == "tester":
         content += """## 场景分类
 
 ### 1. 配置测试场景
@@ -947,7 +932,7 @@ def generate_usage_scenarios_content(skill_name, skill_description, skill_type):
 - 确保测试数据覆盖各种场景
 - 注意测试结果的统计信息
 """
-    elif skill_type == 'knowledge_base':
+    elif skill_type == "knowledge_base":
         content += """## 场景分类
 
 ### 1. 查询场景
@@ -978,7 +963,7 @@ def generate_usage_scenarios_content(skill_name, skill_description, skill_type):
 - 注意配置的边界情况
 - 遇到问题及时查阅文档
 """
-    elif skill_type == 'guide':
+    elif skill_type == "guide":
         content += """## 场景分类
 
 ### 1. 学习场景
@@ -1009,7 +994,7 @@ def generate_usage_scenarios_content(skill_name, skill_description, skill_type):
 - 注意数据的格式转换
 - 处理异常情况
 """
-    elif skill_type == 'planner':
+    elif skill_type == "planner":
         content += """## 场景分类
 
 ### 1. 流程生成场景
@@ -1040,7 +1025,7 @@ def generate_usage_scenarios_content(skill_name, skill_description, skill_type):
 - 逐步优化，避免大改动
 - 优化后充分测试
 """
-    elif skill_type == 'hybrid':
+    elif skill_type == "hybrid":
         content += """## 场景分类
 
 ### 1. 查询场景
@@ -1101,7 +1086,7 @@ def generate_usage_scenarios_content(skill_name, skill_description, skill_type):
 - 确保输入参数正确
 - 注意输出结果的验证
 """
-    
+
     return content
 
 
@@ -1118,9 +1103,9 @@ def generate_efficient_usage_content(skill_name, skill_description, skill_type):
 类型：{skill_type}
 
 """
-    
+
     # 根据不同类型生成不同的高效使用方式
-    if skill_type == 'converter':
+    if skill_type == "converter":
         content += """## 性能优化建议
 
 ### 1. 批量处理技巧
@@ -1155,7 +1140,7 @@ def generate_efficient_usage_content(skill_name, skill_description, skill_type):
 - 合理使用过滤条件，只处理需要的文件
 - 定期清理临时文件，释放磁盘空间
 """
-    elif skill_type == 'tool':
+    elif skill_type == "tool":
         content += """## 性能优化建议
 
 ### 1. 批量处理技巧
@@ -1190,7 +1175,7 @@ def generate_efficient_usage_content(skill_name, skill_description, skill_type):
 - 合理使用缓存
 - 优化数据结构
 """
-    elif skill_type == 'checker':
+    elif skill_type == "checker":
         content += """## 性能优化建议
 
 ### 1. 批量检查技巧
@@ -1225,7 +1210,7 @@ def generate_efficient_usage_content(skill_name, skill_description, skill_type):
 - 合理使用缓存
 - 优化检查逻辑
 """
-    elif skill_type == 'tester':
+    elif skill_type == "tester":
         content += """## 性能优化建议
 
 ### 1. 测试技巧
@@ -1260,7 +1245,7 @@ def generate_efficient_usage_content(skill_name, skill_description, skill_type):
 - 合理使用测试缓存
 - 优化测试逻辑
 """
-    elif skill_type == 'knowledge_base':
+    elif skill_type == "knowledge_base":
         content += """## 高效使用技巧
 
 ### 技巧1：快速查找信息
@@ -1279,7 +1264,7 @@ def generate_efficient_usage_content(skill_name, skill_description, skill_type):
 - 实践中验证知识
 - 总结经验教训
 """
-    elif skill_type == 'guide':
+    elif skill_type == "guide":
         content += """## 高效使用技巧
 
 ### 技巧1：快速完成任务
@@ -1297,7 +1282,7 @@ def generate_efficient_usage_content(skill_name, skill_description, skill_type):
 - 注意数据传递格式
 - 记录协作过程
 """
-    elif skill_type == 'planner':
+    elif skill_type == "planner":
         content += """## 高效使用技巧
 
 ### 技巧1：快速生成流程
@@ -1315,7 +1300,7 @@ def generate_efficient_usage_content(skill_name, skill_description, skill_type):
 - 应用优化建议
 - 测试优化后的流程
 """
-    elif skill_type == 'hybrid':
+    elif skill_type == "hybrid":
         content += """## 性能优化建议
 
 ### 1. 批量处理技巧
@@ -1368,7 +1353,7 @@ def generate_efficient_usage_content(skill_name, skill_description, skill_type):
 - 合理使用缓存
 - 优化数据结构
 """
-    
+
     return content
 
 
@@ -1440,8 +1425,8 @@ python scripts/main.py
 处理完成！
 ```
 """
-    
-    with open(skill_dir / 'SKILL.md', 'w', encoding='utf-8') as f:
+
+    with open(skill_dir / "SKILL.md", "w", encoding="utf-8") as f:
         f.write(skill_md_content)
 
 
@@ -1473,8 +1458,8 @@ def main():
 if __name__ == '__main__':
     main()
 '''
-    
-    with open(scripts_dir / 'main.py', 'w', encoding='utf-8') as f:
+
+    with open(scripts_dir / "main.py", "w", encoding="utf-8") as f:
         f.write(main_script_content)
 
 
@@ -1482,7 +1467,7 @@ def generate_converter_skill(skill_dir, skill_name, skill_description):
     """
     生成转换器类型Skill
     """
-    skill_md_content = f'''---
+    skill_md_content = f"""---
 name: {skill_name}
 description: |
   {skill_description}
@@ -1582,11 +1567,11 @@ python generate_doc.py --code-dir ./src --output ./docs --template template.md
 转换完成：15/15
 输出目录：./data/converted/
 ```
-'''
-    
-    with open(skill_dir / 'SKILL.md', 'w', encoding='utf-8') as f:
+"""
+
+    with open(skill_dir / "SKILL.md", "w", encoding="utf-8") as f:
         f.write(skill_md_content)
-    
+
     # 生成编码转换脚本（放在根目录）
     convert_script = '''
 #!/usr/bin/env python3
@@ -1637,10 +1622,10 @@ def main():
 if __name__ == '__main__':
     main()
 '''
-    
-    with open(skill_dir / 'main.py', 'w', encoding='utf-8') as f:
+
+    with open(skill_dir / "main.py", "w", encoding="utf-8") as f:
         f.write(convert_script)
-    
+
     # 生成乱码修复脚本（放在根目录）
     fix_script = '''
 #!/usr/bin/env python3
@@ -1678,10 +1663,10 @@ def main():
 if __name__ == '__main__':
     main()
 '''
-    
-    with open(skill_dir / 'fix_garbled.py', 'w', encoding='utf-8') as f:
+
+    with open(skill_dir / "fix_garbled.py", "w", encoding="utf-8") as f:
         f.write(fix_script)
-    
+
     # 生成批处理脚本（放在根目录）
     batch_script = '''
 #!/usr/bin/env python3
@@ -1720,8 +1705,8 @@ def main():
 if __name__ == '__main__':
     main()
 '''
-    
-    with open(skill_dir / 'batch_process.py', 'w', encoding='utf-8') as f:
+
+    with open(skill_dir / "batch_process.py", "w", encoding="utf-8") as f:
         f.write(batch_script)
 
 
@@ -1729,7 +1714,7 @@ def generate_tool_skill(skill_dir, skill_name, skill_description):
     """
     生成工具类型Skill
     """
-    skill_md_content = f'''---
+    skill_md_content = f"""---
 name: {skill_name}
 description: |
   {skill_description}
@@ -1789,11 +1774,11 @@ python main.py
 正在执行{skill_name}...
 处理完成！
 ```
-'''
-    
-    with open(skill_dir / 'SKILL.md', 'w', encoding='utf-8') as f:
+"""
+
+    with open(skill_dir / "SKILL.md", "w", encoding="utf-8") as f:
         f.write(skill_md_content)
-    
+
     # 生成示例脚本（放在根目录）
     generate_example_script(skill_dir)
 
@@ -1802,7 +1787,7 @@ def generate_knowledge_base_skill(skill_dir, skill_name, skill_description):
     """
     生成知识库类型Skill
     """
-    skill_md_content = f'''---
+    skill_md_content = f"""---
 name: {skill_name}
 description: |
   {skill_description}
@@ -1855,13 +1840,13 @@ allowed-tools: powershell, cmd, Edit, Read, Write, RunCommand
 ## 参考资料
 - `references/config-guide.md` - 配置指南
 - `references/faq.md` - 常见问题解答
-'''
-    
-    with open(skill_dir / 'SKILL.md', 'w', encoding='utf-8') as f:
+"""
+
+    with open(skill_dir / "SKILL.md", "w", encoding="utf-8") as f:
         f.write(skill_md_content)
-    
+
     # 生成知识库参考文件
-    config_guide_content = '''
+    config_guide_content = """
 # 配置指南
 
 ## 配置文件结构
@@ -1887,9 +1872,9 @@ allowed-tools: powershell, cmd, Edit, Read, Write, RunCommand
 - YAML文件使用2空格缩进
 - TAB文件使用UTF-8编码
 - JSON文件使用紧凑格式
-'''
-    
-    with open(skill_dir / 'references' / 'config-guide.md', 'w', encoding='utf-8') as f:
+"""
+
+    with open(skill_dir / "references" / "config-guide.md", "w", encoding="utf-8") as f:
         f.write(config_guide_content)
 
 
@@ -1897,7 +1882,7 @@ def generate_tester_skill(skill_dir, skill_name, skill_description):
     """
     生成测试器类型Skill
     """
-    skill_md_content = f'''---
+    skill_md_content = f"""---
 name: {skill_name}
 description: |
   {skill_description}
@@ -1957,11 +1942,11 @@ python main.py --target config
 1. 测试前请备份重要数据
 2. 测试环境应与生产环境隔离
 3. 详细记录测试结果
-'''
-    
-    with open(skill_dir / 'SKILL.md', 'w', encoding='utf-8') as f:
+"""
+
+    with open(skill_dir / "SKILL.md", "w", encoding="utf-8") as f:
         f.write(skill_md_content)
-    
+
     # 生成测试脚本（放在根目录）
     test_script_content = '''
 #!/usr/bin/env python3
@@ -2005,8 +1990,8 @@ def main():
 if __name__ == '__main__':
     main()
 '''
-    
-    with open(skill_dir / 'main.py', 'w', encoding='utf-8') as f:
+
+    with open(skill_dir / "main.py", "w", encoding="utf-8") as f:
         f.write(test_script_content)
 
 
@@ -2014,7 +1999,7 @@ def generate_checker_skill(skill_dir, skill_name, skill_description):
     """
     生成检查器类型Skill
     """
-    skill_md_content = f'''---
+    skill_md_content = f"""---
 name: {skill_name}
 description: |
   {skill_description}
@@ -2083,11 +2068,11 @@ python main.py --file config.yaml
 ### 问题3：数据类型错误
 **原因**：输入格式不正确
 **修复**：转换数据类型或修正输入
-'''
-    
-    with open(skill_dir / 'SKILL.md', 'w', encoding='utf-8') as f:
+"""
+
+    with open(skill_dir / "SKILL.md", "w", encoding="utf-8") as f:
         f.write(skill_md_content)
-    
+
     # 生成检查脚本（放在根目录）
     check_script_content = '''
 #!/usr/bin/env python3
@@ -2132,8 +2117,8 @@ def main():
 if __name__ == '__main__':
     main()
 '''
-    
-    with open(skill_dir / 'main.py', 'w', encoding='utf-8') as f:
+
+    with open(skill_dir / "main.py", "w", encoding="utf-8") as f:
         f.write(check_script_content)
 
 
@@ -2141,7 +2126,7 @@ def generate_guide_skill(skill_dir, skill_name, skill_description):
     """
     生成指导器类型Skill
     """
-    skill_md_content = f'''---
+    skill_md_content = f"""---
 name: {skill_name}
 description: |
   {skill_description}
@@ -2201,9 +2186,9 @@ allowed-tools: powershell, cmd, Edit, Read, Write, RunCommand
 2. 然后调用 `config-checker` 检查配置
 3. 最后返回处理结果
 ```
-'''
-    
-    with open(skill_dir / 'SKILL.md', 'w', encoding='utf-8') as f:
+"""
+
+    with open(skill_dir / "SKILL.md", "w", encoding="utf-8") as f:
         f.write(skill_md_content)
 
 
@@ -2211,7 +2196,7 @@ def generate_planner_skill(skill_dir, skill_name, skill_description):
     """
     生成流程专家类型Skill
     """
-    skill_md_content = f'''---
+    skill_md_content = f"""---
 name: {skill_name}
 description: |
   {skill_description}
@@ -2295,9 +2280,9 @@ allowed-tools: powershell, cmd, Edit, Read, Write, RunCommand
 
 ### 实践3：文档记录
 详细记录执行过程和决策依据
-'''
-    
-    with open(skill_dir / 'SKILL.md', 'w', encoding='utf-8') as f:
+"""
+
+    with open(skill_dir / "SKILL.md", "w", encoding="utf-8") as f:
         f.write(skill_md_content)
 
 
@@ -2305,7 +2290,7 @@ def generate_hybrid_skill(skill_dir, skill_name, skill_description):
     """
     生成复合型Skill（如副本CD配置专家）
     """
-    skill_md_content = f'''---
+    skill_md_content = f"""---
 name: {skill_name}
 description: |
   {skill_description}
@@ -2409,11 +2394,11 @@ allowed-tools: powershell, cmd, Edit, Read, Write, RunCommand
 - `references/dungeon-config-guide.md` - 副本配置指南
 - `references/cooldown-rules.md` - CD规则说明
 - `references/common-issues.md` - 常见问题
-'''
-    
-    with open(skill_dir / 'SKILL.md', 'w', encoding='utf-8') as f:
+"""
+
+    with open(skill_dir / "SKILL.md", "w", encoding="utf-8") as f:
         f.write(skill_md_content)
-    
+
     # 生成查询脚本（放在根目录）
     query_script = '''
 #!/usr/bin/env python3
@@ -2448,10 +2433,10 @@ def main():
 if __name__ == '__main__':
     main()
 '''
-    
-    with open(skill_dir / 'main.py', 'w', encoding='utf-8') as f:
+
+    with open(skill_dir / "main.py", "w", encoding="utf-8") as f:
         f.write(query_script)
-    
+
     # 生成检查脚本（放在根目录）
     check_script = '''
 #!/usr/bin/env python3
@@ -2486,12 +2471,12 @@ def main():
 if __name__ == '__main__':
     main()
 '''
-    
-    with open(skill_dir / 'check_config.py', 'w', encoding='utf-8') as f:
+
+    with open(skill_dir / "check_config.py", "w", encoding="utf-8") as f:
         f.write(check_script)
-    
+
     # 生成参考文件
-    dungeon_guide_content = '''
+    dungeon_guide_content = """
 # 副本配置指南
 
 ## 配置文件结构
@@ -2517,9 +2502,9 @@ if __name__ == '__main__':
 ### 规则3：特殊规则
 - 首次通关不计CD
 - 组队副本共享CD
-'''
-    
-    with open(skill_dir / 'references' / 'dungeon-config-guide.md', 'w', encoding='utf-8') as f:
+"""
+
+    with open(skill_dir / "references" / "dungeon-config-guide.md", "w", encoding="utf-8") as f:
         f.write(dungeon_guide_content)
 
 
@@ -2539,21 +2524,21 @@ def main():
         "根据固定下来的经验，指导生成一个ReAct的Agent的工作流程的计划",  # planner类型
         "副本CD配置专家，可以是知识库、检查器、查询器和指导器",  # hybrid类型
     ]
-    
+
     for test_description in test_cases:
         test_name, _, test_type = parse_description(test_description)
-        
+
         print(f"\n正在生成skill: {test_name} (类型: {test_type})")
         print("创建目录结构...")
-        
+
         # 创建Skill结构
         skill_dir = create_skill_structure(test_name, test_description, test_type)
-        
+
         print("编写SKILL.md文件...")
         print("生成脚本文件...")
         print(f"Skill生成完成！")
         print(f"生成路径: {skill_dir}")
-    
+
     # 命令行模式（注释掉以避免编码问题）
     """
     # 处理命令行参数编码
@@ -2594,5 +2579,5 @@ def main():
     """
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
