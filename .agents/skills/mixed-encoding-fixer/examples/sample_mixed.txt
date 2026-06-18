@@ -1,5 +1,0 @@
-plain ascii line
-²âÊÔGBKĞĞ
-UTF-8 ä½ å¥½ ğŸµ line
-Ã( broken
-normal ascii end

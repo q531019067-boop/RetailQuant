@@ -16,7 +16,11 @@ cache/*.db
 cache/*.db-shm
 cache/*.db-wal
 
+# Agent skills (local tooling, preserved on 'skills' branch)
+.agents/
+
 # Runtime data (local only, do not commit)
+.codewhale/scripts/
 data/portfolio.json
 data/trades.json
 data/funds.json
