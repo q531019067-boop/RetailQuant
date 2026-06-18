@@ -4,14 +4,24 @@ rquant.business.pool_store — 标的池管理（SQLite 持久化 + 内存热数
 - 启动时一次性 load 到内存（_pool_cache），后续读写全部走内存
 - 写操作：内存更新 + 异步刷盘（用 mq）
 - 兼容老 API：get_pool() 返回 [{code, name, sector}]
+- 兼容老数据：首次启动自动从 data/watchlist.json 迁移到 SQLite meta 表
 """
 
 from __future__ import annotations
 import json
+import logging
 import time
+from json import JSONDecodeError
+from pathlib import Path
 from typing import Optional
 
 from rquant.data_source import db
+
+_log = logging.getLogger("rquant.pool_store")
+
+# 老 watchlist.json 路径（一次性迁移用）
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+_LEGACY_WATCHLIST_FILE = _PROJECT_ROOT / "data" / "watchlist.json"
 
 # ============== 默认池 ==============
 
@@ -127,6 +137,30 @@ def _ensure_loaded() -> None:
             for item in _DEFAULT_POOL:
                 _pool.upsert(**item)
             _pool.load()
+        # 兼容：老 data/watchlist.json 一次性迁移到 SQLite meta 表
+        _migrate_legacy_watchlist()
+
+
+def _migrate_legacy_watchlist() -> None:
+    """首次启动时从老 data/watchlist.json 迁移到 meta 表（幂等）
+
+    - meta.watchlist 已存在 → 跳过
+    - 老文件不存在 → 跳过
+    - 老文件存在 → 读出 codes，加到 pool + meta
+    """
+    if db.meta_get("watchlist") is not None:
+        return  # 已经迁过
+    if not _LEGACY_WATCHLIST_FILE.exists():
+        return
+    try:
+        codes = json.loads(_LEGACY_WATCHLIST_FILE.read_text(encoding="utf-8"))
+        if not isinstance(codes, list):
+            return
+        for code in codes:
+            add_to_watchlist(code)
+        _log.info(f"watchlist 迁移完成: {len(codes)} 个 code ← {_LEGACY_WATCHLIST_FILE.name}")
+    except Exception as e:
+        _log.warning(f"watchlist 迁移失败: {e}")
 
 
 # ============== 公开 API ==============
@@ -201,12 +235,13 @@ def pool_stats() -> dict:
 
 def get_watchlist_codes() -> list[str]:
     """返回自选股 code 列表"""
+    _ensure_loaded()
     val = db.meta_get("watchlist")
     if not val:
         return []
     try:
         return list(json.loads(val))
-    except (TypeError, json.JSONDecodeError):
+    except (TypeError, JSONDecodeError):
         return []
 
 

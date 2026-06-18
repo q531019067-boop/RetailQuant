@@ -68,47 +68,40 @@ def get_market_status() -> dict:
 
 # ============== 策略状态 ==============
 
-# 已知策略（mock：从 registry 拉名称）
-# 真实实现应从 rquant.strategy.registry 动态遍历 + 持久化
-_KNOWN_STRATEGIES = [
-    "DividendLowVolRotation",
-    "GridMartingale",
-    "DonchianTurtle",
-    "VpBreakout",
-    "VolumeBreakout",
-    "PatternDay",
-    "MultiFactor",
-    "ScenarioRouter",
-]
-
 # 内存中的运行时状态（key=strategy_name, value=signal_count/last_run/status）
 _strategy_state: dict[str, dict] = {}
 _strategy_lock = threading.Lock()
 
 
+def _known_strategies() -> list[str]:
+    """动态从 rquant.strategy.registry 拉所有已注册策略名（按 category/name 排序保证稳定）"""
+    try:
+        from rquant.strategy import all_strategies  # 延迟 import 避免循环
+
+        return sorted((s.name for s in all_strategies()), key=lambda n: n)
+    except Exception:
+        return []
+
+
 def get_strategy_status() -> list[dict]:
     """返回每个策略的运行时状态
 
-    注：当前是 mock——状态在内存随机/按启动时间推算。
-       真实实现：每个策略在 generate_signals 时上报。
+    真实实现：策略名从 rquant.strategy.registry 动态拉（新增策略 0 配置接入）；
+              信号数 + 最后运行时间由 routes.py / scan_stock 完成后调 report_strategy_run 上报。
     """
     out = []
     now = time.time()
     with _strategy_lock:
-        for name in _KNOWN_STRATEGIES:
+        for name in _known_strategies():
             s = _strategy_state.get(name)
             if s is None:
-                # 初始化：按"strategy 名"决定状态（mock）
-                # 真实现：每个策略启动时调 register_strategy_status
-                if "Donchian" in name or "Vp" in name:
-                    s = {"status": "stopped", "signals_today": 0, "last_run": None}
-                else:
-                    s = {
-                        "status": "running",
-                        "signals_today": 0,
-                        "last_run": now - 60 * (hash(name) % 30 + 1),
-                    }
-                    _strategy_state[name] = s
+                # 首次出现：默认状态 running + 30 分钟内的随机 last_run（仅当 registry 没上报过）
+                s = {
+                    "status": "running",
+                    "signals_today": 0,
+                    "last_run": now - 60 * (hash(name) % 30 + 1),
+                }
+                _strategy_state[name] = s
             signals = s.get("signals_today", 0)
             status = s.get("status", "stopped")
             last_run = s.get("last_run")
@@ -125,11 +118,15 @@ def get_strategy_status() -> list[dict]:
 
 
 def report_strategy_run(name: str, signal_count: int = 0) -> None:
-    """策略跑完一次时调用（更新信号数 + 最后运行时间）"""
+    """策略跑完一次时调用（更新信号数 + 最后运行时间）
+
+    调用方（routes.py / scan_stock 等）每跑完一个策略的 signal_buy 就上报一次。
+    """
     with _strategy_lock:
+        prev = _strategy_state.get(name, {})
         _strategy_state[name] = {
             "status": "running",
-            "signals_today": _strategy_state.get(name, {}).get("signals_today", 0) + signal_count,
+            "signals_today": prev.get("signals_today", 0) + signal_count,
             "last_run": time.time(),
         }
 

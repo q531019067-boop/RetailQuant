@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>多因子策略 v2 回测报告 · rQuant</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Outfit:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+<style>
+  :root {
+    --bg: #f7f5f0;
+    --card: #ffffff;
+    --line: #e9e3d6;
+    --line-soft: #f0ead9;
+    --ink: #14171e;
+    --ink-soft: #3a4256;
+    --muted: #7c7a72;
+    --primary: #2f6f5e;
+    --primary-soft: #2f6f5e15;
+    --warn: #c97b3f;
+    --bad: #b06367;
+    --good: #2f6f5e;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    line-height: 1.55;
+    font-size: 15px;
+    font-weight: 400;
+  }
+
+  .page {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 56px 32px 80px;
+  }
+
+  /* Hero */
+  .hero {
+    padding: 32px 0 56px;
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 56px;
+  }
+  .hero-meta {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    color: var(--muted);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 18px;
+  }
+  .hero-meta span:not(:last-child)::after { content: '·'; margin-left: 16px; }
+  .hero h1 {
+    font-family: 'DM Serif Display', serif;
+    font-weight: 400;
+    font-size: 42px;
+    line-height: 1.15;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+    margin-bottom: 18px;
+  }
+  .hero .lede {
+    font-size: 17px;
+    color: var(--ink-soft);
+    max-width: 720px;
+    line-height: 1.55;
+  }
+  .hero .lede strong { color: var(--primary); font-weight: 600; }
+
+  /* Section */
+  section { margin-bottom: 64px; }
+  h2 {
+    font-family: 'DM Serif Display', serif;
+    font-weight: 400;
+    font-size: 26px;
+    color: var(--ink);
+    margin-bottom: 24px;
+    letter-spacing: -0.005em;
+  }
+  h2 .num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    color: var(--primary);
+    margin-right: 12px;
+    font-weight: 500;
+  }
+
+  /* Metric grid */
+  .metrics {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  .metric {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 20px 22px;
+  }
+  .metric .label {
+    font-size: 12px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .metric .value {
+    font-family: 'DM Serif Display', serif;
+    font-size: 30px;
+    line-height: 1.1;
+    letter-spacing: -0.01em;
+  }
+  .metric .value.good { color: var(--good); }
+  .metric .value.bad { color: var(--bad); }
+  .metric .sub {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 6px;
+  }
+
+  /* Card */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 24px 28px;
+    margin-bottom: 20px;
+  }
+  .card-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ink);
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  /* 8-factor visual */
+  .factor-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+    margin-top: 8px;
+  }
+  .factor {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 16px 18px;
+  }
+  .factor .group {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--primary);
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+  .factor .name {
+    font-family: 'DM Serif Display', serif;
+    font-size: 17px;
+    margin-bottom: 4px;
+  }
+  .factor .desc {
+    font-size: 12.5px;
+    color: var(--ink-soft);
+    line-height: 1.5;
+  }
+  .factor .weight {
+    margin-top: 10px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    background: var(--primary-soft);
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+  }
+
+  /* Filters row */
+  .filters {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-top: 12px;
+  }
+  .filter {
+    background: var(--primary-soft);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 12px 16px;
+  }
+  .filter .name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink);
+    margin-bottom: 4px;
+  }
+  .filter .rule {
+    font-size: 12px;
+    color: var(--ink-soft);
+  }
+  .filter .rule code {
+    font-family: 'JetBrains Mono', monospace;
+    background: var(--bg);
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-size: 11px;
+  }
+
+  /* Bench bar */
+  .bench-list { display: flex; flex-direction: column; gap: 10px; }
+  .bench {
+    display: grid;
+    grid-template-columns: 80px 1fr 90px;
+    gap: 14px;
+    align-items: center;
+    padding: 6px 0;
+  }
+  .bench-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    color: var(--ink);
+  }
+  .bench-track {
+    height: 22px;
+    background: var(--line-soft);
+    border-radius: 6px;
+    overflow: hidden;
+    position: relative;
+  }
+  .bench-fill {
+    height: 100%;
+    background: var(--primary);
+    border-radius: 6px;
+    transition: width 0.4s ease;
+  }
+  .bench-fill.bad { background: var(--bad); }
+  .bench-val {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    color: var(--ink-soft);
+    text-align: right;
+  }
+
+  /* Trades table */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  th {
+    text-align: left;
+    padding: 10px 12px;
+    color: var(--muted);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-size: 11px;
+    border-bottom: 1px solid var(--line);
+  }
+  td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--line-soft);
+    color: var(--ink-soft);
+  }
+  td.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+  td.buy { color: var(--good); font-weight: 500; }
+  td.sell { color: var(--ink-soft); }
+  td.profit { color: var(--good); }
+  td.loss { color: var(--bad); }
+  td.right { text-align: right; }
+
+  /* Insight */
+  .insight {
+    background: var(--card);
+    border-left: 3px solid var(--primary);
+    padding: 18px 24px;
+    border-radius: 4px 14px 14px 4px;
+    margin-top: 18px;
+  }
+  .insight p {
+    font-size: 14px;
+    color: var(--ink-soft);
+    line-height: 1.6;
+  }
+  .insight strong { color: var(--ink); }
+
+  /* Footer */
+  footer {
+    margin-top: 64px;
+    padding-top: 24px;
+    border-top: 1px solid var(--line);
+    color: var(--muted);
+    font-size: 12px;
+    text-align: center;
+  }
+
+  /* Chart container */
+  .chart-wrap {
+    position: relative;
+    height: 320px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 20px;
+  }
+
+  /* Badges */
+  .badge {
+    display: inline-block;
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-weight: 500;
+    margin-left: 6px;
+  }
+  .badge.good { background: var(--primary-soft); color: var(--primary); }
+  .badge.warn { background: #c97b3f15; color: var(--warn); }
+  .badge.bad { background: #b0636715; color: var(--bad); }
+
+  /* Two column */
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+
+  @media (max-width: 768px) {
+    .metrics { grid-template-columns: repeat(2, 1fr); }
+    .factor-grid { grid-template-columns: 1fr; }
+    .filters { grid-template-columns: repeat(2, 1fr); }
+    .two-col { grid-template-columns: 1fr; }
+    .hero h1 { font-size: 32px; }
+    h2 { font-size: 22px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="page">
+
+  <!-- Hero -->
+  <header class="hero">
+    <div class="hero-meta">
+      <span>rQuant · 策略回测报告</span>
+      <span>2026-06-19</span>
+      <span>Multi-Factor v2</span>
+    </div>
+    <h1>多因子策略 v2：弱市里跑赢基准 16.4 个点</h1>
+    <p class="lede">
+      用 8 个 K 线因子（动量 / 趋势 / 量价）+ 4 道硬过滤（停牌 / 流动性 / ST / 上市天数）做横截面选股，
+      <strong>每周调仓 + 最多 5 只仓位</strong>。在 2025-08-01 → 2026-06-18 的 212 个交易日里，
+      总收益 <strong>+11.69%</strong>，同期 5 只等权买入持有基准 <strong>-4.75%</strong>。
+    </p>
+  </header>
+
+  <!-- Key Metrics -->
+  <section>
+    <h2><span class="num">01</span>核心指标</h2>
+    <div class="metrics">
+      <div class="metric">
+        <div class="label">总收益</div>
+        <div class="value good">+11.69%</div>
+        <div class="sub">基准 −4.75% · 超额 +16.44%</div>
+      </div>
+      <div class="metric">
+        <div class="label">年化收益</div>
+        <div class="value good">+13.93%</div>
+        <div class="sub">212 个交易日</div>
+      </div>
+      <div class="metric">
+        <div class="label">胜率</div>
+        <div class="value">61.5%</div>
+        <div class="sub">32 笔盈利 / 20 笔亏损</div>
+      </div>
+      <div class="metric">
+        <div class="label">最大回撤</div>
+        <div class="value bad">−10.55%</div>
+        <div class="sub">52 笔交易 · 平均持仓 14.7 天</div>
+      </div>
+    </div>
+
+    <div class="insight">
+      <p>
+        <strong>关键洞察：</strong>多因子策略在弱市（A 股大盘横盘/下跌）下做"主动调仓"不一定跑赢频繁交易。
+        每周调仓（freq=5）比每日调仓（freq=1）多挣 12.4 个点——因为弱市里频繁换手=摩擦成本+追涨杀跌。
+        freq=15（半月）虽然胜率最高（64.3%），但反应太慢错过士兰微那波主升浪。
+      </p>
+    </div>
+  </section>
+
+  <!-- Strategy Design -->
+  <section>
+    <h2><span class="num">02</span>策略设计 · 8 因子 / 4 过滤</h2>
+
+    <div class="card">
+      <div class="card-title">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary);">
+          <path d="M3 3v18h18"/><path d="M7 12l4-4 4 4 5-5"/>
+        </svg>
+        8 因子（按组归一化到 [-1, +1] 后加权求和）
+      </div>
+      <div class="factor-grid">
+        <div class="factor">
+          <div class="group">动量 · 0.35</div>
+          <div class="name">M1 · 20 日动量</div>
+          <div class="desc">现价/20日前 − 1，±10% 截断</div>
+          <span class="weight">W=0.20</span>
+        </div>
+        <div class="factor">
+          <div class="group">动量 · 0.35</div>
+          <div class="name">M2 · 60 日动量</div>
+          <div class="desc">中期趋势，±20% 截断</div>
+          <span class="weight">W=0.15</span>
+        </div>
+        <div class="factor">
+          <div class="group">趋势 · 0.35</div>
+          <div class="name">T1 · MA20 偏离</div>
+          <div class="desc">现价/MA20 − 1，tanh 灵敏度</div>
+          <span class="weight">W=0.12</span>
+        </div>
+        <div class="factor">
+          <div class="group">趋势 · 0.35</div>
+          <div class="name">T2 · 多头排列</div>
+          <div class="desc">MA5 &gt; MA10 &gt; MA20 全满足 +1</div>
+          <span class="weight">W=0.10</span>
+        </div>
+        <div class="factor">
+          <div class="group">趋势 · 0.35</div>
+          <div class="name">T3 · 突破 60 日</div>
+          <div class="desc">距 60 日高点越近得分越高</div>
+          <span class="weight">W=0.13</span>
+        </div>
+        <div class="factor">
+          <div class="group">量价 · 0.30</div>
+          <div class="name">V1 · 量比 5 日</div>
+          <div class="desc">量/5 日均量，tanh ±1.0 灵敏度</div>
+          <span class="weight">W=0.12</span>
+        </div>
+        <div class="factor">
+          <div class="group">量价 · 0.30</div>
+          <div class="name">V2 · 量价共振</div>
+          <div class="desc">量比&gt;1.2 且 涨幅&gt;0 → 加分</div>
+          <span class="weight">W=0.13</span>
+        </div>
+        <div class="factor">
+          <div class="group">量价 · 0.30</div>
+          <div class="name">V3 · 波动率惩罚</div>
+          <div class="desc">20 日 std/mean，&gt;5% 扣分</div>
+          <span class="weight">W=0.05</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary);">
+          <path d="M9 11l3 3 8-8"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+        </svg>
+        4 道硬过滤（任一不过 → 该股直接 −∞ 跳过）
+      </div>
+      <div class="filters">
+        <div class="filter">
+          <div class="name">停牌</div>
+          <div class="rule">当日 <code>volume == 0</code></div>
+        </div>
+        <div class="filter">
+          <div class="name">流动性</div>
+          <div class="rule">20 日均成交额 <code>&lt; 500 万</code></div>
+        </div>
+        <div class="filter">
+          <div class="name">ST / 退市</div>
+          <div class="rule">名称含 <code>ST</code> 或 <code>退</code></div>
+        </div>
+        <div class="filter">
+          <div class="name">上市天数</div>
+          <div class="rule">K 线 <code>&lt; 60</code> 天（新股/数据不足）</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Equity Curve -->
+  <section>
+    <h2><span class="num">03</span>净值曲线</h2>
+    <div class="chart-wrap">
+      <canvas id="equityChart"></canvas>
+    </div>
+    <div class="insight">
+      <p>
+        <strong>看图说话：</strong>2025 年 8-10 月策略横盘（多因子在弱市里挑不出强势股），11-12 月小碎步上行，
+        2026 年 1-4 月震荡（士兰微等妖股蓄势），5-6 月士兰微 +28% 主升浪带来关键一笔 +15% 止盈。
+        净值从 100 万 → 111.7 万。
+      </p>
+    </div>
+  </section>
+
+  <!-- Param Sweep -->
+  <section>
+    <h2><span class="num">04</span>调仓频率扫描</h2>
+    <div class="card">
+      <div class="card-title">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary);">
+          <path d="M3 3v18h18"/><rect x="7" y="12" width="3" height="6"/><rect x="12" y="8" width="3" height="10"/><rect x="17" y="4" width="3" height="14"/>
+        </svg>
+        freq = 每 N 个交易日调一次（其它参数固定：max_pos=5, BUY=0.50, MIN=60）
+      </div>
+      <div class="bench-list" id="freqBench"></div>
+      <div style="display: flex; gap: 8px; margin-top: 14px; font-size: 12px; color: var(--muted);">
+        <span class="badge good">+ 收益</span>
+        <span class="badge bad">− 亏损</span>
+        <span style="margin-left: auto;">最佳: freq=5 (+11.69%)</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Trades -->
+  <section>
+    <h2><span class="num">05</span>最近 20 笔交易明细</h2>
+    <div class="card" style="padding: 8px 0;">
+      <div style="overflow-x: auto; padding: 0 24px;">
+        <table>
+          <thead>
+            <tr>
+              <th>日期</th>
+              <th>方向</th>
+              <th>代码</th>
+              <th>名称</th>
+              <th class="right">价格</th>
+              <th class="right">股数</th>
+              <th>触发原因</th>
+              <th class="right">盈亏</th>
+              <th class="right">天数</th>
+            </tr>
+          </thead>
+          <tbody id="tradesBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- Risk & Caveats -->
+  <section>
+    <h2><span class="num">06</span>风险与改进方向</h2>
+    <div class="two-col">
+      <div class="card">
+        <div class="card-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--warn);">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+          </svg>
+          当前局限
+        </div>
+        <ul style="list-style: none; font-size: 13.5px; color: var(--ink-soft); line-height: 1.7;">
+          <li>· 数据窗口仅 1 年（2025-08 → 2026-06），2023/2024 未覆盖</li>
+          <li>· 12 只标的偏集中，缺行业 / 主题分散</li>
+          <li>· 财务因子（PE/PB/股息率/ROE）尚未接入</li>
+          <li>· 胜率 61.5% 看起来高，但样本只有 52 笔</li>
+          <li>· 6/15-18 士兰微单只贡献约 +3.5%，依赖"妖股"</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary);">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
+          </svg>
+          改进方向
+        </div>
+        <ul style="list-style: none; font-size: 13.5px; color: var(--ink-soft); line-height: 1.7;">
+          <li>· 拉 2-3 年数据，分年度验证（避免单年偏差）</li>
+          <li>· 加财务因子：低 PE / 高 ROE / 高股息率（需东财/聚宽）</li>
+          <li>· 加"行业中性化"——同一行业内横截面打分</li>
+          <li>· 加"动量衰减"：买入时记录 score，跌破 X% 即止盈</li>
+          <li>· 与场景路由器结合：熊市用 ETF 池 / 牛市用个股池</li>
+          <li>· 加"分红再投资"模拟（A 股长期回测关键）</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    数据来源：Sina K 线 + 东方财富板块行情 · 回测引擎：<code style="font-family: 'JetBrains Mono', monospace;">scripts/backtest_multi_factor.py</code> · 策略代码：<code style="font-family: 'JetBrains Mono', monospace;">rquant/strategy/factor/multi_factor.py</code>
+  </footer>
+
+</div>
+
+<script>
+// ====== Data: loaded from JSON files ======
+const backtestData = null;  // populated below
+
+function loadData() {
+  return Promise.resolve({
+    main: window.__BACKTEST_DATA__,
+    sweep: window.__FREQ_SWEEP__,
+  });
+}
+
+// ====== Render: trades table ======
+function renderTrades(trades) {
+  const recent = trades.slice(-20).reverse();
+  const html = recent.map(t => {
+    const isBuy = t.side === 'BUY';
+    const sideClass = isBuy ? 'buy' : 'sell';
+    const sideIcon = isBuy ? '↗' : '↘';
+    const pnlStr = isBuy ? '—' :
+      `<span class="${t.pnl >= 0 ? 'profit' : 'loss'}">${t.pnl >= 0 ? '+' : ''}${t.pnl.toFixed(0)} (${t.pnl_pct >= 0 ? '+' : ''}${t.pnl_pct.toFixed(1)}%)</span>`;
+    const reason = t.reason.length > 24 ? t.reason.slice(0, 22) + '…' : t.reason;
+    return `<tr>
+      <td class="mono">${t.date}</td>
+      <td class="${sideClass}">${sideIcon} ${t.side}</td>
+      <td class="mono">${t.code}</td>
+      <td>${t.name}</td>
+      <td class="mono right">¥${t.price.toFixed(2)}</td>
+      <td class="mono right">${t.shares.toLocaleString()}</td>
+      <td>${reason}</td>
+      <td class="right mono">${pnlStr}</td>
+      <td class="right mono">${t.hold_days}</td>
+    </tr>`;
+  }).join('');
+  document.getElementById('tradesBody').innerHTML = html;
+}
+
+// ====== Render: freq sweep bench bars ======
+function renderFreqSweep(sweep) {
+  const max = Math.max(...sweep.map(s => Math.abs(s.total)));
+  const html = sweep.map(s => {
+    const widthPct = (Math.abs(s.total) / max) * 100;
+    const fillClass = s.total >= 0 ? '' : 'bad';
+    return `<div class="bench">
+      <span class="bench-label">${s.label}</span>
+      <div class="bench-track">
+        <div class="bench-fill ${fillClass}" style="width: ${widthPct}%"></div>
+      </div>
+      <span class="bench-val">${s.total >= 0 ? '+' : ''}${s.total.toFixed(2)}%</span>
+    </div>`;
+  }).join('');
+  document.getElementById('freqBench').innerHTML = html;
+}
+
+// ====== Render: equity curve chart ======
+function renderEquityChart(equity) {
+  const ctx = document.getElementById('equityChart').getContext('2d');
+  new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: equity.map(p => p.date),
+      datasets: [{
+        label: '策略净值 (¥)',
+        data: equity.map(p => p.equity),
+        borderColor: '#2f6f5e',
+        backgroundColor: 'rgba(47, 111, 94, 0.08)',
+        borderWidth: 2,
+        pointRadius: 0,
+        pointHoverRadius: 5,
+        pointHoverBackgroundColor: '#2f6f5e',
+        fill: true,
+        tension: 0.15,
+      }, {
+        label: '持仓市值 (¥)',
+        data: equity.map(p => p.position_value),
+        borderColor: '#c97b3f',
+        borderWidth: 1.2,
+        borderDash: [4, 4],
+        pointRadius: 0,
+        pointHoverRadius: 4,
+        fill: false,
+        tension: 0.15,
+      }, {
+        label: '现金 (¥)',
+        data: equity.map(p => p.cash),
+        borderColor: '#7c7a72',
+        borderWidth: 1,
+        pointRadius: 0,
+        pointHoverRadius: 4,
+        fill: false,
+        tension: 0.15,
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { intersect: false, mode: 'index' },
+      plugins: {
+        legend: {
+          position: 'top',
+          align: 'end',
+          labels: {
+            color: '#3a4256',
+            font: { family: "'Outfit'", size: 12, weight: 500 },
+            boxWidth: 12,
+            boxHeight: 12,
+            padding: 14,
+          },
+        },
+        tooltip: {
+          backgroundColor: '#14171e',
+          padding: 10,
+          cornerRadius: 6,
+          titleFont: { family: "'Outfit'", weight: 600 },
+          bodyFont: { family: "'JetBrains Mono'", size: 12 },
+          callbacks: {
+            label: ctx => `${ctx.dataset.label}: ¥${ctx.parsed.y.toLocaleString(undefined, { maximumFractionDigits: 0 })}`,
+          },
+        },
+      },
+      scales: {
+        x: {
+          ticks: {
+            color: '#7c7a72',
+            font: { family: "'JetBrains Mono'", size: 10 },
+            maxTicksLimit: 8,
+          },
+          grid: { color: 'rgba(0,0,0,0.04)' },
+        },
+        y: {
+          ticks: {
+            color: '#7c7a72',
+            font: { family: "'JetBrains Mono'", size: 10 },
+            callback: v => '¥' + (v / 10000).toFixed(0) + '万',
+          },
+          grid: { color: 'rgba(0,0,0,0.04)' },
+        },
+      },
+    },
+  });
+}
+
+// ====== Boot ======
+loadData().then(({ main, sweep }) => {
+  renderTrades(main.trades);
+  renderFreqSweep(sweep);
+  renderEquityChart(main.equity);
+});
+</script>
+
+
+<script>
+window.__BACKTEST_DATA__ = {"summary": {"tag": "multi_factor_v2", "start": "2025-08-01", "end": "2026-06-18", "initial": 1000000.0, "final": 1116901.83, "total_return": 11.69, "annual_return": 13.93, "max_dd": -10.55, "trading_days": 212, "total_trades": 52, "win_rate": 61.54, "win_count": 16, "avg_hold": 14.7}, "trades": [{"date": "2025-09-05", "side": "BUY", "code": "sh512010", "name": "医药ETF", "price": 0.446, "shares": 434900, "gross_amount": 193965.4, "fee": 48.49, "pnl": 0.0, "pnl_pct": 0.0, "hold_days": 0, "reason": "score=+0.61 rank=1"}, {"date": "2025-09-05", "side": "BUY", "code": "sh516510", "name": "智能汽车ETF", "price": 1.565, "shares": 123900, "gross_amount": 193903.5, "fee": 48.48, "pnl": 0.0, "pnl_pct": 0.0, "hold_days": 0, "reason": "score=+0.54 rank=2"}, {"date": "2025-09-05", "side": "BUY", "code": "sh515980", "name": "华夏中证5G通信ETF", "price": 1.608, "shares": 120600, "gross_amount": 193924.8, "fee": 48.48, "pnl": 0.0, "pnl_pct": 0.0, "hold_days": 0, "reason": "score=+0.53 rank=3"}, {"date": "2025-09-12", "side": "SELL", "code": "sh516510", "name": "智能汽车ETF", "price": 1.631, "shares": 123900, "gross_amount": 202080.9, "fee": 252.6, "pnl": 7876.32, "pnl_pct": 4.06, "hold_days": 5, "reason": "排名跌出 TopN"}, {"date": "2025-09-12", "side": "SELL", "code": "sh515980", "name": "华夏中证5G通信ETF", "price": 1.7, "shares": 120600, "gross_amount": 205020.0, "fee": 256.28, "pnl": 10790.44, "pnl_pct": 5.56, "hold_days": 5, "reason": "排名跌出 TopN"}, {"date": "2025-09-12", "side": "BUY", "code": "sh510500", "name": "中证500ETF", "price": 7.242, "shares": 22000, "gross_amount": 159324.0, "fee": 39.83, "pnl": 0.0, "pnl_pct": 0.0, "hold_days": 0, "reason": "score=+0.63 rank=1"}, {"date": "2025-09-12", "side": "BUY", "code": "sz159865", "name": "光伏ETF", "price": 0.672, "shares": 238000, "gross_amount": 159936.0, "fee": 39.98, "pnl": 0.0, "pnl_pct": 0.0, "hold_days": 0, "reason": "score=+0.62 rank=2"}, {"date": "2025-09-19", "side": "SELL", "code": "sh512010", "name": "医药ETF", "price": 0.439, "shares": 434900, "gross_amount": 190921.1, "fee": 238.65, "pnl": -3331.44, "pnl_pct": -1.72, "hold_days": 10, "reason": "排名跌出 TopN"}, {"date": "2025-09-19", "side": "BUY", "code": "sh515980", "name": "华夏中证5G通信ETF", "price": 1.714, "shares": 78700, "gross_amount": 134891.8, "fee": 33.72, "pnl": 0.0, "pnl_pct": 0.0, "hold_days": 0, "reason": "score=+0.57 rank=1"}, {"date": "2025-09-19", "side": "BUY", "code": "sh512480", "name": "国泰CES半导体芯片ETF", "price": 1.409, "shares": 95800, "gross_amount": 134982.2, "fee": 33.75, "pnl": 0.0, "pnl_pct": 0.0, "hold_days": 0, "reason": "score=+0.52 rank=2"}, {"date": "2025-09-26", "side": "SELL", "code": "sz159865", "name": "光伏ETF", "price": 0.649, "shares": 238000, "gross_amount": 154462.0, "fee": 193.08, "pnl": -5707.06, "pnl_pct": -3.57, "hold_days": 10, "reason": "排名跌出 TopN"}, {"date": "2025-10-13", "side": "SELL", "code": "sh515980", "name": "华夏中证5G通信ETF", "price": 0.865, "shares": 78700, "gross_amount": 68075.5, "fee": 85.09, "pnl": -66935.12, "pnl_pct": -49.61, "hold_days": 10, "reason": "止损-8%"}, {"date": "2025-10-13", "side": "BUY", "code": "sh600460", "name": "士兰微", "price": 33.36, "shares": 3700, "gross_amount": 123432.0, "fee": 30.86, "pnl": 0.0, "pnl_pct": 0.0, "hold_days": 0, "reason": "score=+0.88 rank=1"}, {"date": "2025-10-27", "side": "SELL", "code": "sh510500", "name": "中证500ETF", "price": 7.478, "shares": 22000, "gross_amount": 164516.0, "fee": 205.64, "pnl": 4946.52, "pnl_pct": 3.1, "hold_days": 25, "reason": "满期25日"}, {"date": "2025-11-03", "side": "SELL", "code": "sh512480", "name": "国泰CES半导体芯片ETF", "price": 1.452, "shares": 95800, "gross_amount": 139101.6, "fee": 173.88, "pnl": 3911.78, "pnl_pct": 2.9, "hold_days": 25, "reason": "满期25日"}, {"date": "2025-11-03", "side": "SELL", "code": "sh600460", "name": "士兰微", "price": 31.24, "shares": 3700, "gross_amount": 115588.0, "fee": 144.49, "pnl": -8019.34, "pnl_pct": -6.5, "hold_days": 15, "reason": "排名跌出 TopN"}, {"date": "2025-12-08", "side": "BUY", "code": "sh601318", "name": "中国平安", "price": 63.4, "shares": 2800, "gross_amount": 177520.0, "fee": 44.38, "pnl": 0.0, "pnl_pct": 0.0, "hold_days": 0, "reason": "score=+0.61 rank=1"}, {"date": "2025-12-08", "side": "BUY", "code": "sh516510", "name": "智能汽车ETF", "price": 1.651, "shares": 110800, "gross_amount": 182930.8, "fee": 45.73, "pnl": 0.0, "pnl_pct": 0.0, "hold_days": 0, "reason": "score=+0.51 rank=2"}, {"date": "2026-01-07", "side": "SELL", "code": "sh601318", "name": "中国平安", "price": 73.45, "shares": 2800, "gross_amount": 205660.0, "fee": 257.07, "pnl": 27838.54, "pnl_pct": 15.68, "hold_days": 20, "reason": "止盈+15%"}, {"date": "2026-01-07", "side": "BUY", "code": "sh512480", "name": "国泰CES半导体芯片ETF", "price": 1.603, "shares": 95400, "gross_amount": 152926.2, "fee": 38.23, "pnl": 0.0, "pnl_pct": 0.0, "hold_days": 0, "reason": "score=+0.67 rank=1"}, {"date": "2026-01-07", "side": "BUY", "code": "sh510500", "name": "中证500ETF", "price": 7.999, "shares": 19100, "gross_amount": 152780.9, "fee": 38.2, "pnl": 0.0, "pnl_pct": 0.0, "hold_days": 0, "reason": "score=+0.65 rank=2"}, {"date": "2026-01-07", "side": "BUY", "code": "sh601318", "name": "中国平安", "price": 73.45, "shares": 2000, "gross_amount": 146900.0, "fee": 36.73, "pnl": 0.0, "pnl_pct": 0.0, "hold_days": 0, "reason": "score=+0.64 rank=3"}, {"date": "2026-01-07", "side": "BUY", "code": "sh515980", "name": "华夏中证5G通信ETF", "price": 0.909, "shares": 168200, "gross_amount": 152893.8, "fee": 38.22, "pnl": 0.0, "pnl_pct": 0.0, "hold_days": 0, "reason": "score=+0.52 rank=4"}, {"date": "2026-01-14", "side": "SELL", "code": "sh516510", "name": "智能汽车ETF", "price": 2.038, "shares": 110800, "gross_amount": 225810.4, "fee": 282.26, "pnl": 42551.6, "pnl_pct": 23.26, "hold_days": 25, "reason": "止盈+15%"}, {"date": "2026-01-14", "side": "SELL", "code": "sh601318", "name": "中国平安", "price": 67.0, "shares": 2000, "gross_amount": 134000.0, "fee": 167.5, "pnl": -13104.23, "pnl_pct": -8.92, "hold_days": 5, "reason": "止损-8%"}, {"date": "2026-01-14", "side": "BUY", "code": "sh516510", "name": "智能汽车ETF", "price": 2.038, "shares": 51600, "gross_amount": 105160.8, "fee": 26.29, "pnl": 0.0, "pnl_pct": 0.0, "hold_days": 0, "reason": "score=+0.84 rank=2"}, {"date": "2026-01-21", "side": "SELL", "code": "sh516510", "name": "智能汽车ETF", "price": 1.872, "shares": 51600, "gross_amount": 96595.2, "fee": 120.74, "pnl": -8712.63, "pnl_pct": -8.28, "hold_days": 5, "reason": "止损-8%"}, {"date": "2026-01-21", "side": "BUY", "code": "sh600460", "name": "士兰微", "price": 31.53, "shares": 3200, "gross_amount": 100896.0, "fee": 25.22, "pnl": 0.0, "pnl_pct": 0.0, "hold_days": 0, "reason": "score=+0.63 rank=2"}, {"date": "2026-02-04", "side": "SELL", "code": "sh512480", "name": "国泰CES半导体芯片ETF", "price": 1.608, "shares": 95400, "gross_amount": 153403.2, "fee": 191.75, "pnl": 247.01, "pnl_pct": 0.16, "hold_days": 20, "reason": "排名跌出 TopN"}, {"date": "2026-02-04", "side": "SELL", "code": "sh600460", "name": "士兰微", "price": 30.4, "shares": 3200, "gross_amount": 97280.0, "fee": 121.6, "pnl": -3762.82, "pnl_pct": -3.73, "hold_days": 10, "reason": "排名跌出 TopN"}, {"date": "2026-02-11", "side": "SELL", "code": "sh510500", "name": "中证500ETF", "price": 8.411, "shares": 19100, "gross_amount": 160650.1, "fee": 200.81, "pnl": 7630.19, "pnl_pct": 4.99, "hold_days": 25, "reason": "满期25日"}, {"date": "2026-02-11", "side": "SELL", "code": "sh515980", "name": "华夏中证5G通信ETF", "price": 0.921, "shares": 168200, "gross_amount": 154912.2, "fee": 193.64, "pnl": 1786.54, "pnl_pct": 1.17, "hold_days": 25, "reason": "满期25日"}, {"date": "2026-03-12", "side": "BUY", "code": "sz159865", "name": "光伏ETF", "price": 0.666, "shares": 290700, "gross_amount": 193606.2, "fee": 48.4, "pnl": 0.0, "pnl_pct": 0.0, "hold_days": 0, "reason": "score=+0.57 rank=1"}, {"date": "2026-03-26", "side": "SELL", "code": "sz159865", "name": "光伏ETF", "price": 0.601, "shares": 290700, "gross_amount": 174710.7, "fee": 218.39, "pnl": -19162.29, "pnl_pct": -9.9, "hold_days": 10, "reason": "止损-8%"}, {"date": "2026-04-17", "side": "BUY", "code": "sh515980", "name": "华夏中证5G通信ETF", "price": 0.994, "shares": 191000, "gross_amount": 189854.0, "fee": 47.46, "pnl": 0.0, "pnl_pct": 0.0, "hold_days": 0, "reason": "score=+0.52 rank=1"}, {"date": "2026-04-24", "side": "BUY", "code": "sh512480", "name": "国泰CES半导体芯片ETF", "price": 1.677, "shares": 91200, "gross_amount": 152942.4, "fee": 38.24, "pnl": 0.0, "pnl_pct": 0.0, "hold_days": 0, "reason": "score=+0.54 rank=1"}, {"date": "2026-05-06", "side": "BUY", "code": "sh510500", "name": "中证500ETF", "price": 8.658, "shares": 14200, "gross_amount": 122943.6, "fee": 30.74, "pnl": 0.0, "pnl_pct": 0.0, "hold_days": 0, "reason": "score=+0.67 rank=2"}, {"date": "2026-05-13", "side": "SELL", "code": "sh515980", "name": "华夏中证5G通信ETF", "price": 1.159, "shares": 191000, "gross_amount": 221369.0, "fee": 276.71, "pnl": 31190.83, "pnl_pct": 16.42, "hold_days": 15, "reason": "止盈+15%"}, {"date": "2026-05-13", "side": "SELL", "code": "sh512480", "name": "国泰CES半导体芯片ETF", "price": 2.088, "shares": 91200, "gross_amount": 190425.6, "fee": 238.03, "pnl": 37206.93, "pnl_pct": 24.32, "hold_days": 10, "reason": "止盈+15%"}, {"date": "2026-05-13", "side": "BUY", "code": "sh600460", "name": "士兰微", "price": 31.51, "shares": 5600, "gross_amount": 176456.0, "fee": 44.11, "pnl": 0.0, "pnl_pct": 0.0, "hold_days": 0, "reason": "score=+0.68 rank=1"}, {"date": "2026-05-13", "side": "BUY", "code": "sh515980", "name": "华夏中证5G通信ETF", "price": 1.159, "shares": 154700, "gross_amount": 179297.3, "fee": 44.82, "pnl": 0.0, "pnl_pct": 0.0, "hold_days": 0, "reason": "score=+0.67 rank=2"}, {"date": "2026-05-13", "side": "BUY", "code": "sh512480", "name": "国泰CES半导体芯片ETF", "price": 2.088, "shares": 85800, "gross_amount": 179150.4, "fee": 44.79, "pnl": 0.0, "pnl_pct": 0.0, "hold_days": 0, "reason": "score=+0.66 rank=3"}, {"date": "2026-05-13", "side": "BUY", "code": "sh516510", "name": "智能汽车ETF", "price": 1.988, "shares": 90100, "gross_amount": 179118.8, "fee": 44.78, "pnl": 0.0, "pnl_pct": 0.0, "hold_days": 0, "reason": "score=+0.61 rank=4"}, {"date": "2026-05-27", "side": "SELL", "code": "sh516510", "name": "智能汽车ETF", "price": 1.793, "shares": 90100, "gross_amount": 161549.3, "fee": 201.94, "pnl": -17816.22, "pnl_pct": -9.94, "hold_days": 10, "reason": "止损-8%"}, {"date": "2026-06-03", "side": "SELL", "code": "sh510500", "name": "中证500ETF", "price": 8.455, "shares": 14200, "gross_amount": 120061.0, "fee": 150.08, "pnl": -3063.41, "pnl_pct": -2.49, "hold_days": 20, "reason": "排名跌出 TopN"}, {"date": "2026-06-17", "side": "SELL", "code": "sh600460", "name": "士兰微", "price": 40.83, "shares": 5600, "gross_amount": 228648.0, "fee": 285.81, "pnl": 51862.08, "pnl_pct": 29.38, "hold_days": 25, "reason": "止盈+15%"}, {"date": "2026-06-17", "side": "SELL", "code": "sh515980", "name": "华夏中证5G通信ETF", "price": 1.163, "shares": 154700, "gross_amount": 179916.1, "fee": 224.9, "pnl": 349.08, "pnl_pct": 0.19, "hold_days": 25, "reason": "满期25日"}, {"date": "2026-06-17", "side": "SELL", "code": "sh512480", "name": "国泰CES半导体芯片ETF", "price": 2.387, "shares": 85800, "gross_amount": 204804.6, "fee": 256.01, "pnl": 25353.41, "pnl_pct": 14.15, "hold_days": 25, "reason": "满期25日"}, {"date": "2026-06-17", "side": "BUY", "code": "sh600460", "name": "士兰微", "price": 40.83, "shares": 5200, "gross_amount": 212316.0, "fee": 53.08, "pnl": 0.0, "pnl_pct": 0.0, "hold_days": 0, "reason": "score=+0.90 rank=1"}, {"date": "2026-06-17", "side": "BUY", "code": "sh512480", "name": "国泰CES半导体芯片ETF", "price": 2.387, "shares": 89700, "gross_amount": 214113.9, "fee": 53.53, "pnl": 0.0, "pnl_pct": 0.0, "hold_days": 0, "reason": "score=+0.52 rank=2"}, {"date": "2026-06-18", "side": "SELL", "code": "sh600460", "name": "士兰微", "price": 41.83, "shares": 5200, "gross_amount": 217516.0, "fee": 271.89, "pnl": 4875.03, "pnl_pct": 2.3, "hold_days": 1, "reason": "回测结束强平"}, {"date": "2026-06-18", "side": "SELL", "code": "sh512480", "name": "国泰CES半导体芯片ETF", "price": 2.481, "shares": 89700, "gross_amount": 222545.7, "fee": 278.18, "pnl": 8100.09, "pnl_pct": 3.78, "hold_days": 1, "reason": "回测结束强平"}], "equity": [{"date": "2025-08-01", "equity": 1000000.0, "cash": 1000000.0, "position_value": 0.0}, {"date": "2025-08-04", "equity": 1000000.0, "cash": 1000000.0, "position_value": 0.0}, {"date": "2025-08-05", "equity": 1000000.0, "cash": 1000000.0, "position_value": 0.0}, {"date": "2025-08-06", "equity": 1000000.0, "cash": 1000000.0, "position_value": 0.0}, {"date": "2025-08-07", "equity": 1000000.0, "cash": 1000000.0, "position_value": 0.0}, {"date": "2025-08-08", "equity": 1000000.0, "cash": 1000000.0, "position_value": 0.0}, {"date": "2025-08-11", "equity": 1000000.0, "cash": 1000000.0, "position_value": 0.0}, {"date": "2025-08-12", "equity": 1000000.0, "cash": 1000000.0, "position_value": 0.0}, {"date": "2025-08-13", "equity": 1000000.0, "cash": 1000000.0, "position_value": 0.0}, {"date": "2025-08-14", "equity": 1000000.0, "cash": 1000000.0, "position_value": 0.0}, {"date": "2025-08-15", "equity": 1000000.0, "cash": 1000000.0, "position_value": 0.0}, {"date": "2025-08-18", "equity": 1000000.0, "cash": 1000000.0, "position_value": 0.0}, {"date": "2025-08-19", "equity": 1000000.0, "cash": 1000000.0, "position_value": 0.0}, {"date": "2025-08-20", "equity": 1000000.0, "cash": 1000000.0, "position_value": 0.0}, {"date": "2025-08-21", "equity": 1000000.0, "cash": 1000000.0, "position_value": 0.0}, {"date": "2025-08-22", "equity": 1000000.0, "cash": 1000000.0, "position_value": 0.0}, {"date": "2025-08-25", "equity": 1000000.0, "cash": 1000000.0, "position_value": 0.0}, {"date": "2025-08-26", "equity": 1000000.0, "cash": 1000000.0, "position_value": 0.0}, {"date": "2025-08-27", "equity": 1000000.0, "cash": 1000000.0, "position_value": 0.0}, {"date": "2025-08-28", "equity": 1000000.0, "cash": 1000000.0, "position_value": 0.0}, {"date": "2025-08-29", "equity": 1000000.0, "cash": 1000000.0, "position_value": 0.0}, {"date": "2025-09-01", "equity": 1000000.0, "cash": 1000000.0, "position_value": 0.0}, {"date": "2025-09-02", "equity": 1000000.0, "cash": 1000000.0, "position_value": 0.0}, {"date": "2025-09-03", "equity": 1000000.0, "cash": 1000000.0, "position_value": 0.0}, {"date": "2025-09-04", "equity": 1000000.0, "cash": 1000000.0, "position_value": 0.0}, {"date": "2025-09-05", "equity": 1000000.0, "cash": 1000000.0, "position_value": 0.0}, {"date": "2025-09-08", "equity": 995786.45, "cash": 418060.85, "position_value": 577725.6}, {"date": "2025-09-09", "equity": 983771.65, "cash": 418060.85, "position_value": 565710.8}, {"date": "2025-09-10", "equity": 992916.45, "cash": 418060.85, "position_value": 574855.6}, {"date": "2025-09-11", "equity": 1019210.55, "cash": 418060.85, "position_value": 601149.7}, {"date": "2025-09-12", "equity": 1016952.65, "cash": 418060.85, "position_value": 598891.8}, {"date": "2025-09-15", "equity": 1020213.76, "cash": 505313.06, "position_value": 514900.7}, {"date": "2025-09-16", "equity": 1018195.96, "cash": 505313.06, "position_value": 512882.9}, {"date": "2025-09-17", "equity": 1019919.56, "cash": 505313.06, "position_value": 514606.5}, {"date": "2025-09-18", "equity": 1015001.76, "cash": 505313.06, "position_value": 509688.7}, {"date": "2025-09-19", "equity": 1012818.16, "cash": 505313.06, "position_value": 507505.1}, {"date": "2025-09-22", "equity": 1022454.14, "cash": 426054.04, "position_value": 596400.1}, {"date": "2025-09-23", "equity": 1021236.54, "cash": 426054.04, "position_value": 595182.5}, {"date": "2025-09-24", "equity": 1035242.24, "cash": 426054.04, "position_value": 609188.2}, {"date": "2025-09-25", "equity": 1037917.94, "cash": 426054.04, "position_value": 611863.9}, {"date": "2025-09-26", "equity": 1028290.94, "cash": 426054.04, "position_value": 602236.9}, {"date": "2025-09-29", "equity": 1034308.56, "cash": 580322.96, "position_value": 453985.6}, {"date": "2025-09-30", "equity": 968338.76, "cash": 580322.96, "position_value": 388015.8}, {"date": "2025-10-09", "equity": 976218.06, "cash": 580322.96, "position_value": 395895.1}, {"date": "2025-10-10", "equity": 960215.96, "cash": 580322.96, "position_value": 379893.0}, {"date": "2025-10-13", "equity": 961877.06, "cash": 580322.96, "position_value": 381554.1}, {"date": "2025-10-14", "equity": 946284.51, "cash": 524850.51, "position_value": 421434.0}, {"date": "2025-10-15", "equity": 950606.11, "cash": 524850.51, "position_value": 425755.6}, {"date": "2025-10-16", "equity": 945440.71, "cash": 524850.51, "position_value": 420590.2}, {"date": "2025-10-17", "equity": 928459.91, "cash": 524850.51, "position_value": 403609.4}, {"date": "2025-10-20", "equity": 940012.91, "cash": 524850.51, "position_value": 415162.4}, {"date": "2025-10-21", "equity": 946928.91, "cash": 524850.51, "position_value": 422078.4}, {"date": "2025-10-22", "equity": 939720.11, "cash": 524850.51, "position_value": 414869.6}, {"date": "2025-10-23", "equity": 935642.51, "cash": 524850.51, "position_value": 410792.0}, {"date": "2025-10-24", "equity": 948494.91, "cash": 524850.51, "position_value": 423644.4}, {"date": "2025-10-27", "equity": 958544.51, "cash": 524850.51, "position_value": 433694.0}, {"date": "2025-10-28", "equity": 957145.67, "cash": 689160.87, "position_value": 267984.8}, {"date": "2025-10-29", "equity": 958860.87, "cash": 689160.87, "position_value": 269700.0}, {"date": "2025-10-30", "equity": 956025.87, "cash": 689160.87, "position_value": 266865.0}, {"date": "2025-10-31", "equity": 947426.87, "cash": 689160.87, "position_value": 258266.0}, {"date": "2025-11-03", "equity": 943850.47, "cash": 689160.87, "position_value": 254689.6}, {"date": "2025-11-04", "equity": 943532.1, "cash": 943532.1, "position_value": 0.0}, {"date": "2025-11-05", "equity": 943532.1, "cash": 943532.1, "position_value": 0.0}, {"date": "2025-11-06", "equity": 943532.1, "cash": 943532.1, "position_value": 0.0}, {"date": "2025-11-07", "equity": 943532.1, "cash": 943532.1, "position_value": 0.0}, {"date": "2025-11-10", "equity": 943532.1, "cash": 943532.1, "position_value": 0.0}, {"date": "2025-11-11", "equity": 943532.1, "cash": 943532.1, "position_value": 0.0}, {"date": "2025-11-12", "equity": 943532.1, "cash": 943532.1, "position_value": 0.0}, {"date": "2025-11-13", "equity": 943532.1, "cash": 943532.1, "position_value": 0.0}, {"date": "2025-11-14", "equity": 943532.1, "cash": 943532.1, "position_value": 0.0}, {"date": "2025-11-17", "equity": 943532.1, "cash": 943532.1, "position_value": 0.0}, {"date": "2025-11-18", "equity": 943532.1, "cash": 943532.1, "position_value": 0.0}, {"date": "2025-11-19", "equity": 943532.1, "cash": 943532.1, "position_value": 0.0}, {"date": "2025-11-20", "equity": 943532.1, "cash": 943532.1, "position_value": 0.0}, {"date": "2025-11-21", "equity": 943532.1, "cash": 943532.1, "position_value": 0.0}, {"date": "2025-11-24", "equity": 943532.1, "cash": 943532.1, "position_value": 0.0}, {"date": "2025-11-25", "equity": 943532.1, "cash": 943532.1, "position_value": 0.0}, {"date": "2025-11-26", "equity": 943532.1, "cash": 943532.1, "position_value": 0.0}, {"date": "2025-11-27", "equity": 943532.1, "cash": 943532.1, "position_value": 0.0}, {"date": "2025-11-28", "equity": 943532.1, "cash": 943532.1, "position_value": 0.0}, {"date": "2025-12-01", "equity": 943532.1, "cash": 943532.1, "position_value": 0.0}, {"date": "2025-12-02", "equity": 943532.1, "cash": 943532.1, "position_value": 0.0}, {"date": "2025-12-03", "equity": 943532.1, "cash": 943532.1, "position_value": 0.0}, {"date": "2025-12-04", "equity": 943532.1, "cash": 943532.1, "position_value": 0.0}, {"date": "2025-12-05", "equity": 943532.1, "cash": 943532.1, "position_value": 0.0}, {"date": "2025-12-08", "equity": 943532.1, "cash": 943532.1, "position_value": 0.0}, {"date": "2025-12-09", "equity": 942887.19, "cash": 582991.19, "position_value": 359896.0}, {"date": "2025-12-10", "equity": 943499.59, "cash": 582991.19, "position_value": 360508.4}, {"date": "2025-12-11", "equity": 938900.79, "cash": 582991.19, "position_value": 355909.6}, {"date": "2025-12-12", "equity": 945091.59, "cash": 582991.19, "position_value": 362100.4}, {"date": "2025-12-15", "equity": 951529.99, "cash": 582991.19, "position_value": 368538.8}, {"date": "2025-12-16", "equity": 947538.79, "cash": 582991.19, "position_value": 364547.6}, {"date": "2025-12-17", "equity": 955132.39, "cash": 582991.19, "position_value": 372141.2}, {"date": "2025-12-18", "equity": 954287.19, "cash": 582991.19, "position_value": 371296.0}, {"date": "2025-12-19", "equity": 955541.19, "cash": 582991.19, "position_value": 372550.0}, {"date": "2025-12-22", "equity": 957390.79, "cash": 582991.19, "position_value": 374399.6}, {"date": "2025-12-23", "equity": 959164.39, "cash": 582991.19, "position_value": 376173.2}, {"date": "2025-12-24", "equity": 959205.99, "cash": 582991.19, "position_value": 376214.8}, {"date": "2025-12-25", "equity": 965380.79, "cash": 582991.19, "position_value": 382389.6}, {"date": "2025-12-26", "equity": 966499.59, "cash": 582991.19, "position_value": 383508.4}, {"date": "2025-12-29", "equity": 963691.19, "cash": 582991.19, "position_value": 380700.0}, {"date": "2025-12-30", "equity": 961664.39, "cash": 582991.19, "position_value": 378673.2}, {"date": "2025-12-31", "equity": 961873.99, "cash": 582991.19, "position_value": 378882.8}, {"date": "2026-01-05", "equity": 978834.39, "cash": 582991.19, "position_value": 395843.2}, {"date": "2026-01-06", "equity": 985541.19, "cash": 582991.19, "position_value": 402550.0}, {"date": "2026-01-07", "equity": 982218.79, "cash": 582991.19, "position_value": 399227.6}, {"date": "2026-01-08", "equity": 979525.04, "cash": 182741.84, "position_value": 796783.2}, {"date": "2026-01-09", "equity": 994505.24, "cash": 182741.84, "position_value": 811763.4}, {"date": "2026-01-12", "equity": 1028805.24, "cash": 182741.84, "position_value": 846063.4}, {"date": "2026-01-13", "equity": 1008972.64, "cash": 182741.84, "position_value": 826230.8}, {"date": "2026-01-14", "equity": 1024785.54, "cash": 182741.84, "position_value": 842043.7}, {"date": "2026-01-15", "equity": 1023456.09, "cash": 436915.39, "position_value": 586540.7}, {"date": "2026-01-16", "equity": 1024935.09, "cash": 436915.39, "position_value": 588019.7}, {"date": "2026-01-19", "equity": 1019264.99, "cash": 436915.39, "position_value": 582349.6}, {"date": "2026-01-20", "equity": 1011484.59, "cash": 436915.39, "position_value": 574569.2}, {"date": "2026-01-21", "equity": 1021761.19, "cash": 436915.39, "position_value": 584845.8}, {"date": "2026-01-22", "equity": 1024261.52, "cash": 432468.62, "position_value": 591792.9}, {"date": "2026-01-23", "equity": 1030450.12, "cash": 432468.62, "position_value": 597981.5}, {"date": "2026-01-26", "equity": 1020369.42, "cash": 432468.62, "position_value": 587900.8}, {"date": "2026-01-27", "equity": 1032451.12, "cash": 432468.62, "position_value": 599982.5}, {"date": "2026-01-28", "equity": 1041061.12, "cash": 432468.62, "position_value": 608592.5}, {"date": "2026-01-29", "equity": 1029855.72, "cash": 432468.62, "position_value": 597387.1}, {"date": "2026-01-30", "equity": 1028922.42, "cash": 432468.62, "position_value": 596453.8}, {"date": "2026-02-02", "equity": 999232.52, "cash": 432468.62, "position_value": 566763.9}, {"date": "2026-02-03", "equity": 1010250.82, "cash": 432468.62, "position_value": 577782.2}, {"date": "2026-02-04", "equity": 998779.42, "cash": 432468.62, "position_value": 566310.8}, {"date": "2026-02-05", "equity": 991499.57, "cash": 682838.47, "position_value": 308661.1}, {"date": "2026-02-06", "equity": 989236.57, "cash": 682838.47, "position_value": 306398.1}, {"date": "2026-02-09", "equity": 998599.77, "cash": 682838.47, "position_value": 315761.3}, {"date": "2026-02-10", "equity": 999937.97, "cash": 682838.47, "position_value": 317099.5}, {"date": "2026-02-11", "equity": 998400.77, "cash": 682838.47, "position_value": 315562.3}, {"date": "2026-02-12", "equity": 998006.31, "cash": 998006.31, "position_value": 0.0}, {"date": "2026-02-13", "equity": 998006.31, "cash": 998006.31, "position_value": 0.0}, {"date": "2026-02-24", "equity": 998006.31, "cash": 998006.31, "position_value": 0.0}, {"date": "2026-02-25", "equity": 998006.31, "cash": 998006.31, "position_value": 0.0}, {"date": "2026-02-26", "equity": 998006.31, "cash": 998006.31, "position_value": 0.0}, {"date": "2026-02-27", "equity": 998006.31, "cash": 998006.31, "position_value": 0.0}, {"date": "2026-03-02", "equity": 998006.31, "cash": 998006.31, "position_value": 0.0}, {"date": "2026-03-03", "equity": 998006.31, "cash": 998006.31, "position_value": 0.0}, {"date": "2026-03-04", "equity": 998006.31, "cash": 998006.31, "position_value": 0.0}, {"date": "2026-03-05", "equity": 998006.31, "cash": 998006.31, "position_value": 0.0}, {"date": "2026-03-06", "equity": 998006.31, "cash": 998006.31, "position_value": 0.0}, {"date": "2026-03-09", "equity": 998006.31, "cash": 998006.31, "position_value": 0.0}, {"date": "2026-03-10", "equity": 998006.31, "cash": 998006.31, "position_value": 0.0}, {"date": "2026-03-11", "equity": 998006.31, "cash": 998006.31, "position_value": 0.0}, {"date": "2026-03-12", "equity": 998006.31, "cash": 998006.31, "position_value": 0.0}, {"date": "2026-03-13", "equity": 996213.71, "cash": 804351.71, "position_value": 191862.0}, {"date": "2026-03-16", "equity": 998248.61, "cash": 804351.71, "position_value": 193896.9}, {"date": "2026-03-17", "equity": 995050.91, "cash": 804351.71, "position_value": 190699.2}, {"date": "2026-03-18", "equity": 994760.21, "cash": 804351.71, "position_value": 190408.5}, {"date": "2026-03-19", "equity": 990399.71, "cash": 804351.71, "position_value": 186048.0}, {"date": "2026-03-20", "equity": 987783.41, "cash": 804351.71, "position_value": 183431.7}, {"date": "2026-03-23", "equity": 977027.51, "cash": 804351.71, "position_value": 172675.8}, {"date": "2026-03-24", "equity": 978481.01, "cash": 804351.71, "position_value": 174129.3}, {"date": "2026-03-25", "equity": 980515.91, "cash": 804351.71, "position_value": 176164.2}, {"date": "2026-03-26", "equity": 979062.41, "cash": 804351.71, "position_value": 174710.7}, {"date": "2026-03-27", "equity": 978844.02, "cash": 978844.02, "position_value": 0.0}, {"date": "2026-03-30", "equity": 978844.02, "cash": 978844.02, "position_value": 0.0}, {"date": "2026-03-31", "equity": 978844.02, "cash": 978844.02, "position_value": 0.0}, {"date": "2026-04-01", "equity": 978844.02, "cash": 978844.02, "position_value": 0.0}, {"date": "2026-04-02", "equity": 978844.02, "cash": 978844.02, "position_value": 0.0}, {"date": "2026-04-03", "equity": 978844.02, "cash": 978844.02, "position_value": 0.0}, {"date": "2026-04-07", "equity": 978844.02, "cash": 978844.02, "position_value": 0.0}, {"date": "2026-04-08", "equity": 978844.02, "cash": 978844.02, "position_value": 0.0}, {"date": "2026-04-09", "equity": 978844.02, "cash": 978844.02, "position_value": 0.0}, {"date": "2026-04-10", "equity": 978844.02, "cash": 978844.02, "position_value": 0.0}, {"date": "2026-04-13", "equity": 978844.02, "cash": 978844.02, "position_value": 0.0}, {"date": "2026-04-14", "equity": 978844.02, "cash": 978844.02, "position_value": 0.0}, {"date": "2026-04-15", "equity": 978844.02, "cash": 978844.02, "position_value": 0.0}, {"date": "2026-04-16", "equity": 978844.02, "cash": 978844.02, "position_value": 0.0}, {"date": "2026-04-17", "equity": 978844.02, "cash": 978844.02, "position_value": 0.0}, {"date": "2026-04-20", "equity": 980515.56, "cash": 788942.56, "position_value": 191573.0}, {"date": "2026-04-21", "equity": 978223.56, "cash": 788942.56, "position_value": 189281.0}, {"date": "2026-04-22", "equity": 983953.56, "cash": 788942.56, "position_value": 195011.0}, {"date": "2026-04-23", "equity": 982234.56, "cash": 788942.56, "position_value": 193292.0}, {"date": "2026-04-24", "equity": 978796.56, "cash": 788942.56, "position_value": 189854.0}, {"date": "2026-04-27", "equity": 987017.92, "cash": 635961.92, "position_value": 351056.0}, {"date": "2026-04-28", "equity": 980609.92, "cash": 635961.92, "position_value": 344648.0}, {"date": "2026-04-29", "equity": 982246.32, "cash": 635961.92, "position_value": 346284.4}, {"date": "2026-04-30", "equity": 996110.32, "cash": 635961.92, "position_value": 360148.4}, {"date": "2026-05-06", "equity": 1012696.52, "cash": 635961.92, "position_value": 376734.6}, {"date": "2026-05-07", "equity": 1023092.59, "cash": 512987.59, "position_value": 510105.0}, {"date": "2026-05-08", "equity": 1016485.79, "cash": 512987.59, "position_value": 503498.2}, {"date": "2026-05-11", "equity": 1034634.59, "cash": 512987.59, "position_value": 521647.0}, {"date": "2026-05-12", "equity": 1036854.99, "cash": 512987.59, "position_value": 523867.4}, {"date": "2026-05-13", "equity": 1052709.99, "cash": 512987.59, "position_value": 539722.4}, {"date": "2026-05-14", "equity": 1032922.24, "cash": 210066.44, "position_value": 822855.8}, {"date": "2026-05-15", "equity": 1022685.34, "cash": 210066.44, "position_value": 812618.9}, {"date": "2026-05-18", "equity": 1028181.34, "cash": 210066.44, "position_value": 818114.9}, {"date": "2026-05-19", "equity": 1047539.44, "cash": 210066.44, "position_value": 837473.0}, {"date": "2026-05-20", "equity": 1055159.94, "cash": 210066.44, "position_value": 845093.5}, {"date": "2026-05-21", "equity": 1020263.24, "cash": 210066.44, "position_value": 810196.8}, {"date": "2026-05-22", "equity": 1041066.74, "cash": 210066.44, "position_value": 831000.3}, {"date": "2026-05-25", "equity": 1077674.64, "cash": 210066.44, "position_value": 867608.2}, {"date": "2026-05-26", "equity": 1070728.44, "cash": 210066.44, "position_value": 860662.0}, {"date": "2026-05-27", "equity": 1064960.44, "cash": 210066.44, "position_value": 854894.0}, {"date": "2026-05-28", "equity": 1087627.2, "cash": 371413.8, "position_value": 716213.4}, {"date": "2026-05-29", "equity": 1045358.1, "cash": 371413.8, "position_value": 673944.3}, {"date": "2026-06-01", "equity": 1021211.6, "cash": 371413.8, "position_value": 649797.8}, {"date": "2026-06-02", "equity": 1031033.1, "cash": 371413.8, "position_value": 659619.3}, {"date": "2026-06-03", "equity": 1052501.4, "cash": 371413.8, "position_value": 681087.6}, {"date": "2026-06-04", "equity": 1057811.03, "cash": 491324.73, "position_value": 566486.3}, {"date": "2026-06-05", "equity": 1035199.43, "cash": 491324.73, "position_value": 543874.7}, {"date": "2026-06-08", "equity": 1011046.73, "cash": 491324.73, "position_value": 519722.0}, {"date": "2026-06-09", "equity": 1041365.23, "cash": 491324.73, "position_value": 550040.5}, {"date": "2026-06-10", "equity": 1030370.93, "cash": 491324.73, "position_value": 539046.2}, {"date": "2026-06-11", "equity": 1025725.13, "cash": 491324.73, "position_value": 534400.4}, {"date": "2026-06-12", "equity": 1017743.23, "cash": 491324.73, "position_value": 526418.5}, {"date": "2026-06-15", "equity": 1056246.33, "cash": 491324.73, "position_value": 564921.6}, {"date": "2026-06-16", "equity": 1074206.33, "cash": 491324.73, "position_value": 582881.6}, {"date": "2026-06-17", "equity": 1104693.43, "cash": 491324.73, "position_value": 613368.7}, {"date": "2026-06-18", "equity": 1117451.91, "cash": 677390.21, "position_value": 440061.7}], "best_config": {"rebalance_freq": 5, "max_positions": 5, "min_history": 60, "score_buy": 0.5}, "benchmark_buyhold": -4.75};
+window.__FREQ_SWEEP__ = [{"label": "freq=1", "freq": 1, "total": -0.75, "annual": -0.89, "win_rate": 39.02, "trades": 82, "avg_hold": 10.7, "max_dd": -15.13}, {"label": "freq=2", "freq": 2, "total": 0.03, "annual": 0.04, "win_rate": 41.94, "trades": 62, "avg_hold": 13.3, "max_dd": -13.29}, {"label": "freq=3", "freq": 3, "total": -2.38, "annual": -2.81, "win_rate": 41.38, "trades": 58, "avg_hold": 13.3, "max_dd": -10.68}, {"label": "freq=5", "freq": 5, "total": 11.69, "annual": 13.93, "win_rate": 61.54, "trades": 52, "avg_hold": 14.7, "max_dd": -10.55}, {"label": "freq=7", "freq": 7, "total": -1.89, "annual": -2.23, "win_rate": 52.38, "trades": 42, "avg_hold": 14.4, "max_dd": -12.74}, {"label": "freq=10", "freq": 10, "total": -3.32, "annual": -3.9, "win_rate": 38.89, "trades": 36, "avg_hold": 17.4, "max_dd": -15.43}, {"label": "freq=15", "freq": 15, "total": 7.34, "annual": 8.71, "win_rate": 64.29, "trades": 28, "avg_hold": 24.8, "max_dd": -6.28}, {"label": "freq=20", "freq": 20, "total": -13.35, "annual": -15.54, "win_rate": 20.0, "trades": 20, "avg_hold": 24.2, "max_dd": -20.67}];
+</script>
+
+</body>
+</html>

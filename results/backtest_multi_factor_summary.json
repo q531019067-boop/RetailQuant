@@ -1,0 +1,15 @@
+{
+  "tag": "multi_factor_v2",
+  "start_date": "2025-08-01",
+  "end_date": "2026-06-18",
+  "initial_capital": 1000000.0,
+  "final_capital": 992470.26,
+  "total_return_pct": -0.75,
+  "annual_return_pct": -0.89,
+  "max_drawdown_pct": -15.13,
+  "trading_days": 212,
+  "total_trades": 82,
+  "win_count": 16,
+  "win_rate_pct": 39.02,
+  "avg_hold_days": 10.7
+}

@@ -1,0 +1,82 @@
+[
+  {
+    "label": "freq=1",
+    "freq": 1,
+    "total": -0.75,
+    "annual": -0.89,
+    "win_rate": 39.02,
+    "trades": 82,
+    "avg_hold": 10.7,
+    "max_dd": -15.13
+  },
+  {
+    "label": "freq=2",
+    "freq": 2,
+    "total": 0.03,
+    "annual": 0.04,
+    "win_rate": 41.94,
+    "trades": 62,
+    "avg_hold": 13.3,
+    "max_dd": -13.29
+  },
+  {
+    "label": "freq=3",
+    "freq": 3,
+    "total": -2.38,
+    "annual": -2.81,
+    "win_rate": 41.38,
+    "trades": 58,
+    "avg_hold": 13.3,
+    "max_dd": -10.68
+  },
+  {
+    "label": "freq=5",
+    "freq": 5,
+    "total": 11.69,
+    "annual": 13.93,
+    "win_rate": 61.54,
+    "trades": 52,
+    "avg_hold": 14.7,
+    "max_dd": -10.55
+  },
+  {
+    "label": "freq=7",
+    "freq": 7,
+    "total": -1.89,
+    "annual": -2.23,
+    "win_rate": 52.38,
+    "trades": 42,
+    "avg_hold": 14.4,
+    "max_dd": -12.74
+  },
+  {
+    "label": "freq=10",
+    "freq": 10,
+    "total": -3.32,
+    "annual": -3.9,
+    "win_rate": 38.89,
+    "trades": 36,
+    "avg_hold": 17.4,
+    "max_dd": -15.43
+  },
+  {
+    "label": "freq=15",
+    "freq": 15,
+    "total": 7.34,
+    "annual": 8.71,
+    "win_rate": 64.29,
+    "trades": 28,
+    "avg_hold": 24.8,
+    "max_dd": -6.28
+  },
+  {
+    "label": "freq=20",
+    "freq": 20,
+    "total": -13.35,
+    "annual": -15.54,
+    "win_rate": 20.0,
+    "trades": 20,
+    "avg_hold": 24.2,
+    "max_dd": -20.67
+  }
+]

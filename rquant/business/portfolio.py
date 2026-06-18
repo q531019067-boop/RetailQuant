@@ -85,7 +85,19 @@ def list_trades() -> list[dict]:
     return _load_json(TRADES_FILE, [])
 
 
-def add_trade(side: str, code: str, name: str, shares: int, price: float, note: str = "") -> dict:
+def add_trade(
+    side: str,
+    code: str,
+    name: str,
+    shares: int,
+    price: float,
+    note: str = "",
+    strategy: str = "manual",
+) -> dict:
+    """记录一条交易
+
+    strategy: 触发该交易的策略名（手动 = "manual"，止盈/止损可写 "take_profit" / "stop_loss" 等）
+    """
     trades = list_trades()
     now = datetime.now()
     trade = {
@@ -98,6 +110,7 @@ def add_trade(side: str, code: str, name: str, shares: int, price: float, note: 
         "shares": shares,
         "price": round(price, 2),
         "note": note,
+        "strategy": strategy,
     }
     trades.append(trade)
     _save_json(TRADES_FILE, trades)

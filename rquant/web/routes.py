@@ -92,6 +92,10 @@ def register_routes(app: Flask) -> None:
 
         # 3. 买入信号（扫整个池）
         buy_signals: list[dict] = []
+        # 按策略统计本轮触发的信号数（一次性上报 system，让策略状态表的 signals_today 有意义）
+        from collections import Counter
+
+        per_strategy_hits: Counter = Counter()
         for s in data.get_pool():
             df = data.fetch_kline(s["code"], 70)
             for sig in scan_stock(s["code"], s["name"], s["sector"], df):
@@ -110,6 +114,10 @@ def register_routes(app: Flask) -> None:
                         "confidence": sig.confidence,
                     }
                 )
+                per_strategy_hits[sig.strategy] += 1
+        # 把每个策略本轮的命中数上报到 system（signals_today 累加 + last_run 更新）
+        for strat_name, hit_count in per_strategy_hits.items():
+            system.report_strategy_run(strat_name, signal_count=hit_count)
 
         # 4. 交易历史 + 5. 自选股视图
         trades = sorted(pf.list_trades(), key=lambda x: x["datetime"], reverse=True)
@@ -144,8 +152,10 @@ def register_routes(app: Flask) -> None:
             strategies_by_category=strategies_by_category,
             total_funds_val=total_funds_val,
             avail_funds=avail_funds,
+            available_funds=avail_funds,  # 模板用 available_funds（兼容老 key 名）
             total_assets=total_assets,
             pos_ratio=pos_ratio,
+            position_ratio=pos_ratio,  # 模板用 position_ratio
             invested=invested,
             realized_pnl=realized_pnl,
         )
