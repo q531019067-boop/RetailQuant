@@ -56,7 +56,7 @@ _STOCK_NAMES = {
     "sh603019": "中科曙光",
     "sh601138": "工业富联",
     "sz000938": "紫光股份",
-    "sz000034": "神州数码"
+    "sz000034": "神州数码",
 }
 
 
@@ -76,14 +76,7 @@ def get_stock_tags_and_sector(code: str) -> tuple[str, list[str]]:
         theme = "theme:other"
 
     # 标准标签规范
-    tags = [
-        "role:trade",
-        theme,
-        "strategy:factor",
-        "strategy:breakout",
-        "trade:t1",
-        "data:daily"
-    ]
+    tags = ["role:trade", theme, "strategy:factor", "strategy:breakout", "trade:t1", "data:daily"]
 
     # 根据代码前缀分配市场标签与涨跌幅标签
     if code.startswith("sh688"):
@@ -185,20 +178,22 @@ def fetch_one(code: str, start: str | None, end: str | None, retries: int = 2) -
         kline_rows = []
         for _, row in df.iterrows():
             dt_str = row["date"].strftime("%Y-%m-%d")
-            kline_rows.append((
-                code,
-                dt_str,
-                float(row["open"]),
-                float(row["high"]),
-                float(row["low"]),
-                float(row["close"]),
-                int(row["volume"]),
-                now_ts
-            ))
+            kline_rows.append(
+                (
+                    code,
+                    dt_str,
+                    float(row["open"]),
+                    float(row["high"]),
+                    float(row["low"]),
+                    float(row["close"]),
+                    int(row["volume"]),
+                    now_ts,
+                )
+            )
         db.executemany(
             "INSERT OR REPLACE INTO klines (code, date, open, high, low, close, volume, fetched_at) "
             "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-            kline_rows
+            kline_rows,
         )
     except Exception as e:
         print(f"  [WARN] 写入 SQLite klines 失败: {e}")
