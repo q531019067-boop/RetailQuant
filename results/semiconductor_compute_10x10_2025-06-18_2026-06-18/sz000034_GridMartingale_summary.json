@@ -1,0 +1,16 @@
+{
+  "strategy": "GridMartingale",
+  "code": "sz000034",
+  "name": "神州数码",
+  "start_date": "2025-06-18",
+  "end_date": "2026-06-18",
+  "initial_capital": 100000.0,
+  "final_equity": 108070.73,
+  "total_return_pct": 8.07,
+  "annual_return_pct": 8.28,
+  "max_drawdown_pct": -12.28,
+  "sharpe": 0.482,
+  "win_rate_pct": 82.61,
+  "trade_count": 89,
+  "total_cost": 743.22
+}

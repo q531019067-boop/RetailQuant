@@ -1,0 +1,16 @@
+{
+  "strategy": "CrossBorderDca",
+  "code": "sh603986",
+  "name": "兆易创新",
+  "start_date": "2025-06-18",
+  "end_date": "2026-06-18",
+  "initial_capital": 100000.0,
+  "final_equity": 123894.24,
+  "total_return_pct": 23.89,
+  "annual_return_pct": 24.55,
+  "max_drawdown_pct": -2.32,
+  "sharpe": 1.845,
+  "win_rate_pct": 100.0,
+  "trade_count": 4,
+  "total_cost": 250.76
+}

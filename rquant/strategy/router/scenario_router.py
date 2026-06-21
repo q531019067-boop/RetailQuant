@@ -99,10 +99,19 @@ class ScenarioRouter:
         return best
 
     def signal_sell(self, position: dict[str, Any], df: pd.DataFrame) -> dict[str, Any] | None:
-        """卖出：复用 scan_sell（跑所有策略的卖出信号）"""
-        from .. import scan_sell
-
-        return scan_sell(position, df)
+        """卖出：仅路由到当前市场状态下的子策略，避免 scan_sell 再次命中路由器。"""
+        state = get_market_regime()
+        sub_cats = self._pick_subcategories(state.regime)
+        for strat in by_category_categories(sub_cats):
+            if strat.name == self.name:
+                continue
+            try:
+                sig = strat.signal_sell(position, df)
+            except Exception:
+                continue
+            if sig is not None:
+                return sig
+        return None
 
 
 def by_category_categories(categories: list[str]) -> list:

@@ -1,0 +1,11 @@
+code,name,best_strategy,best_return_pct,best_final_equity,best_profit
+sh601138,工业富联,DividendLowvolRotation,277.17,377171.88,277171.88
+sh603986,兆易创新,DividendLowvolRotation,239.34,339341.74,239341.74
+sh600460,士兰微,ScenarioRouter,58.77,158767.14,58767.140000000014
+sz002049,紫光国微,CrossBorderDca,43.18,143176.04,43176.04000000001
+sh603019,中科曙光,DividendLowvolRotation,39.7,139698.14,39698.140000000014
+sz000977,浪潮信息,CrossBorderDca,31.4,131396.34,31396.339999999997
+sz000938,紫光股份,CrossBorderDca,27.05,127046.69,27046.690000000002
+sz000034,神州数码,CrossBorderDca,18.88,118883.64,18883.64
+sz002371,北方华创,CrossBorderDca,18.13,118127.06,18127.059999999998
+sh603501,韦尔股份,CrossBorderDca,6.56,106560.43,6560.429999999993

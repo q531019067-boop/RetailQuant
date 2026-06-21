@@ -428,7 +428,7 @@ class BacktestEngine:
         avg_hold = (sum(t.hold_days for t in sell_trades) / len(sell_trades)) if sell_trades else 0.0
 
         result = BacktestResult(
-            tag="multi_factor_v2",
+            tag="multi_factor",
             start_date=common_dates[0],
             end_date=common_dates[-1],
             initial_capital=self.initial_capital,

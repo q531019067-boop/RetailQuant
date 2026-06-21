@@ -1,0 +1,16 @@
+{
+  "strategy": "DividendLowvolRotation",
+  "code": "sz000034",
+  "name": "神州数码",
+  "start_date": "2025-06-18",
+  "end_date": "2026-06-18",
+  "initial_capital": 100000.0,
+  "final_equity": 71415.82,
+  "total_return_pct": -28.58,
+  "annual_return_pct": -29.17,
+  "max_drawdown_pct": -43.98,
+  "sharpe": -0.91,
+  "win_rate_pct": 25.0,
+  "trade_count": 25,
+  "total_cost": 1376.2
+}

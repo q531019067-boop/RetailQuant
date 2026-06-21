@@ -1,0 +1,16 @@
+{
+  "strategy": "ChanLun2B",
+  "code": "sz002049",
+  "name": "紫光国微",
+  "start_date": "2025-06-18",
+  "end_date": "2026-06-18",
+  "initial_capital": 100000.0,
+  "final_equity": 104664.5,
+  "total_return_pct": 4.66,
+  "annual_return_pct": 4.99,
+  "max_drawdown_pct": -12.88,
+  "sharpe": 0.247,
+  "win_rate_pct": 33.33,
+  "trade_count": 6,
+  "total_cost": 356.5
+}

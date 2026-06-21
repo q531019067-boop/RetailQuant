@@ -1,0 +1,14 @@
+{
+  "strategy": "RsiMeanReversion",
+  "start_date": "2025-06-18",
+  "end_date": "2025-06-19",
+  "initial_capital": 100000.0,
+  "final_equity": 99922.44,
+  "total_return_pct": -0.08,
+  "annual_return_pct": -9.24,
+  "max_drawdown_pct": -0.08,
+  "sharpe": 0.0,
+  "win_rate_pct": 0.0,
+  "trade_count": 8,
+  "total_cost": 66.82
+}

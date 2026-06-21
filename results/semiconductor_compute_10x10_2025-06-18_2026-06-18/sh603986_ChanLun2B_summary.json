@@ -1,0 +1,16 @@
+{
+  "strategy": "ChanLun2B",
+  "code": "sh603986",
+  "name": "兆易创新",
+  "start_date": "2025-06-18",
+  "end_date": "2026-06-18",
+  "initial_capital": 100000.0,
+  "final_equity": 220780.17,
+  "total_return_pct": 120.78,
+  "annual_return_pct": 125.12,
+  "max_drawdown_pct": -10.42,
+  "sharpe": 2.793,
+  "win_rate_pct": 85.71,
+  "trade_count": 14,
+  "total_cost": 1150.82
+}

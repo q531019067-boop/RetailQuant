@@ -1,0 +1,16 @@
+{
+  "strategy": "ScenarioRouter",
+  "code": "sz002371",
+  "name": "北方华创",
+  "start_date": "2025-06-18",
+  "end_date": "2026-06-18",
+  "initial_capital": 100000.0,
+  "final_equity": 112412.29,
+  "total_return_pct": 12.41,
+  "annual_return_pct": 12.74,
+  "max_drawdown_pct": -20.02,
+  "sharpe": 0.52,
+  "win_rate_pct": 53.85,
+  "trade_count": 77,
+  "total_cost": 2605.72
+}

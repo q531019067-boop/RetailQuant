@@ -1,0 +1,16 @@
+{
+  "strategy": "CrossBorderDca",
+  "code": "sz000034",
+  "name": "神州数码",
+  "start_date": "2025-06-18",
+  "end_date": "2026-06-18",
+  "initial_capital": 100000.0,
+  "final_equity": 118883.64,
+  "total_return_pct": 18.88,
+  "annual_return_pct": 19.39,
+  "max_drawdown_pct": -26.45,
+  "sharpe": 0.667,
+  "win_rate_pct": 55.56,
+  "trade_count": 18,
+  "total_cost": 1190.35
+}

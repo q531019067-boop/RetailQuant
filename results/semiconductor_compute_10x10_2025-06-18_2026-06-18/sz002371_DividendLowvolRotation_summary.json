@@ -1,0 +1,16 @@
+{
+  "strategy": "DividendLowvolRotation",
+  "code": "sz002371",
+  "name": "北方华创",
+  "start_date": "2025-06-18",
+  "end_date": "2026-06-18",
+  "initial_capital": 100000.0,
+  "final_equity": 99684.14,
+  "total_return_pct": -0.32,
+  "annual_return_pct": -0.32,
+  "max_drawdown_pct": -24.67,
+  "sharpe": 0.114,
+  "win_rate_pct": 40.0,
+  "trade_count": 31,
+  "total_cost": 1107.85
+}

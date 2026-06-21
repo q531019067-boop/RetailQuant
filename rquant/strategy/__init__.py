@@ -17,8 +17,10 @@ from .etf_rotation import cross_border_dca, dividend_lowvol_rotation  # noqa: F4
 from .factor import multi_factor  # noqa: F401
 from .grid import grid_martingale  # noqa: F401
 from .legacy import buyhold, chanlun2b  # noqa: F401
+from .mean_reversion import rsi_reversion  # noqa: F401
 from .pattern import dragon_tiger  # noqa: F401
 from .router import market_regime, scenario_router  # noqa: F401
+from .trend import ma_cross  # noqa: F401
 from .turtle import donchian  # noqa: F401
 from .volume_breakout import vp_breakout  # noqa: F401
 

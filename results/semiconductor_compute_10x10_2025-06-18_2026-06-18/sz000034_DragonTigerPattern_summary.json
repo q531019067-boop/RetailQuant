@@ -1,0 +1,16 @@
+{
+  "strategy": "DragonTigerPattern",
+  "code": "sz000034",
+  "name": "神州数码",
+  "start_date": "2025-06-18",
+  "end_date": "2026-06-18",
+  "initial_capital": 100000.0,
+  "final_equity": 100605.43,
+  "total_return_pct": 0.61,
+  "annual_return_pct": 0.62,
+  "max_drawdown_pct": -0.47,
+  "sharpe": -1.143,
+  "win_rate_pct": 100.0,
+  "trade_count": 2,
+  "total_cost": 114.57
+}

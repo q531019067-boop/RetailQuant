@@ -1,0 +1,16 @@
+{
+  "strategy": "MultiFactor",
+  "code": "sz000938",
+  "name": "紫光股份",
+  "start_date": "2025-06-18",
+  "end_date": "2026-06-18",
+  "initial_capital": 100000.0,
+  "final_equity": 94749.31,
+  "total_return_pct": -5.25,
+  "annual_return_pct": -5.38,
+  "max_drawdown_pct": -29.3,
+  "sharpe": -0.069,
+  "win_rate_pct": 33.33,
+  "trade_count": 12,
+  "total_cost": 680.7
+}

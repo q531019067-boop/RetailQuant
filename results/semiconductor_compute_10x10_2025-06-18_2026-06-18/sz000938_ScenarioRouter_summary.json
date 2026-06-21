@@ -1,0 +1,16 @@
+{
+  "strategy": "ScenarioRouter",
+  "code": "sz000938",
+  "name": "紫光股份",
+  "start_date": "2025-06-18",
+  "end_date": "2026-06-18",
+  "initial_capital": 100000.0,
+  "final_equity": 96387.44,
+  "total_return_pct": -3.61,
+  "annual_return_pct": -3.7,
+  "max_drawdown_pct": -22.05,
+  "sharpe": -0.065,
+  "win_rate_pct": 57.36,
+  "trade_count": 264,
+  "total_cost": 5131.57
+}

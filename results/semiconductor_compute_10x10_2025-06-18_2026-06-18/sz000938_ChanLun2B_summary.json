@@ -1,0 +1,16 @@
+{
+  "strategy": "ChanLun2B",
+  "code": "sz000938",
+  "name": "紫光股份",
+  "start_date": "2025-06-18",
+  "end_date": "2026-06-18",
+  "initial_capital": 100000.0,
+  "final_equity": 86393.07,
+  "total_return_pct": -13.61,
+  "annual_return_pct": -13.92,
+  "max_drawdown_pct": -20.48,
+  "sharpe": -0.864,
+  "win_rate_pct": 0.0,
+  "trade_count": 6,
+  "total_cost": 315.93
+}

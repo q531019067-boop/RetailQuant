@@ -4,7 +4,7 @@
 >
 > 想了解架构和快速上手？看 [`README.md`](README.md)；本文档专注"每个策略在做什么"。
 >
-> 📖 **多因子 v2 专门报告**：见 [`docs/multi_factor_v2_report.md`](docs/multi_factor_v2_report.md) — 含 8 因子设计 / 4 过滤 / 回测结果 / 参数敏感性
+> 📖 **MultiFactor 专门报告**：见 [`docs/multi_factor_report.md`](docs/multi_factor_report.md) — 含 8 因子设计 / 4 过滤 / 回测结果 / 参数敏感性
 
 ---
 
@@ -328,9 +328,9 @@ STOP_LOSS = -0.10
 
 ---
 
-### 5. MultiFactor — 多因子选股（v2 完整版）
+### 5. MultiFactor — 多因子选股
 
-> 📖 **完整设计 + 因子工程 + 回测报告**：见 [`docs/multi_factor_v2_report.md`](docs/multi_factor_v2_report.md)
+> 📖 **完整设计 + 因子工程 + 回测报告**：见 [`docs/多因子选股回测系统.md`](docs/多因子选股回测系统.md) 与 [`docs/multi_factor_report.md`](docs/multi_factor_report.md)
 >
 > 本节是策略速览；想看因子权重怎么来的、为什么这么分、回测怎么跑、参数怎么调，看专门报告。
 
@@ -345,8 +345,8 @@ STOP_LOSS = -0.10
 | 趋势 | 0.35 | T1 · MA20 偏离 | `(close/MA20 − 1) × 100%` → tanh(scale=5) | [-1, +1] |
 | | | T2 · 多头排列 | MA5 > MA10 > MA20 全满足 +1；空头 -1；混乱 -0.3 | {-1, -0.3, +1} |
 | | | T3 · 60 日突破 | 距 60 日高点的距离 → 线性 | [-1, +1] |
-| 量价 | 0.30 | V1 · 量比 5 日 | `today_vol/5d_avg` → tanh(±1) | [-1, +1] |
-| | | V2 · 量价共振 | 量比>1.2 且 涨幅>0 → 加分；反之减分 | [-1, +1] |
+| 量价 | 0.30 | 5 日量比 | `today_vol/5d_avg` → tanh(±1) | [-1, +1] |
+| | | 量价共振 | 量比>1.2 且 涨幅>0 → 加分；反之减分 | [-1, +1] |
 | | | V3 · 波动率惩罚 | 20 日 std/mean → 越高越扣分 | [-1, 0] |
 
 #### 4 道硬过滤（任一不过 → score = -∞）
@@ -362,7 +362,7 @@ STOP_LOSS = -0.10
 
 ```
 score = 0.20·M1 + 0.15·M2 + 0.12·T1 + 0.10·T2 + 0.13·T3
-      + 0.12·V1 + 0.13·V2 + 0.05·V3
+      + 0.12·vol_ratio + 0.13·vol_price_sync + 0.05·volatility
 if score >= 0.5:  # 触发买入
     confidence = min(90, 55 + score × 30)
 ```
@@ -430,13 +430,6 @@ uv run python scripts/backtest_multi_factor.py \
 # 看报告
 open results/backtest_report.html
 ```
-
-#### 版本
-
-| 版本 | 日期 | 关键变更 |
-|------|------|---------|
-| v1.0 | 2026-06-17 | 4 因子 + trigger-only（占位版） |
-| v2.0 | 2026-06-19 | 8 因子 + 4 过滤 + 横截面 + 回测引擎 |
 
 ---
 
@@ -1009,11 +1002,8 @@ DonchianTurtle.TAKE_PROFIT = 0.30
 
 ---
 
-## 版本
+## 维护
 
-- v1.0 (2026-06-17)：10 个策略初版（6 大类 + 3 个 legacy + 1 个 router）
-- v2.0 (2026-06-19)：MultiFactor 完整版（4 因子 → 8 因子 + 4 过滤 + 横截面） + 配套回测引擎
-
-## 维护者
+文档与代码变更历史由 Git 记录。
 
 rQuant 团队

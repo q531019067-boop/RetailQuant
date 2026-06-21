@@ -1,0 +1,16 @@
+{
+  "strategy": "CrossBorderDca",
+  "code": "sh603019",
+  "name": "中科曙光",
+  "start_date": "2025-06-18",
+  "end_date": "2026-06-18",
+  "initial_capital": 100000.0,
+  "final_equity": 115820.65,
+  "total_return_pct": 15.82,
+  "annual_return_pct": 16.24,
+  "max_drawdown_pct": -16.34,
+  "sharpe": 0.781,
+  "win_rate_pct": 60.0,
+  "trade_count": 10,
+  "total_cost": 548.35
+}

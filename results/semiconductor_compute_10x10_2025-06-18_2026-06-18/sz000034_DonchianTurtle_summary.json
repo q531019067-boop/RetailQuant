@@ -1,0 +1,16 @@
+{
+  "strategy": "DonchianTurtle",
+  "code": "sz000034",
+  "name": "神州数码",
+  "start_date": "2025-06-18",
+  "end_date": "2026-06-18",
+  "initial_capital": 100000.0,
+  "final_equity": 79418.34,
+  "total_return_pct": -20.58,
+  "annual_return_pct": -21.03,
+  "max_drawdown_pct": -35.44,
+  "sharpe": -0.646,
+  "win_rate_pct": 33.33,
+  "trade_count": 6,
+  "total_cost": 333.66
+}

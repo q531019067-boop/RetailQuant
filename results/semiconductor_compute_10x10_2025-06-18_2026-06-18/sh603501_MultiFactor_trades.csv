@@ -1,0 +1,5 @@
+date,side,code,name,strategy,price,raw_open,shares,gross_amount,commission,stamp_tax,slippage_cost,total_cost,cash_after,pnl,pnl_pct,reason
+2025-08-25,BUY,sh603501,韦尔股份,MultiFactor,138.5339,138.52,600,83120.31,20.78,0.0,8.31,29.09,16858.91,0.0,0.0,多因子综合 +0.75（8 因子）| Top3: M1 momentum 20d +0.16 / vol price sync +0.13 / T3 breakout 60d +0.13
+2025-10-20,SELL,sh603501,韦尔股份,MultiFactor,129.0471,129.06,600,77428.26,19.36,38.71,7.74,65.81,94229.09,-5770.91,-6.94,触发 -8% 止损（当前 -8.2%）
+2026-01-07,BUY,sh603501,韦尔股份,MultiFactor,131.8332,131.82,600,79099.91,19.77,0.0,7.91,27.68,15109.41,0.0,0.0,多因子综合 +0.53（8 因子）| Top3: M1 momentum 20d +0.18 / T2 ma alignment +0.10 / vol price sync +0.09
+2026-02-02,SELL,sh603501,韦尔股份,MultiFactor,120.5679,120.58,600,72340.77,18.09,36.17,7.23,61.49,87395.92,-6833.17,-8.64,触发 -8% 止损（当前 -8.1%）

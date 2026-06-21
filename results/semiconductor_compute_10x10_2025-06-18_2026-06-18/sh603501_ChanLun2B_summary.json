@@ -1,0 +1,16 @@
+{
+  "strategy": "ChanLun2B",
+  "code": "sh603501",
+  "name": "韦尔股份",
+  "start_date": "2025-06-18",
+  "end_date": "2026-06-18",
+  "initial_capital": 100000.0,
+  "final_equity": 94133.18,
+  "total_return_pct": -5.87,
+  "annual_return_pct": -6.01,
+  "max_drawdown_pct": -9.56,
+  "sharpe": -1.0,
+  "win_rate_pct": 0.0,
+  "trade_count": 2,
+  "total_cost": 94.82
+}

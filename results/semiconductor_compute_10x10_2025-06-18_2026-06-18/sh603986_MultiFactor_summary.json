@@ -1,0 +1,16 @@
+{
+  "strategy": "MultiFactor",
+  "code": "sh603986",
+  "name": "兆易创新",
+  "start_date": "2025-06-18",
+  "end_date": "2026-06-18",
+  "initial_capital": 100000.0,
+  "final_equity": 278800.56,
+  "total_return_pct": 178.8,
+  "annual_return_pct": 185.92,
+  "max_drawdown_pct": -27.97,
+  "sharpe": 2.374,
+  "win_rate_pct": 64.71,
+  "trade_count": 36,
+  "total_cost": 3061.42
+}

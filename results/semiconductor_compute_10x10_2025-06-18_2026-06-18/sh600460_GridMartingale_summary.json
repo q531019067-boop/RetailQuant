@@ -1,0 +1,16 @@
+{
+  "strategy": "GridMartingale",
+  "code": "sh600460",
+  "name": "士兰微",
+  "start_date": "2025-06-18",
+  "end_date": "2026-06-18",
+  "initial_capital": 100000.0,
+  "final_equity": 115017.93,
+  "total_return_pct": 15.02,
+  "annual_return_pct": 15.41,
+  "max_drawdown_pct": -12.53,
+  "sharpe": 1.033,
+  "win_rate_pct": 85.0,
+  "trade_count": 55,
+  "total_cost": 441.12
+}

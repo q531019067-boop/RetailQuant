@@ -54,8 +54,8 @@ python scripts/fetch_hist.py --from 2025-06-19 --to 2026-06-19 sh600460 sz002371
       "T1_ma20_bias": 0.9998842590720576,
       "T2_ma_alignment": 1.0,
       "T3_breakout_60d": 0.7573839662447259,
-      "V1_vol_ratio": 0.3448035885419125,
-      "V2_vol_price_sync": 1.0,
+      "vol_ratio": 0.3448035885419125,
+      "vol_price_sync": 1.0,
       "V3_volatility": -0.528384626406239
     },
     "weighted_components": {
@@ -64,8 +64,8 @@ python scripts/fetch_hist.py --from 2025-06-19 --to 2026-06-19 sh600460 sz002371
       "T1_ma20_bias": 0.1199861110886469,
       "T2_ma_alignment": 0.1,
       "T3_breakout_60d": 0.09845991561181437,
-      "V1_vol_ratio": 0.0413764306250295,
-      "V2_vol_price_sync": 0.13,
+      "vol_ratio": 0.0413764306250295,
+      "vol_price_sync": 0.13,
       "V3_volatility": -0.02641923132031195
     },
     "rank": 1,
@@ -82,8 +82,8 @@ python scripts/fetch_hist.py --from 2025-06-19 --to 2026-06-19 sh600460 sz002371
       "T1_ma20_bias": 0.8614652157609248,
       "T2_ma_alignment": -0.3,
       "T3_breakout_60d": 0.1912889935256027,
-      "V1_vol_ratio": 0.9309250931252098,
-      "V2_vol_price_sync": 1.0,
+      "vol_ratio": 0.9309250931252098,
+      "vol_price_sync": 1.0,
       "V3_volatility": -0.3490688862425472
     },
     "weighted_components": {
@@ -92,8 +92,8 @@ python scripts/fetch_hist.py --from 2025-06-19 --to 2026-06-19 sh600460 sz002371
       "T1_ma20_bias": 0.10337582589131097,
       "T2_ma_alignment": -0.03,
       "T3_breakout_60d": 0.02486756915832835,
-      "V1_vol_ratio": 0.11171101117502517,
-      "V2_vol_price_sync": 0.13,
+      "vol_ratio": 0.11171101117502517,
+      "vol_price_sync": 0.13,
       "V3_volatility": -0.01745344431212736
     },
     "rank": 2,
@@ -110,8 +110,8 @@ python scripts/fetch_hist.py --from 2025-06-19 --to 2026-06-19 sh600460 sz002371
       "T1_ma20_bias": 0.9991462888730069,
       "T2_ma_alignment": 1.0,
       "T3_breakout_60d": 0.8146410136086346,
-      "V1_vol_ratio": 0.16179485991572456,
-      "V2_vol_price_sync": 0.0,
+      "vol_ratio": 0.16179485991572456,
+      "vol_price_sync": 0.0,
       "V3_volatility": -0.5696497782799055
     },
     "weighted_components": {
@@ -120,8 +120,8 @@ python scripts/fetch_hist.py --from 2025-06-19 --to 2026-06-19 sh600460 sz002371
       "T1_ma20_bias": 0.11989755466476083,
       "T2_ma_alignment": 0.1,
       "T3_breakout_60d": 0.1059033317691225,
-      "V1_vol_ratio": 0.019415383189886948,
-      "V2_vol_price_sync": 0.0,
+      "vol_ratio": 0.019415383189886948,
+      "vol_price_sync": 0.0,
       "V3_volatility": -0.028482488913995276
     },
     "rank": 3,
@@ -138,8 +138,8 @@ python scripts/fetch_hist.py --from 2025-06-19 --to 2026-06-19 sh600460 sz002371
       "T1_ma20_bias": 0.9806385525629616,
       "T2_ma_alignment": 1.0,
       "T3_breakout_60d": 0.8250395159971653,
-      "V1_vol_ratio": -0.11745461645526725,
-      "V2_vol_price_sync": 0.0,
+      "vol_ratio": -0.11745461645526725,
+      "vol_price_sync": 0.0,
       "V3_volatility": -0.3565622290142669
     },
     "weighted_components": {
@@ -148,8 +148,8 @@ python scripts/fetch_hist.py --from 2025-06-19 --to 2026-06-19 sh600460 sz002371
       "T1_ma20_bias": 0.11767662630755539,
       "T2_ma_alignment": 0.1,
       "T3_breakout_60d": 0.1072551370796315,
-      "V1_vol_ratio": -0.01409455397463207,
-      "V2_vol_price_sync": 0.0,
+      "vol_ratio": -0.01409455397463207,
+      "vol_price_sync": 0.0,
       "V3_volatility": -0.017828111450713346
     },
     "rank": 4,
@@ -166,8 +166,8 @@ python scripts/fetch_hist.py --from 2025-06-19 --to 2026-06-19 sh600460 sz002371
       "T1_ma20_bias": 0.616251458197366,
       "T2_ma_alignment": -0.3,
       "T3_breakout_60d": -0.020886853568636177,
-      "V1_vol_ratio": 0.31084602593081184,
-      "V2_vol_price_sync": 0.25824082707884577,
+      "vol_ratio": 0.31084602593081184,
+      "vol_price_sync": 0.25824082707884577,
       "V3_volatility": -0.43454181881398973
     },
     "weighted_components": {
@@ -176,8 +176,8 @@ python scripts/fetch_hist.py --from 2025-06-19 --to 2026-06-19 sh600460 sz002371
       "T1_ma20_bias": 0.07395017498368392,
       "T2_ma_alignment": -0.03,
       "T3_breakout_60d": -0.002715290963922703,
-      "V1_vol_ratio": 0.03730152311169742,
-      "V2_vol_price_sync": 0.03357130752024995,
+      "vol_ratio": 0.03730152311169742,
+      "vol_price_sync": 0.03357130752024995,
       "V3_volatility": -0.021727090940699488
     },
     "rank": 5,
@@ -194,8 +194,8 @@ python scripts/fetch_hist.py --from 2025-06-19 --to 2026-06-19 sh600460 sz002371
       "T1_ma20_bias": 0.45792882961171194,
       "T2_ma_alignment": -0.3,
       "T3_breakout_60d": -0.5542857142857136,
-      "V1_vol_ratio": 0.4607166804798284,
-      "V2_vol_price_sync": 0.7507864566358431,
+      "vol_ratio": 0.4607166804798284,
+      "vol_price_sync": 0.7507864566358431,
       "V3_volatility": -0.4226747154883827
     },
     "weighted_components": {
@@ -204,8 +204,8 @@ python scripts/fetch_hist.py --from 2025-06-19 --to 2026-06-19 sh600460 sz002371
       "T1_ma20_bias": 0.054951459553405434,
       "T2_ma_alignment": -0.03,
       "T3_breakout_60d": -0.07205714285714276,
-      "V1_vol_ratio": 0.0552860016575794,
-      "V2_vol_price_sync": 0.0976022393626596,
+      "vol_ratio": 0.0552860016575794,
+      "vol_price_sync": 0.0976022393626596,
       "V3_volatility": -0.021133735774419137
     },
     "rank": 6,
@@ -222,8 +222,8 @@ python scripts/fetch_hist.py --from 2025-06-19 --to 2026-06-19 sh600460 sz002371
       "T1_ma20_bias": 0.6210203922757142,
       "T2_ma_alignment": -0.3,
       "T3_breakout_60d": -0.7398414894955336,
-      "V1_vol_ratio": 0.14235815647046704,
-      "V2_vol_price_sync": 0.0,
+      "vol_ratio": 0.14235815647046704,
+      "vol_price_sync": 0.0,
       "V3_volatility": -0.34543001142904145
     },
     "weighted_components": {
@@ -232,8 +232,8 @@ python scripts/fetch_hist.py --from 2025-06-19 --to 2026-06-19 sh600460 sz002371
       "T1_ma20_bias": 0.0745224470730857,
       "T2_ma_alignment": -0.03,
       "T3_breakout_60d": -0.09617939363441938,
-      "V1_vol_ratio": 0.017082978776456044,
-      "V2_vol_price_sync": 0.0,
+      "vol_ratio": 0.017082978776456044,
+      "vol_price_sync": 0.0,
       "V3_volatility": -0.017271500571452072
     },
     "rank": 7,
@@ -250,8 +250,8 @@ python scripts/fetch_hist.py --from 2025-06-19 --to 2026-06-19 sh600460 sz002371
       "T1_ma20_bias": -0.10363655540157264,
       "T2_ma_alignment": -0.3,
       "T3_breakout_60d": -1.0,
-      "V1_vol_ratio": 0.10258451607594936,
-      "V2_vol_price_sync": 0.0,
+      "vol_ratio": 0.10258451607594936,
+      "vol_price_sync": 0.0,
       "V3_volatility": -0.36935067928649723
     },
     "weighted_components": {
@@ -260,8 +260,8 @@ python scripts/fetch_hist.py --from 2025-06-19 --to 2026-06-19 sh600460 sz002371
       "T1_ma20_bias": -0.012436386648188717,
       "T2_ma_alignment": -0.03,
       "T3_breakout_60d": -0.13,
-      "V1_vol_ratio": 0.012310141929113923,
-      "V2_vol_price_sync": 0.0,
+      "vol_ratio": 0.012310141929113923,
+      "vol_price_sync": 0.0,
       "V3_volatility": -0.01846753396432486
     },
     "rank": 8,
@@ -278,8 +278,8 @@ python scripts/fetch_hist.py --from 2025-06-19 --to 2026-06-19 sh600460 sz002371
       "T1_ma20_bias": 0.6901725533529802,
       "T2_ma_alignment": -0.3,
       "T3_breakout_60d": -1.0,
-      "V1_vol_ratio": -0.14312458162745295,
-      "V2_vol_price_sync": 0.0,
+      "vol_ratio": -0.14312458162745295,
+      "vol_price_sync": 0.0,
       "V3_volatility": -0.7589772700123222
     },
     "weighted_components": {
@@ -288,8 +288,8 @@ python scripts/fetch_hist.py --from 2025-06-19 --to 2026-06-19 sh600460 sz002371
       "T1_ma20_bias": 0.08282070640235763,
       "T2_ma_alignment": -0.03,
       "T3_breakout_60d": -0.13,
-      "V1_vol_ratio": -0.017174949795294353,
-      "V2_vol_price_sync": 0.0,
+      "vol_ratio": -0.017174949795294353,
+      "vol_price_sync": 0.0,
       "V3_volatility": -0.03794886350061611
     },
     "rank": 9,
@@ -306,8 +306,8 @@ python scripts/fetch_hist.py --from 2025-06-19 --to 2026-06-19 sh600460 sz002371
       "T1_ma20_bias": -0.8031315269570607,
       "T2_ma_alignment": -1.0,
       "T3_breakout_60d": -0.7526812723439367,
-      "V1_vol_ratio": -0.10946467584306761,
-      "V2_vol_price_sync": 0.0,
+      "vol_ratio": -0.10946467584306761,
+      "vol_price_sync": 0.0,
       "V3_volatility": -0.6401789648293129
     },
     "weighted_components": {
@@ -316,8 +316,8 @@ python scripts/fetch_hist.py --from 2025-06-19 --to 2026-06-19 sh600460 sz002371
       "T1_ma20_bias": -0.09637578323484727,
       "T2_ma_alignment": -0.1,
       "T3_breakout_60d": -0.09784856540471178,
-      "V1_vol_ratio": -0.013135761101168113,
-      "V2_vol_price_sync": 0.0,
+      "vol_ratio": -0.013135761101168113,
+      "vol_price_sync": 0.0,
       "V3_volatility": -0.03200894824146565
     },
     "rank": 10,

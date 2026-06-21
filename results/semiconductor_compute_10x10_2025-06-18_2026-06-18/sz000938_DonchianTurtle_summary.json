@@ -1,0 +1,16 @@
+{
+  "strategy": "DonchianTurtle",
+  "code": "sz000938",
+  "name": "紫光股份",
+  "start_date": "2025-06-18",
+  "end_date": "2026-06-18",
+  "initial_capital": 100000.0,
+  "final_equity": 110109.56,
+  "total_return_pct": 10.11,
+  "annual_return_pct": 10.37,
+  "max_drawdown_pct": -27.38,
+  "sharpe": 0.425,
+  "win_rate_pct": 50.0,
+  "trade_count": 8,
+  "total_cost": 450.45
+}

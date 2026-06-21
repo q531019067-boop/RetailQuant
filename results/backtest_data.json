@@ -1,6 +1,6 @@
 {
   "summary": {
-    "tag": "multi_factor_v2",
+    "tag": "multi_factor",
     "start": "2025-08-01",
     "end": "2026-06-18",
     "initial": 1000000.0,

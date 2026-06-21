@@ -1,0 +1,16 @@
+{
+  "strategy": "DividendLowvolRotation",
+  "code": "sz002049",
+  "name": "紫光国微",
+  "start_date": "2025-06-18",
+  "end_date": "2026-06-18",
+  "initial_capital": 100000.0,
+  "final_equity": 120417.27,
+  "total_return_pct": 20.42,
+  "annual_return_pct": 21.96,
+  "max_drawdown_pct": -15.08,
+  "sharpe": 0.734,
+  "win_rate_pct": 41.67,
+  "trade_count": 25,
+  "total_cost": 1513.71
+}

@@ -1,0 +1,16 @@
+{
+  "strategy": "VpBreakout",
+  "code": "sh601138",
+  "name": "工业富联",
+  "start_date": "2025-06-18",
+  "end_date": "2026-06-18",
+  "initial_capital": 100000.0,
+  "final_equity": 140481.35,
+  "total_return_pct": 40.48,
+  "annual_return_pct": 41.66,
+  "max_drawdown_pct": -20.72,
+  "sharpe": 1.393,
+  "win_rate_pct": 50.0,
+  "trade_count": 12,
+  "total_cost": 982.65
+}

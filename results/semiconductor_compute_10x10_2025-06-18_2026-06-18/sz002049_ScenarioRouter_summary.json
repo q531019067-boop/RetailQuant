@@ -1,0 +1,16 @@
+{
+  "strategy": "ScenarioRouter",
+  "code": "sz002049",
+  "name": "紫光国微",
+  "start_date": "2025-06-18",
+  "end_date": "2026-06-18",
+  "initial_capital": 100000.0,
+  "final_equity": 115336.3,
+  "total_return_pct": 15.34,
+  "annual_return_pct": 16.47,
+  "max_drawdown_pct": -16.69,
+  "sharpe": 0.595,
+  "win_rate_pct": 59.4,
+  "trade_count": 271,
+  "total_cost": 6005.72
+}

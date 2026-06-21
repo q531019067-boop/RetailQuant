@@ -1,0 +1,16 @@
+{
+  "strategy": "GridMartingale",
+  "code": "sh603019",
+  "name": "中科曙光",
+  "start_date": "2025-06-18",
+  "end_date": "2026-06-18",
+  "initial_capital": 100000.0,
+  "final_equity": 108435.78,
+  "total_return_pct": 8.44,
+  "annual_return_pct": 8.65,
+  "max_drawdown_pct": -6.26,
+  "sharpe": 0.831,
+  "win_rate_pct": 90.91,
+  "trade_count": 28,
+  "total_cost": 242.22
+}

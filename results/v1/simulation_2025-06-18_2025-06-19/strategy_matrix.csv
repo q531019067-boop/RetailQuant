@@ -1,0 +1,5 @@
+strategy,start_date,end_date,initial_capital,final_equity,total_return_pct,annual_return_pct,max_drawdown_pct,sharpe,win_rate_pct,trade_count,total_cost
+MovingAverageCross,2025-06-18,2025-06-19,100000.0,100000.0,0.0,0.0,0.0,0.0,0.0,0,0.0
+GridMartingale,2025-06-18,2025-06-19,100000.0,99923.14,-0.08,-9.16,-0.08,0.0,0.0,10,69.19
+RsiMeanReversion,2025-06-18,2025-06-19,100000.0,99922.44,-0.08,-9.24,-0.08,0.0,0.0,8,66.82
+MultiFactor,2025-06-18,2025-06-19,100000.0,99905.12,-0.09,-11.19,-0.09,0.0,0.0,10,82.06
