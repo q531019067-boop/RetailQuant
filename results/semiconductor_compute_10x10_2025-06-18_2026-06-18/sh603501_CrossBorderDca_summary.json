@@ -1,0 +1,16 @@
+{
+  "strategy": "CrossBorderDca",
+  "code": "sh603501",
+  "name": "韦尔股份",
+  "start_date": "2025-06-18",
+  "end_date": "2026-06-18",
+  "initial_capital": 100000.0,
+  "final_equity": 106560.43,
+  "total_return_pct": 6.56,
+  "annual_return_pct": 6.73,
+  "max_drawdown_pct": -27.63,
+  "sharpe": 0.318,
+  "win_rate_pct": 50.0,
+  "trade_count": 12,
+  "total_cost": 664.56
+}

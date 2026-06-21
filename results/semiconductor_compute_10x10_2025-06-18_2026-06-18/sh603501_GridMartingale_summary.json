@@ -1,0 +1,16 @@
+{
+  "strategy": "GridMartingale",
+  "code": "sh603501",
+  "name": "韦尔股份",
+  "start_date": "2025-06-18",
+  "end_date": "2026-06-18",
+  "initial_capital": 100000.0,
+  "final_equity": 99439.35,
+  "total_return_pct": -0.56,
+  "annual_return_pct": -0.57,
+  "max_drawdown_pct": -2.35,
+  "sharpe": -1.094,
+  "win_rate_pct": 0.0,
+  "trade_count": 3,
+  "total_cost": 27.66
+}

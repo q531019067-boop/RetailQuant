@@ -1,0 +1,16 @@
+{
+  "strategy": "BuyHold",
+  "code": "sh603501",
+  "name": "韦尔股份",
+  "start_date": "2025-06-18",
+  "end_date": "2026-06-18",
+  "initial_capital": 100000.0,
+  "final_equity": 87035.0,
+  "total_return_pct": -12.97,
+  "annual_return_pct": -13.26,
+  "max_drawdown_pct": -17.18,
+  "sharpe": -1.92,
+  "win_rate_pct": 0.0,
+  "trade_count": 2,
+  "total_cost": 101.0
+}

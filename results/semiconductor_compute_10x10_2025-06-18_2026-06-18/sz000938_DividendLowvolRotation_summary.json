@@ -1,0 +1,16 @@
+{
+  "strategy": "DividendLowvolRotation",
+  "code": "sz000938",
+  "name": "紫光股份",
+  "start_date": "2025-06-18",
+  "end_date": "2026-06-18",
+  "initial_capital": 100000.0,
+  "final_equity": 117769.28,
+  "total_return_pct": 17.77,
+  "annual_return_pct": 18.24,
+  "max_drawdown_pct": -17.98,
+  "sharpe": 0.626,
+  "win_rate_pct": 36.36,
+  "trade_count": 22,
+  "total_cost": 1385.71
+}

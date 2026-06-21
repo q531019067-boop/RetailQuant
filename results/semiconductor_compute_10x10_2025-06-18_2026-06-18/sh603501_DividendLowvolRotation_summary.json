@@ -1,0 +1,16 @@
+{
+  "strategy": "DividendLowvolRotation",
+  "code": "sh603501",
+  "name": "韦尔股份",
+  "start_date": "2025-06-18",
+  "end_date": "2026-06-18",
+  "initial_capital": 100000.0,
+  "final_equity": 97829.46,
+  "total_return_pct": -2.17,
+  "annual_return_pct": -2.22,
+  "max_drawdown_pct": -21.52,
+  "sharpe": -0.154,
+  "win_rate_pct": 20.0,
+  "trade_count": 20,
+  "total_cost": 1112.53
+}

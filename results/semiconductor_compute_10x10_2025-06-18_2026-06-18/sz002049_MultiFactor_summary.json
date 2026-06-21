@@ -1,0 +1,16 @@
+{
+  "strategy": "MultiFactor",
+  "code": "sz002049",
+  "name": "紫光国微",
+  "start_date": "2025-06-18",
+  "end_date": "2026-06-18",
+  "initial_capital": 100000.0,
+  "final_equity": 83957.65,
+  "total_return_pct": -16.04,
+  "annual_return_pct": -17.04,
+  "max_drawdown_pct": -33.75,
+  "sharpe": -0.581,
+  "win_rate_pct": 20.0,
+  "trade_count": 10,
+  "total_cost": 546.36
+}

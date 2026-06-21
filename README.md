@@ -118,7 +118,7 @@ ruff format   → 全部格式化
 | `turtle` | **DonchianTurtle** | 20 日新高入场，10 日新低离场（2×ATR 止损） | 日 K |
 | `etf_rotation` | **CrossBorderDca** | 跨境 ETF MA60 下方 + RSI<35 → 加仓 | 日 K |
 | `etf_rotation` | **DividendLowvolRotation** | 红利低波 20 日动量 + 放量 → 持有 | 日 K + 动量 |
-| `factor` | **MultiFactor** | 8 因子（动量×2 + 趋势×3 + 量价×3）+ 4 过滤 + 横截面 | 日 K（⚠️ 财务因子待东财/聚宽，详见 [`docs/multi_factor_v2_report.md`](docs/multi_factor_v2_report.md)） |
+| `factor` | **MultiFactor** | 8 因子（动量×2 + 趋势×3 + 量价×3）+ 4 过滤 + 横截面 | 日 K（⚠️ 财务因子待东财/聚宽，详见 [`docs/multi_factor_report.md`](docs/multi_factor_report.md)） |
 | `grid` | **GridMartingale** | 日线波动率网格 + 马丁加仓预警 | 日 K（⚠️ 理想用分钟级） |
 | `pattern` | **DragonTigerPattern** | 涨停/连板形态（涨幅 ≥ 9.5% 近似） | 日 K（⚠️ 待涨停板接口） |
 | `legacy` | **ChanLun2B** | **优化版**：底分型(5日窗口)+突破+多头排列+量能+RSI 7 重过滤 | 日 K |
@@ -213,7 +213,7 @@ class MyStrategy:
 
 | 策略 | 缺失能力 | 当前近似方式 | 升级方向 |
 |---|---|---|---|
-| MultiFactor | 财务数据（PE/PB/股息率/ROE） | 8 因子 K 线版（动量×2 + 趋势×3 + 量价×3）+ 4 过滤 | 接东财/聚宽 → 加财务因子（v2.0） |
+| MultiFactor | 财务数据（PE/PB/股息率/ROE） | 8 因子 K 线版（动量×2 + 趋势×3 + 量价×3）+ 4 过滤 | 接东财/聚宽 → 加财务因子 |
 | GridMartingale | 分钟级 K 线 | 用日线波动率算网格 | 接分钟线 → 高频网格 |
 | DragonTigerPattern | 涨停板/连板/龙虎榜 | 涨幅 ≥ 9.5% 近似涨停 | 接涨停板接口 + 板块成分股 |
 

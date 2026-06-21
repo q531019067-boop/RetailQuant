@@ -1,0 +1,16 @@
+{
+  "strategy": "ScenarioRouter",
+  "code": "sh603501",
+  "name": "韦尔股份",
+  "start_date": "2025-06-18",
+  "end_date": "2026-06-18",
+  "initial_capital": 100000.0,
+  "final_equity": 74277.32,
+  "total_return_pct": -25.72,
+  "annual_return_pct": -26.26,
+  "max_drawdown_pct": -33.96,
+  "sharpe": -1.508,
+  "win_rate_pct": 52.63,
+  "trade_count": 113,
+  "total_cost": 4207.68
+}

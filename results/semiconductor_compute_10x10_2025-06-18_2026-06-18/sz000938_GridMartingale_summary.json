@@ -1,0 +1,16 @@
+{
+  "strategy": "GridMartingale",
+  "code": "sz000938",
+  "name": "紫光股份",
+  "start_date": "2025-06-18",
+  "end_date": "2026-06-18",
+  "initial_capital": 100000.0,
+  "final_equity": 104089.99,
+  "total_return_pct": 4.09,
+  "annual_return_pct": 4.19,
+  "max_drawdown_pct": -8.2,
+  "sharpe": 0.241,
+  "win_rate_pct": 84.21,
+  "trade_count": 57,
+  "total_cost": 460.04
+}

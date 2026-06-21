@@ -1,0 +1,14 @@
+{
+  "strategy": "GridMartingale",
+  "start_date": "2025-06-18",
+  "end_date": "2025-06-19",
+  "initial_capital": 100000.0,
+  "final_equity": 99923.14,
+  "total_return_pct": -0.08,
+  "annual_return_pct": -9.16,
+  "max_drawdown_pct": -0.08,
+  "sharpe": 0.0,
+  "win_rate_pct": 0.0,
+  "trade_count": 10,
+  "total_cost": 69.19
+}

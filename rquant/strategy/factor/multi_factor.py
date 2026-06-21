@@ -1,5 +1,5 @@
 """
-rQuant.strategies.factor.multi_factor — 多因子选股（完整版 v2）
+rQuant.strategies.factor.multi_factor — 多因子选股（MultiFactor）
 
 设计原则
 ========
@@ -21,8 +21,8 @@ rQuant.strategies.factor.multi_factor — 多因子选股（完整版 v2）
   T3  突破 60 日新高（close >= high_60 * 0.98）
 
 量价组 (W=0.30)
-  V1  量比（5 日，norm）
-  V2  量价共振：量比 + 当日涨幅 同向加分
+  vol_ratio       5 日量比（norm）
+  vol_price_sync  量价共振：量比 + 当日涨幅 同向加分
   V3  波动率惩罚（20 日，越高越扣分）
 
 信号逻辑
@@ -119,7 +119,7 @@ def _factor_breakout_60d(df: pd.DataFrame) -> float:
 
 
 def _factor_vol_ratio(df: pd.DataFrame) -> float:
-    """V1: 量比（5 日）→ [-1, +1]（±100% 灵敏度）"""
+    """5 日量比 → [-1, +1]（±100% 灵敏度）"""
     if len(df) < 6:
         return 0.0
     vr = vol_ratio(df, 5)
@@ -127,7 +127,7 @@ def _factor_vol_ratio(df: pd.DataFrame) -> float:
 
 
 def _factor_volume_price_sync(df: pd.DataFrame) -> float:
-    """V2: 量价共振：量比 > 1.2 且 当日涨幅 > 0 → +0.5~+1.0
+    """量价共振：量比 > 1.2 且 当日涨幅 > 0 → +0.5~+1.0
     反向：量比 < 0.8 且 涨幅 < 0 → 负分
     """
     if len(df) < 6:
@@ -142,7 +142,7 @@ def _factor_volume_price_sync(df: pd.DataFrame) -> float:
 
 
 def _factor_volatility(df: pd.DataFrame) -> float:
-    """V3: 波动率惩罚（20 日 std/mean）→ 越高越负分"""
+    """波动率惩罚（20 日 std/mean）→ 越高越负分"""
     if len(df) < 21:
         return 0.0
     close = df["close"].tail(21).iloc[:-1]  # 不含当日
@@ -201,7 +201,7 @@ def _check_filters(
 
 @register
 class MultiFactor:
-    """多因子选股 v2 — 8 因子 / 4 过滤 / 横截面友好"""
+    """多因子选股 — 8 因子 / 4 过滤 / 横截面友好"""
 
     name = "MultiFactor"
     category = "factor"
@@ -238,9 +238,9 @@ class MultiFactor:
             "T1_ma20_bias": _factor_ma20_bias(df),
             "T2_ma_alignment": _factor_ma_alignment(df),
             "T3_breakout_60d": _factor_breakout_60d(df),
-            "V1_vol_ratio": _factor_vol_ratio(df),
-            "V2_vol_price_sync": _factor_volume_price_sync(df),
-            "V3_volatility": _factor_volatility(df),
+            "vol_ratio": _factor_vol_ratio(df),
+            "vol_price_sync": _factor_volume_price_sync(df),
+            "volatility_penalty": _factor_volatility(df),
         }
 
     def score(self, df: pd.DataFrame, name: str = "", code: str = "") -> tuple[float, dict]:
@@ -262,9 +262,9 @@ class MultiFactor:
             + factors["T1_ma20_bias"] * self.W_MA20_BIAS
             + factors["T2_ma_alignment"] * self.W_MA_ALIGNMENT
             + factors["T3_breakout_60d"] * self.W_BREAKOUT_60D
-            + factors["V1_vol_ratio"] * self.W_VOL_RATIO
-            + factors["V2_vol_price_sync"] * self.W_VOL_PRICE_SYNC
-            + factors["V3_volatility"] * self.W_VOLATILITY
+            + factors["vol_ratio"] * self.W_VOL_RATIO
+            + factors["vol_price_sync"] * self.W_VOL_PRICE_SYNC
+            + factors["volatility_penalty"] * self.W_VOLATILITY
         )
         return weighted, {
             "filtered": False,
@@ -275,9 +275,9 @@ class MultiFactor:
                 "T1_ma20_bias": factors["T1_ma20_bias"] * self.W_MA20_BIAS,
                 "T2_ma_alignment": factors["T2_ma_alignment"] * self.W_MA_ALIGNMENT,
                 "T3_breakout_60d": factors["T3_breakout_60d"] * self.W_BREAKOUT_60D,
-                "V1_vol_ratio": factors["V1_vol_ratio"] * self.W_VOL_RATIO,
-                "V2_vol_price_sync": factors["V2_vol_price_sync"] * self.W_VOL_PRICE_SYNC,
-                "V3_volatility": factors["V3_volatility"] * self.W_VOLATILITY,
+                "vol_ratio": factors["vol_ratio"] * self.W_VOL_RATIO,
+                "vol_price_sync": factors["vol_price_sync"] * self.W_VOL_PRICE_SYNC,
+                "volatility_penalty": factors["volatility_penalty"] * self.W_VOLATILITY,
             },
         }
 
@@ -339,8 +339,7 @@ class MultiFactor:
                 "factors": {k: round(v, 3) for k, v in f.items()},
                 "weighted_components": {k: round(v, 3) for k, v in wc.items()},
                 "top3": [(k, round(v, 3)) for k, v in top3],
-                "kind": "multi_factor_v2",
-                "version": 2,
+                "kind": "multi_factor",
             },
         )
 

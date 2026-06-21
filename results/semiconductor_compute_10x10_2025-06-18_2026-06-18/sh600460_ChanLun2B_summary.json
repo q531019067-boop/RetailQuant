@@ -1,0 +1,16 @@
+{
+  "strategy": "ChanLun2B",
+  "code": "sh600460",
+  "name": "士兰微",
+  "start_date": "2025-06-18",
+  "end_date": "2026-06-18",
+  "initial_capital": 100000.0,
+  "final_equity": 110738.53,
+  "total_return_pct": 10.74,
+  "annual_return_pct": 11.02,
+  "max_drawdown_pct": -20.23,
+  "sharpe": 0.422,
+  "win_rate_pct": 50.0,
+  "trade_count": 8,
+  "total_cost": 528.47
+}

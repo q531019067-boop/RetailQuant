@@ -1,0 +1,16 @@
+{
+  "strategy": "ScenarioRouter",
+  "code": "sz000977",
+  "name": "浪潮信息",
+  "start_date": "2025-06-18",
+  "end_date": "2026-06-18",
+  "initial_capital": 100000.0,
+  "final_equity": 95360.68,
+  "total_return_pct": -4.64,
+  "annual_return_pct": -4.75,
+  "max_drawdown_pct": -29.78,
+  "sharpe": -0.068,
+  "win_rate_pct": 58.33,
+  "trade_count": 250,
+  "total_cost": 5238.36
+}

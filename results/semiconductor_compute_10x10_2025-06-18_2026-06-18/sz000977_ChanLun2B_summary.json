@@ -1,0 +1,16 @@
+{
+  "strategy": "ChanLun2B",
+  "code": "sz000977",
+  "name": "浪潮信息",
+  "start_date": "2025-06-18",
+  "end_date": "2026-06-18",
+  "initial_capital": 100000.0,
+  "final_equity": 97331.8,
+  "total_return_pct": -2.67,
+  "annual_return_pct": -2.73,
+  "max_drawdown_pct": -19.14,
+  "sharpe": -0.103,
+  "win_rate_pct": 25.0,
+  "trade_count": 8,
+  "total_cost": 482.19
+}

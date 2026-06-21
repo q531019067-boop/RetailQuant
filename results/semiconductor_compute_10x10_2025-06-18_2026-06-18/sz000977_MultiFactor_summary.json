@@ -1,0 +1,16 @@
+{
+  "strategy": "MultiFactor",
+  "code": "sz000977",
+  "name": "浪潮信息",
+  "start_date": "2025-06-18",
+  "end_date": "2026-06-18",
+  "initial_capital": 100000.0,
+  "final_equity": 120708.88,
+  "total_return_pct": 20.71,
+  "annual_return_pct": 21.27,
+  "max_drawdown_pct": -20.69,
+  "sharpe": 0.71,
+  "win_rate_pct": 50.0,
+  "trade_count": 12,
+  "total_cost": 831.13
+}

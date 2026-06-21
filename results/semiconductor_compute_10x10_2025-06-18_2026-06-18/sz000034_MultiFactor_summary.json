@@ -1,0 +1,16 @@
+{
+  "strategy": "MultiFactor",
+  "code": "sz000034",
+  "name": "神州数码",
+  "start_date": "2025-06-18",
+  "end_date": "2026-06-18",
+  "initial_capital": 100000.0,
+  "final_equity": 64385.04,
+  "total_return_pct": -35.61,
+  "annual_return_pct": -36.31,
+  "max_drawdown_pct": -47.6,
+  "sharpe": -1.218,
+  "win_rate_pct": 16.67,
+  "trade_count": 12,
+  "total_cost": 621.96
+}

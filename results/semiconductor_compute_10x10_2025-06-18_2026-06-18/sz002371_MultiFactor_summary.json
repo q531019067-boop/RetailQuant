@@ -1,0 +1,16 @@
+{
+  "strategy": "MultiFactor",
+  "code": "sz002371",
+  "name": "北方华创",
+  "start_date": "2025-06-18",
+  "end_date": "2026-06-18",
+  "initial_capital": 100000.0,
+  "final_equity": 103246.2,
+  "total_return_pct": 3.25,
+  "annual_return_pct": 3.33,
+  "max_drawdown_pct": -16.55,
+  "sharpe": 0.16,
+  "win_rate_pct": 50.0,
+  "trade_count": 16,
+  "total_cost": 565.8
+}

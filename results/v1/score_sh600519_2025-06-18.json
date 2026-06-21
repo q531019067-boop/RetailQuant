@@ -1,0 +1,108 @@
+{
+  "code": "sh600519",
+  "name": "贵州茅台",
+  "as_of": "2025-06-18",
+  "lookback_days": 365,
+  "scores": [
+    {
+      "code": "sh600519",
+      "name": "贵州茅台",
+      "as_of": "2025-06-18",
+      "strategy": "MovingAverageCross",
+      "category": "trend",
+      "score": 0.0,
+      "action": "HOLD",
+      "confidence": 0.0,
+      "reason": "无信号",
+      "buy_signal": null,
+      "sell_signal": null,
+      "detail": {}
+    },
+    {
+      "code": "sh600519",
+      "name": "贵州茅台",
+      "as_of": "2025-06-18",
+      "strategy": "RsiMeanReversion",
+      "category": "mean_reversion",
+      "score": 0.0,
+      "action": "HOLD",
+      "confidence": 0.0,
+      "reason": "无信号",
+      "buy_signal": null,
+      "sell_signal": null,
+      "detail": {}
+    },
+    {
+      "code": "sh600519",
+      "name": "贵州茅台",
+      "as_of": "2025-06-18",
+      "strategy": "GridMartingale",
+      "category": "grid",
+      "score": 0.578,
+      "action": "BUY",
+      "confidence": 57.8,
+      "reason": "网格买入：现价 ¥1425.000 位于 20 日区间 ¥1401.180-¥1595.940 的 12% 位置",
+      "buy_signal": {
+        "code": "sh600519",
+        "name": "贵州茅台",
+        "sector": "白酒",
+        "strategy": "GridMartingale",
+        "category": "grid",
+        "current_price": 1425.0,
+        "suggested_buy": 1427.85,
+        "stop_loss": 1331.12,
+        "take_profit": 1547.25,
+        "reason": "网格买入：现价 ¥1425.000 位于 20 日区间 ¥1401.180-¥1595.940 的 12% 位置",
+        "confidence": 57.8,
+        "market_state": "SIDEWAYS",
+        "extra": {
+          "grid_high": 1595.94,
+          "grid_low": 1401.18,
+          "grid_size": 32.46,
+          "position_ratio": 0.122,
+          "cash_pct": 0.1,
+          "position_cap_pct": 0.5,
+          "kind": "grid_buy"
+        }
+      },
+      "sell_signal": null,
+      "detail": {}
+    },
+    {
+      "code": "sh600519",
+      "name": "贵州茅台",
+      "as_of": "2025-06-18",
+      "strategy": "MultiFactor",
+      "category": "factor",
+      "score": -0.5894,
+      "action": "HOLD",
+      "confidence": 20.53,
+      "reason": "MultiFactor score",
+      "buy_signal": null,
+      "sell_signal": null,
+      "detail": {
+        "filtered": false,
+        "factors": {
+          "M1_momentum_20d": -1.0,
+          "M2_momentum_60d": -0.644093390637705,
+          "T1_ma20_bias": -0.7789785811289345,
+          "T2_ma_alignment": -1.0,
+          "T3_breakout_60d": -0.33738601823708203,
+          "V1_vol_ratio": -0.261480417238892,
+          "V2_vol_price_sync": -0.16187924041877189,
+          "V3_volatility": -0.06091787808806722
+        },
+        "weighted_components": {
+          "M1_momentum_20d": -0.2,
+          "M2_momentum_60d": -0.09661400859565575,
+          "T1_ma20_bias": -0.09347742973547213,
+          "T2_ma_alignment": -0.1,
+          "T3_breakout_60d": -0.04386018237082066,
+          "V1_vol_ratio": -0.03137765006866704,
+          "V2_vol_price_sync": -0.021044301254440345,
+          "V3_volatility": -0.0030458939044033613
+        }
+      }
+    }
+  ]
+}

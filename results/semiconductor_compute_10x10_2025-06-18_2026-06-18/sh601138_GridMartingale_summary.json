@@ -1,0 +1,16 @@
+{
+  "strategy": "GridMartingale",
+  "code": "sh601138",
+  "name": "工业富联",
+  "start_date": "2025-06-18",
+  "end_date": "2026-06-18",
+  "initial_capital": 100000.0,
+  "final_equity": 101325.11,
+  "total_return_pct": 1.33,
+  "annual_return_pct": 1.36,
+  "max_drawdown_pct": -12.77,
+  "sharpe": 0.012,
+  "win_rate_pct": 83.33,
+  "trade_count": 49,
+  "total_cost": 415.87
+}

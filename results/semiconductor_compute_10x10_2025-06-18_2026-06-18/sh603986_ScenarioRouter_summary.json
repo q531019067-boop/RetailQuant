@@ -1,0 +1,16 @@
+{
+  "strategy": "ScenarioRouter",
+  "code": "sh603986",
+  "name": "兆易创新",
+  "start_date": "2025-06-18",
+  "end_date": "2026-06-18",
+  "initial_capital": 100000.0,
+  "final_equity": 312496.04,
+  "total_return_pct": 212.5,
+  "annual_return_pct": 221.38,
+  "max_drawdown_pct": -18.43,
+  "sharpe": 2.459,
+  "win_rate_pct": 81.82,
+  "trade_count": 153,
+  "total_cost": 7796.86
+}
