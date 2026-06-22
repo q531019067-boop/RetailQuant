@@ -11,11 +11,15 @@ import threading
 import time
 from typing import Optional
 
+from config import config
+
 
 class QuoteCache:
     """单实例进程内行情缓存"""
 
-    def __init__(self, ttl: float = 30.0):
+    def __init__(self, ttl: float | None = None):
+        if ttl is None:
+            ttl = config.cache.quote_ttl
         self._ttl = ttl
         self._cache: dict[str, tuple[dict, float]] = {}
         self._inflight: set[str] = set()
@@ -76,4 +80,4 @@ class QuoteCache:
 
 
 # 全局单例
-quote_cache = QuoteCache(ttl=30.0)
+quote_cache = QuoteCache()

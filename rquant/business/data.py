@@ -13,13 +13,14 @@ from pathlib import Path
 
 import pandas as pd
 
+from config import config
 from rquant.data_source import pool
 
 # 业务数据目录（portfolio / trades / snapshots 等 JSON 存这里）
-DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data"
+DATA_DIR = config.project_root / config.paths.data_dir
 DATA_DIR.mkdir(exist_ok=True)
 
-STALE_DAYS = 5
+STALE_DAYS = config.cache.stale_days
 
 
 # ============== JSON 工具（被 portfolio.py 复用）==============
@@ -89,7 +90,7 @@ def populate_watchlist_info(codes: list[str]) -> None:
     for code in codes:
         cached = _stock_store.get(code, {})
         age = now - cached.get("_updated_at", 0) if cached.get("_updated_at") else 9999
-        if age >= 300 or not cached.get("price"):
+        if age >= config.business.watchlist_cache_seconds or not cached.get("price"):
             to_fetch.append(code)
     if not to_fetch:
         return

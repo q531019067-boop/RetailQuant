@@ -1,0 +1,52 @@
+# rQuant 全局配置文件
+# 修改后重启服务生效，注释中的值即为默认值
+
+[server]
+port = 8080                         # 监听端口（也支持环境变量 RQUANT_PORT）
+secret_key = "rquant-dev-key"       # Flask secret_key（仅本地开发用）
+
+[paths]
+cache_dir = "cache"                 # K 线 / 行情缓存目录
+data_dir = "data"                   # 业务数据目录（portfolio / trades）
+parquet_subdir = "parquet"          # Parquet 日频数据子目录（data/parquet）
+
+[database]
+db_name = "rquant.db"               # SQLite 主库文件名（位于 cache_dir 下）
+eastmoney_db_name = "eastmoney.db"  # 东财财务快照库（位于 cache_dir 下）
+busy_timeout = 5000                 # SQLite 写锁等待（毫秒）
+
+[data_source.sina]
+kline_url = "https://money.finance.sina.com.cn/quotes_service/api/json_v2.php/CN_MarketData.getKLineData"
+quote_url = "https://hq.sinajs.cn/list="
+referer = "https://finance.sina.com.cn/"
+timeout = 8                         # 请求超时（秒）
+unhealthy_cooldown = 60             # 不健康后冷却时间（秒）
+
+[data_source.eastmoney]
+board_url = "https://push2delay.eastmoney.com/api/qt/clist/get"
+board_fields = "f2,f3,f4,f12,f14,f104,f128,f140"
+
+[cache]
+quote_ttl = 30                      # 行情缓存 TTL（秒）
+board_cache_ttl = 120               # 板块数据新鲜窗口（秒）
+board_stale_ttl = 600               # 板块数据过期后仍允许 serve-stale（秒）
+stale_days = 5                      # K 线数据新鲜天数阈值
+
+[message_queue]
+max_workers = 2                     # worker 线程数
+queue_size = 10000                  # 最大消息数（超出后降级同步执行）
+
+[business]
+default_initial_funds = 1_000_000   # 默认初始资金（元）
+max_log_entries = 200               # 系统日志 ring buffer 最大条数
+default_index_code = "sh000001"     # 默认大盘指数
+watchlist_cache_seconds = 300       # 自选股行情缓存（秒）
+
+[treemap]
+width = 900                         # Treemap 画布宽（px）
+height = 500                        # Treemap 画布高（px）
+
+[fetch_hist]
+max_datalen = 5000                  # 单次拉取最大 K 线条数
+request_timeout = 15                # 历史拉取超时（秒）
+inter_code_delay = 2.0              # 多只股票间的请求间隔（秒）

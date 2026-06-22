@@ -16,8 +16,10 @@ import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
 
+from config import config
+
 # Parquet 数据目录
-_PARQUET_DIR = Path(__file__).resolve().parent.parent.parent / "data" / "parquet"
+_PARQUET_DIR = config.project_root / config.paths.data_dir / config.paths.parquet_subdir
 
 # 标准列定义（按此顺序写入，date 为主键）
 _COLUMNS = ["date", "open", "high", "low", "close", "volume", "amount", "turnover"]

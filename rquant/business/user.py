@@ -13,9 +13,11 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
+from config import config
+
 from .data import _load_json, _save_json
 
-DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data"
+DATA_DIR = config.project_root / config.paths.data_dir
 DATA_DIR.mkdir(exist_ok=True)
 
 USERS_FILE = DATA_DIR / "users.json"

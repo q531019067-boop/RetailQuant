@@ -9,10 +9,12 @@ from __future__ import annotations
 
 import pandas as pd
 
+from config import config
+
 from .data import fetch_kline
 
 # 默认大盘指数代码
-DEFAULT_INDEX_CODE = "sh000001"
+DEFAULT_INDEX_CODE = config.business.default_index_code
 
 
 def fetch_index_kline(code: str = DEFAULT_INDEX_CODE, days: int = 130) -> pd.DataFrame:

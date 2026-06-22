@@ -25,6 +25,8 @@ import traceback
 from collections import defaultdict
 from typing import Any, Callable
 
+from config import config
+
 _log = logging.getLogger("rquant.mq")
 if not _log.handlers:
     h = logging.StreamHandler(sys.stderr)
@@ -39,7 +41,11 @@ Handler = Callable[[Any], None]
 class Mq:
     """简易 pub-sub 消息队列"""
 
-    def __init__(self, max_workers: int = 2, queue_size: int = 10000):
+    def __init__(self, max_workers: int | None = None, queue_size: int | None = None):
+        if max_workers is None:
+            max_workers = config.message_queue.max_workers
+        if queue_size is None:
+            queue_size = config.message_queue.queue_size
         self._q: queue.Queue = queue.Queue(maxsize=queue_size)
         self._handlers: dict[str, list[Handler]] = defaultdict(list)
         self._workers: list[threading.Thread] = []
@@ -144,7 +150,7 @@ class Mq:
 
 
 # 全局单例
-mq = Mq(max_workers=2)
+mq = Mq()
 
 
 def start_mq() -> None:

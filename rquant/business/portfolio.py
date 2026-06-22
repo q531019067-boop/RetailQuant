@@ -10,9 +10,11 @@ import uuid
 from datetime import datetime
 from pathlib import Path
 
+from config import config
+
 from .data import _load_json, _save_json  # 复用统一 JSON 工具
 
-DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data"
+DATA_DIR = config.project_root / config.paths.data_dir
 DATA_DIR.mkdir(exist_ok=True)
 
 PORTFOLIO_FILE = DATA_DIR / "portfolio.json"

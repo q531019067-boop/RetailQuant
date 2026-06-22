@@ -16,9 +16,11 @@ import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
+from config import config
+
 # ============== 数据源（东方财富 push2）==============
 
-EAST_MONEY_URL = "https://push2delay.eastmoney.com/api/qt/clist/get"
+EAST_MONEY_URL = config.data_source.eastmoney.board_url
 # 板块类型 → 东财 fs 过滤
 # m:90 = 板块市场；t:2=行业，t:3=概念，t:1=地域
 BOARD_TYPES = {
@@ -54,8 +56,8 @@ _session.mount("http://", _adapter)
 
 # ============== 业务层缓存（serve-stale）==============
 
-CACHE_TTL = 120  # 秒（新鲜窗口）
-STALE_TTL = 600  # 秒（过期后还能用 10 分钟，serve-stale 兜底）
+CACHE_TTL = config.cache.board_cache_ttl  # 秒（新鲜窗口）
+STALE_TTL = config.cache.board_stale_ttl  # 秒（过期后还能用，serve-stale 兜底）
 _cache: dict[str, tuple] = {}  # key → (data, timestamp)
 
 

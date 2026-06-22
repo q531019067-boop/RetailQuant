@@ -13,10 +13,12 @@ from __future__ import annotations
 from datetime import datetime
 from pathlib import Path
 
+from config import config
+
 from .data import _load_json, _save_json
 from .user import get_user_data_dir
 
-DEFAULT_INITIAL_FUNDS = 1_000_000  # 默认初始资金 100 万
+DEFAULT_INITIAL_FUNDS = config.business.default_initial_funds  # 默认初始资金
 
 
 def _funds_file(user_id: str) -> Path:

@@ -11,10 +11,8 @@ __pycache__/
 .DS_Store
 Thumbs.db
 
-# Local cache databases
-cache/*.db
-cache/*.db-shm
-cache/*.db-wal
+# Local cache (auto-generated runtime data)
+cache/
 
 # Runtime data (local only, do not commit)
 data/portfolio.json
@@ -24,3 +22,5 @@ data/users.json
 data/parquet/
 
 uv.lock
+
+.venv/

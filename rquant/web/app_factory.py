@@ -15,12 +15,13 @@ _STATIC_DIR = _PROJECT_ROOT / "static"
 
 from flask import Flask  # noqa: E402
 
+from config import config  # noqa: E402
 from rquant.data_source import start_mq  # noqa: E402
 
 from .routes import register_routes  # noqa: E402
 from .views import _log  # noqa: E402
 
-DEFAULT_PORT = int(os.environ.get("RQUANT_PORT", "8080"))
+DEFAULT_PORT = int(os.environ.get("RQUANT_PORT", str(config.server.port)))
 
 
 def create_app() -> Flask:
@@ -32,7 +33,7 @@ def create_app() -> Flask:
         template_folder=str(_TEMPLATE_DIR),
         static_folder=str(_STATIC_DIR),
     )
-    app.secret_key = "rquant-dev-key"  # 仅本地用
+    app.secret_key = config.server.secret_key  # 从 config.toml 读取
     register_routes(app)
     return app
 

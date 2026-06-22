@@ -15,6 +15,8 @@ import time
 from collections import deque
 from datetime import datetime, time as dtime
 
+from config import config
+
 # ============== 市场状态 ==============
 
 # A 股交易时段（含集合竞价）
@@ -133,7 +135,7 @@ def report_strategy_run(name: str, signal_count: int = 0) -> None:
 
 # ============== 系统日志 ==============
 
-_MAX_LOG_ENTRIES = 200
+_MAX_LOG_ENTRIES = config.business.max_log_entries
 _log_buffer: deque[dict] = deque(maxlen=_MAX_LOG_ENTRIES)
 _log_lock = threading.Lock()
 _initialized = False

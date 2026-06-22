@@ -17,8 +17,10 @@ import time
 from pathlib import Path
 from typing import Optional
 
+from config import config
+
 # SQLite 缓存路径
-_DB_PATH = Path(__file__).resolve().parent.parent.parent / "cache" / "eastmoney.db"
+_DB_PATH = config.project_root / config.paths.cache_dir / config.database.eastmoney_db_name
 
 
 def _ensure_db() -> sqlite3.Connection:

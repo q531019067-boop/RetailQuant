@@ -9,10 +9,11 @@ from __future__ import annotations
 import sys
 from datetime import datetime
 
+from config import config
 from rquant.business import data, system
 
 # Treemap 画布尺寸（与前端 Canvas 宽高比一致）
-TREEMAP_W, TREEMAP_H = 900, 500
+TREEMAP_W, TREEMAP_H = config.treemap.width, config.treemap.height
 
 
 def _log(msg: str):

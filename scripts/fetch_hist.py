@@ -39,11 +39,12 @@ from rquant.business.pool_store import add_to_pool  # noqa: E402
 from rquant.data_source.eastmoney import download_snapshot, get_snapshot  # noqa: E402
 from rquant.data_source import db  # noqa: E402
 
-# Sina K 线接口
-_SINA_KLINE_URL = "https://money.finance.sina.com.cn/quotes_service/api/json_v2.php/CN_MarketData.getKLineData"
-# 拉到最大深度（实测 5000 条覆盖 2005 年至今）
-_MAX_DATALEN = 5000
-_REQUEST_TIMEOUT = 15
+from config import config  # noqa: E402
+
+# Sina K 线接口（从全局配置读取）
+_SINA_KLINE_URL = config.data_source.sina.kline_url
+_MAX_DATALEN = config.fetch_hist.max_datalen
+_REQUEST_TIMEOUT = config.fetch_hist.request_timeout
 
 # 预置 10 个测试标的的中文名映射（做网络失效时的兜底）
 _STOCK_NAMES = {
@@ -289,7 +290,7 @@ def main():
             print(f"  [FAIL] 无数据 ({elapsed:.1f}s)")
 
         if i < len(args.codes):
-            time.sleep(2.0)
+            time.sleep(config.fetch_hist.inter_code_delay)
 
     print(f"\n总计: {total_rows} 行, 耗时 {total_elapsed:.1f}s")
 

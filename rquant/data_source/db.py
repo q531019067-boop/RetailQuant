@@ -12,9 +12,11 @@ import threading
 import time
 from typing import Any, Optional
 
+from config import config
+
 from .cache import CACHE_DIR
 
-DB_PATH = CACHE_DIR / "rquant.db"
+DB_PATH = CACHE_DIR / config.database.db_name
 
 # ----- 连接管理 -----
 
@@ -28,7 +30,7 @@ def _configure(conn: sqlite3.Connection) -> None:
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
     # writer 端等待最多 5s，避免并发写冲突
-    conn.execute("PRAGMA busy_timeout = 5000")
+    conn.execute(f"PRAGMA busy_timeout = {int(config.database.busy_timeout)}")
 
 
 def get_conn() -> sqlite3.Connection:
