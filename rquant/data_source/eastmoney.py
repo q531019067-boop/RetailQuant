@@ -14,7 +14,6 @@ from __future__ import annotations
 import os
 import sqlite3
 import time
-from pathlib import Path
 from typing import Optional
 
 from config import config
@@ -49,7 +48,7 @@ def _patch_akshare_session():
     """让 akshare 内部 session 跳过系统代理"""
     os.environ.setdefault("NO_PROXY", os.environ.get("NO_PROXY", "") + ",*.eastmoney.com,*.eastmoney.com.cn")
     try:
-        from akshare.utils.request import _session as _ak_sess
+        from akshare.utils.request import _session as _ak_sess  # type: ignore
 
         if hasattr(_ak_sess, "trust_env"):
             _ak_sess.trust_env = False

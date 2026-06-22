@@ -211,7 +211,7 @@ def _compute_metrics(monthly_nav: list[dict], initial_capital: float, total_turn
     cumulative_return = final_nav / initial_capital - 1
 
     # 年化收益
-    days = (dates.iloc[-1] - dates.iloc[0]).days
+    days = (dates[-1] - dates[0]).days
     if days > 0:
         annual_return = (1 + cumulative_return) ** (365 / days) - 1
     else:

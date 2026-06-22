@@ -46,7 +46,7 @@ def register_routes(app: Flask) -> None:
         total_cost = 0.0
         total_market = 0.0
         for p in positions_raw:
-            df = data.fetch_kline(p["code"], 70)
+            df = data.fetch_kline(str(p["code"]), 70)
             current = float(df["close"].iloc[-1]) if not df.empty else p["avg_cost"]
             market_value = current * p["shares"]
             pnl = market_value - p["avg_cost"] * p["shares"]
@@ -76,7 +76,7 @@ def register_routes(app: Flask) -> None:
         # 2. 卖出信号
         sell_signals = []
         for p in positions:
-            df = data.fetch_kline(p["code"], 70)
+            df = data.fetch_kline(str(p["code"]), 70)
             sig = scan_sell(p, df)
             if sig:
                 sell_signals.append(
@@ -97,7 +97,7 @@ def register_routes(app: Flask) -> None:
 
         per_strategy_hits: Counter = Counter()
         for s in data.get_pool():
-            df = data.fetch_kline(s["code"], 70)
+            df = data.fetch_kline(str(s["code"]), 70)
             for sig in scan_stock(s["code"], s["name"], s["sector"], df):
                 buy_signals.append(
                     {
@@ -239,7 +239,7 @@ def register_routes(app: Flask) -> None:
         positions = pf.get_positions()
         total_market = 0.0
         for p in positions:
-            df = data.fetch_kline(p["code"], 70)
+            df = data.fetch_kline(str(p["code"]), 70)
             if not df.empty:
                 total_market += float(df["close"].iloc[-1]) * p["shares"]
         pf.save_snapshot(positions, total_market, note="手动保存")

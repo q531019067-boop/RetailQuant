@@ -57,11 +57,11 @@ class MarketState:
 class MarketRegime:
     """市场状态检测器"""
 
-    STRONG_BULL = "STRONG_BULL"
-    BULL = "BULL"
-    SIDEWAYS = "SIDEWAYS"
-    BEAR = "BEAR"
-    STRONG_BEAR = "STRONG_BEAR"
+    STRONG_BULL: Regime = "STRONG_BULL"
+    BULL: Regime = "BULL"
+    SIDEWAYS: Regime = "SIDEWAYS"
+    BEAR: Regime = "BEAR"
+    STRONG_BEAR: Regime = "STRONG_BEAR"
 
     # 阈值
     STRONG_BULL_MA_RATIO = 1.02  # MA60 / MA120
@@ -152,7 +152,10 @@ def get_market_regime(index_df: pd.DataFrame | None = None) -> MarketState:
     except Exception:
         df = None
 
-    state = MarketRegime().detect(df)
+    if df is None:
+        state = MarketRegime().detect(pd.DataFrame())
+    else:
+        state = MarketRegime().detect(df)
     _REGIME_CACHE[today] = state
     return state
 

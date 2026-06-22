@@ -107,7 +107,7 @@ def get_strategy_status() -> list[dict]:
             signals = s.get("signals_today", 0)
             status = s.get("status", "stopped")
             last_run = s.get("last_run")
-            last_run_str = datetime.fromtimestamp(last_run).strftime("%H:%M:%S") if last_run else "--:--:--"
+            last_run_str = datetime.fromtimestamp(float(last_run)).strftime("%H:%M:%S") if last_run else "--:--:--"
             out.append(
                 {
                     "name": name,

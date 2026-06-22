@@ -5,7 +5,6 @@ rquant.data_source.cache — 数据源缓存目录 + 通用常量
 """
 
 from __future__ import annotations
-from pathlib import Path
 
 from config import config
 

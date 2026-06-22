@@ -146,7 +146,7 @@ class Mq:
             try:
                 h(payload)
             except Exception as e:
-                _log.error(f"handler {h.__name__} on {topic} 失败: {e}")
+                _log.error(f"handler {getattr(h, '__name__', h)} on {topic} 失败: {e}")
 
 
 # 全局单例
