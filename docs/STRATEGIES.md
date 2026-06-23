@@ -1,27 +1,37 @@
 # rQuant 策略文档
 
-> 10 个策略的详细说明：触发条件、信心度、适用场景、参数、数据降级、扩展方式
+## 历史设计说明
+
+本文件已合并原根目录 `STRATEGIES.md` 与旧 `docs/strategy设计详解.md`。原根目录 `strategy.py` 与 `rquant/compat/` 已被移除；历史文档中关于 `chanlun2b_signal()`、`buyhold_signal()`、`sell_signal()` 等函数式兼容接口，以及单条件 MA/低吸近似实现的描述，仅代表早期设计阶段，不再是当前实现。
+
+当前策略系统以 `rquant/strategy/` 为准：策略通过 `@register` 注册，统一输出 `Signal`，并通过 `scan_stock()` / `scan_sell()` / `scan_category()` 调用。
+
+---
+
+> 12 个策略的详细说明：触发条件、信心度、适用场景、参数、数据降级、扩展方式
 >
-> 想了解架构和快速上手？看 [`README.md`](README.md)；本文档专注"每个策略在做什么"。
+> 想了解架构和快速上手？看 [`README.md`](../README.md)；本文档专注"每个策略在做什么"。
 >
-> 📖 **MultiFactor 专门报告**：见 [`docs/multi_factor_report.md`](docs/multi_factor_report.md) — 含 8 因子设计 / 4 过滤 / 回测结果 / 参数敏感性
+> 📖 **MultiFactor 专门报告**：见 [`multi_factor_report.md`](multi_factor_report.md) — 含 8 因子设计 / 4 过滤 / 回测结果 / 参数敏感性
 
 ---
 
 ## 目录
 
 - [通用规范](#通用规范)
-- [9 个策略详解](#9-个策略详解)
+- [12 个策略详解](#12-个策略详解)
   - [VpBreakout — 量价共振突破](#1-vpbreakout--量价共振突破)
   - [DonchianTurtle — 海龟/唐奇安通道](#2-donchianturtle--海龟唐奇安通道)
   - [CrossBorderDca — 跨境 ETF 定投](#3-crossborderdca--跨境-etf-定投)
   - [DividendLowvolRotation — 红利低波轮动](#4-dividendlowvolrotation--红利低波轮动)
   - [MultiFactor — 多因子选股](#5-multifactor--多因子选股)
   - [GridMartingale — 网格/马丁格尔](#6-gridmartingale--网格马丁格尔)
-- [DragonTigerPattern — 游资形态（涨停/连板）](#7-dragontigerpattern--游资形态涨停连板)
+  - [DragonTigerPattern — 游资形态（涨停/连板）](#7-dragontigerpattern--游资形态涨停连板)
   - [ChanLun2B — 缠论二买（优化版）](#8-chanlun2b--缠论二买优化版)
   - [BuyHold — 低吸（优化版）](#9-buyhold--低吸优化版)
   - [ScenarioRouter — 场景路由器（牛/熊/震荡 → 子策略）](#10-scenariorouter--场景路由器牛熊震荡--子策略)
+  - [MovingAverageCross — 均线交叉](#11-movingaveragecross--均线交叉)
+  - [RsiMeanReversion — RSI 均值回归](#12-rsimeanreversion--rsi-均值回归)
 - [策略对比矩阵](#策略对比矩阵)
 - [组合建议](#组合建议)
 - [扩展新策略](#扩展新策略)
@@ -34,21 +44,21 @@
 ### 调用方式
 
 ```python
-import strategy
+from rquant.strategy import scan_stock, scan_sell, scan_category, get, all_strategies
 
-# 跑所有 9 个策略
-sigs = strategy.scan_stock(code, name, sector, df)
+# 跑所有 12 个策略
+sigs = scan_stock(code, name, sector, df)
 
 # 按大类过滤
-sigs = strategy.scan_category("turtle", code, name, sector, df)
+sigs = scan_category("turtle", code, name, sector, df)
 
-# 跑单个策略
-sigs = strategy.scan_category("legacy", code, name, sector, df)
-# 取特定策略
-sig = strategy.get("ChanLun2B").signal_buy(code, name, sector, df)
+# 跑单个策略大类
+sigs = scan_category("legacy", code, name, sector, df)
+# 取特定策略类
+sig = get("ChanLun2B").signal_buy(code, name, sector, df)
 
 # 卖出信号（跨所有策略）
-sig = strategy.sell_signal(position, df)
+sig = scan_sell(position, df)
 ```
 
 ### Signal 数据结构
@@ -79,10 +89,10 @@ class Signal:
 # ✅ 正确
 hist = data.fetch_kline(code, days)              # 全量
 df_at_dt = hist[hist["date"] <= decision_date]   # 在 dt 决策时只取 ≤ dt
-strategy.scan_stock(code, name, sector, df_at_dt)
+scan_stock(code, name, sector, df_at_dt)
 
 # ❌ 错误：dt 决策时用到 dt+1 之后的数据
-strategy.scan_stock(code, name, sector, hist)
+scan_stock(code, name, sector, hist)
 ```
 
 ### 信心度约定
@@ -106,7 +116,7 @@ strategy.scan_stock(code, name, sector, hist)
 
 ---
 
-## 9 个策略详解
+## 12 个策略详解
 
 ### 1. VpBreakout — 量价共振突破
 
@@ -252,7 +262,7 @@ RSI 越低信心越高（线性插值 40-85）。
 
 #### ETF 池子
 
-在 `strategies/etf_rotation/universe.py:CROSS_BORDER_ETFS`：
+在 `rquant/strategy/etf_rotation/universe.py:CROSS_BORDER_ETFS`：
 纳指ETF / 标普500 / 港股通互联网 / 恒生科技 / 恒生医疗 / 中概互联
 
 #### 参数
@@ -313,7 +323,7 @@ confidence = max(45, min(80, 50 + 20日涨幅 × 2))
 
 #### ETF 池子
 
-`strategies/etf_rotation/universe.py:DIVIDEND_LOWVOL_ETFS`：
+`rquant/strategy/etf_rotation/universe.py:DIVIDEND_LOWVOL_ETFS`：
 红利低波100 / 红利ETF / 中证红利 / 红利100 / 价值100 / 央企红利
 
 #### 参数
@@ -330,7 +340,7 @@ STOP_LOSS = -0.10
 
 ### 5. MultiFactor — 多因子选股
 
-> 📖 **完整设计 + 因子工程 + 回测报告**：见 [`docs/多因子选股回测系统.md`](docs/多因子选股回测系统.md) 与 [`docs/multi_factor_report.md`](docs/multi_factor_report.md)
+> 📖 **完整设计 + 因子工程 + 回测报告**：见 [`docs/多因子选股回测系统.md`](多因子选股回测系统.md) 与 [`docs/multi_factor_report.md`](multi_factor_report.md)
 >
 > 本节是策略速览；想看因子权重怎么来的、为什么这么分、回测怎么跑、参数怎么调，看专门报告。
 
@@ -726,7 +736,7 @@ STOP_LOSS = -0.10
 
 **缓存策略**：`get_market_regime()` 按"调用日的日期"缓存（实盘路径）；传入 `index_df` 时按"数据最后日期"缓存，避免污染实盘缓存。回测场景必须传 `use_cache=False`。
 
-> **2026-06-22 修复**：之前的实现按"今天日期"缓存，**回测时整次只用一个 regime 状态**——这是真实的回测错误。已修，详见 `CHANGELOG.md`。
+> **2026-06-22 修复**：之前的实现按"今天日期"缓存，**回测时整次只用一个 regime 状态**——这是真实的回测错误。已修，详见 [`CHANGELOG.md`](CHANGELOG.md)。
 
 #### 状态 → 子策略映射
 
@@ -776,17 +786,17 @@ best.extra["router_sub_cats"] = sub_cats
 
 ```python
 # 方式 1: 用路由器（实盘）
-from strategies import get
+from rquant.strategy import get
 router = get("ScenarioRouter")
 sig = router.signal_buy(code, name, sector, df)
 
 # 方式 2: 直接看市场状态（实盘，按今天日期缓存）
-from strategies.router import get_market_regime
+from rquant.strategy.router.market_regime import get_market_regime
 state = get_market_regime()
 print(state.regime, state.description)
 
 # 方式 3: 测试 / 回测时强制重算（不污染实盘缓存）
-from strategies.router import get_market_regime, clear_regime_cache
+from rquant.strategy.router.market_regime import get_market_regime, clear_regime_cache
 clear_regime_cache()
 state = get_market_regime(my_index_df, use_cache=False)
 # 缓存 key 现在按 index_df 的最后日期，回测时不同 dt 互不污染
@@ -800,6 +810,94 @@ regime_state = get_market_regime(index_df=index_df_until_dt, use_cache=False)
 
 router = ScenarioRouter()
 sig = router.signal_buy_at(code, name, sector, df, regime_state)
+```
+
+---
+
+### 11. MovingAverageCross — 均线交叉
+
+**定位**：经典趋势跟踪，通过快速/慢速双均线金叉捕捉大波段涨幅。
+
+#### 触发条件（全部满足）
+
+| # | 条件 | 触发阈值 | 说明 |
+|---|---|---|---|
+| 1 | 金叉信号 | MA5 > MA20，且前一日 MA5_prev <= MA20_prev | 5 日线上穿 20 日线 |
+
+#### 信心度算法
+
+固定为 75.0（均线交叉金叉确立时）。
+
+#### 卖出信号（任一触发）
+
+- 达到 +15% 硬止盈。
+- 触发 -8% 硬止损。
+- **均线死叉**：5 日线下穿 20 日线（MA5_prev >= MA20_prev 且 MA5 < MA20）。
+
+#### 适用场景
+
+- ✅ 具有明显单边趋势的大盘/板块行情。
+- ✅ 容易捕捉主升浪。
+
+#### 不适用场景
+
+- ❌ 震荡市，极易在无趋势的窄幅波动中频繁金叉/死叉产生摩擦损耗。
+
+#### 参数
+
+```python
+FAST_N = 5           # 快速均线
+SLOW_N = 20          # 慢速均线
+TAKE_PROFIT = 0.15   # 止盈 15%
+STOP_LOSS = -0.08    # 止损 -8%
+```
+
+---
+
+### 12. RsiMeanReversion — RSI 均值回归
+
+**定位**：超跌反弹及均值回归，在强趋势背景下寻找超卖的回吐买入点。
+
+#### 触发条件（全部满足）
+
+| # | 条件 | 触发阈值 | 说明 |
+|---|---|---|---|
+| 1 | RSI 超卖 | RSI(14) < 30 | 14 日强弱指标进入超卖区间 |
+| 2 | 趋势/防守确认 | 价格 >= MA200，或者 价格 >= MA200 - 1.5×ATR | 确保并非处于彻底崩溃的熊市，属于中长期上升/防守阶段 |
+
+#### 信心度算法
+
+```
+confidence = 62.0 + min(20.0, 30.0 - rsi_value)
+# 如果不满足强势上涨（即 close < MA200 的防守区），信心度降 10 分
+```
+范围在 40.0 至 90.0 之间。
+
+#### 卖出信号（任一触发）
+
+- **超买止盈**：RSI(14) >= 70（获利反弹退出）。
+- **ATR 动态止损**：价格跌破 `avg_cost - 2×ATR`。
+- **时间止损**：持仓达到最大 20 个交易日仍未触发以上条件，强制清仓。
+
+#### 适用场景
+
+- ✅ 中长期牛市或上升通道中的深度回调、急跌阶段。
+- ✅ 震荡整理区间内的宽幅震荡。
+
+#### 不适用场景
+
+- ❌ 单边熊市或破位大跌趋势，容易反复触发低吸导致腰斩。
+
+#### 参数
+
+```python
+RSI_N = 14
+RSI_BUY = 30.0
+RSI_SELL = 70.0
+TREND_MA_N = 200
+ATR_N = 14
+MAX_HOLD_DAYS = 20
+STOP_ATR = 2.0
 ```
 
 ---
@@ -970,28 +1068,27 @@ change_pct(df)      # 当日涨跌幅
 
 3 个策略（MultiFactor / GridMartingale / DragonTigerPattern）需要的数据当前没接入：
 - 在 `Signal.extra.need_data_source` 字段明示
-- 接入新数据源后改对应策略即可，业务层 0 改动（参考 `datasources.py` 的 Sina 抽象）
+- 接入新数据源后改对应策略即可，业务层 0 改动（参考 `rquant/data_source` 的 Sina 抽象）
 
 ### Q5: 怎么回测？
 
 `signal_buy / signal_sell` 协议 + 历史 K 线就能做回测：
 
 ```python
+from rquant.strategy import scan_stock
+
 for dt in trading_days:
     hist = data.fetch_kline(code, 250)  # 拉全量
     df_at_dt = hist[hist["date"] <= dt]  # ⚠️ 严格时序切片
-    sigs = strategy.scan_stock(code, name, sector, df_at_dt)
+    sigs = scan_stock(code, name, sector, df_at_dt)
     # 按 sigs 决策买卖...
 ```
 
-完整回测引擎待开发（建议放 `backtest/` 目录）。
+系统目前已实现了完整的通用回测引擎，位于 `rquant/backtest/` 目录中。我们可以直接运行 `scripts/run_backtest.py`、`scripts/backtest_multi_factor.py` 或者 `scripts/run_semiconductor_compute_10x10.py` 开启回测。
 
-### Q6: 老 API 还能用吗？
+### Q6: 老 API（如 chanlun2b_signal / buyhold_signal）还能用吗？
 
-✅ 能。`strategy.py` 是兼容层：
-- `chanlun2b_signal` / `buyhold_signal` 仍可用（内部调用优化版）
-- `scan_stock` / `sell_signal` 同上
-- `Signal` / `STRATEGIES` 转发
+❌ 不能。为了保持项目的干净、现代化及包化分层，以前的兼容层 `strategy.py` 及 `rquant/compat/` 已被彻底删除。所有的策略调用请全部迁移并统一走 `rquant.strategy` 注册中心。
 
 ### Q7: 能调整参数吗？
 
@@ -999,10 +1096,11 @@ for dt in trading_days:
 
 ```python
 # 在策略实例上改
-strategy.get("DonchianTurtle").TAKE_PROFIT = 0.30
+from rquant.strategy import get
+get("DonchianTurtle").TAKE_PROFIT = 0.30
 
 # 或在策略类上改（影响所有新实例）
-from strategies.turtle.donchian import DonchianTurtle
+from rquant.strategy.turtle.donchian import DonchianTurtle
 DonchianTurtle.TAKE_PROFIT = 0.30
 ```
 

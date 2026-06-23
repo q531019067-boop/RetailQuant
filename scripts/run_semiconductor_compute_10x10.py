@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""半导体/算力 10 股 × STRATEGIES.md 10 策略批量单股回测与报告生成。"""
+"""半导体/算力 10 股 × docs/STRATEGIES.md 12 策略批量单股回测与报告生成。"""
 
 from __future__ import annotations
 
@@ -254,7 +254,7 @@ def write_report(agg: dict, cfg: RunConfig) -> None:
 | 项目 | 设定 |
 |------|------|
 | 股票池 | 半导体 5 只 + 算力 5 只，共 10 只 |
-| 策略池 | STRATEGIES.md 文档口径 10 个策略 |
+| 策略池 | docs/STRATEGIES.md 文档口径 12 个策略 |
 | 回测模式 | 单股单策略隔离回测，互不共享资金 |
 | 撮合规则 | T+1、100 股整数手买入、卖出可零股清仓 |
 | 费用 | 佣金万 2.5（最低 5 元）、卖出印花税 0.05%、滑点 1bp |

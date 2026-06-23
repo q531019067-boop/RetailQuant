@@ -2,11 +2,11 @@
 
 A 股个人量化看板（单实例、本地优先、零外部账号）—— Flask + 缠论近似 + 板块 Treemap + 自选股 + 数据源池。
 
-> 📖 **10 个策略的详细说明**（触发条件、信心度算法、参数、适用场景）见 [`STRATEGIES.md`](STRATEGIES.md)。本文档专注架构、启动、修改记录。
+> 📖 **12 个策略的详细说明**（触发条件、信心度算法、参数、适用场景）见 [`docs/STRATEGIES.md`](docs/STRATEGIES.md)。本文档专注架构、启动、修改记录。
 >
-> 📝 **最近变更**：2026-06-22 修了 3 处 P0（首页 K 线 N+1 / 路由器缓存污染回测 / 月频 look-ahead），详见 [`CHANGELOG.md`](CHANGELOG.md)。
+> 📝 **最近变更**：2026-06-22 修了 3 处 P0（首页 K 线 N+1 / 路由器缓存污染回测 / 月频 look-ahead），详见 [`docs/CHANGELOG.md`](docs/CHANGELOG.md)。
 
-- ✅ **策略引擎**（8 大类 / 10 个策略：缠论 / 量价突破 / 海龟 / 多因子 / ETF 轮动 / 网格 / 游资 / 场景路由器）
+- ✅ **策略引擎**（10 大类 / 12 个策略：缠论 / 量价突破 / 海龟 / 多因子 / ETF 轮动 / 网格 / 游资 / 场景路由器 / 均线交叉 / RSI 均值回归）
 - ✅ 止损 / 止盈信号（-7% / +15% / 跌破 MA60）
 - ✅ Flask + 看板（持仓、信号、资金曲线）
 - ✅ 加仓 / 减仓 / 删除交易
@@ -64,13 +64,12 @@ uv run ruff format   # 代码自动格式化
 
 #### 目录变化
 
-```text
+```
 rquant/
 ├── business/         # 业务层：data / board / portfolio / market(新)
 ├── data_source/      # 数据层：pool / sina(拆出) / cache(拆出)
 ├── strategy/         # 策略层（原 strategies/，去 s）
-├── web/              # Web 层：app_factory / routes / views
-└── compat/           # 兼容层：老 strategy.py 转发
+└── web/              # Web 层：app_factory / routes / views
 ```
 
 #### 文件变化
@@ -80,7 +79,7 @@ rquant/
 | 根目录 `app.py` (388 行) | `rquant/web/app_factory.py` + `routes.py` + `views.py` |
 | 根目录 `datasources.py` (274 行) | `rquant/data_source/{pool,sina,cache}.py` |
 | 根目录 `data.py` / `board.py` / `portfolio.py` | `rquant/business/` |
-| 根目录 `strategy.py` (65 行兼容层) | `rquant/compat/strategy.py` |
+| 根目录 `strategy.py` (65 行兼容层) | `rquant/compat/strategy.py`（已在后续重构中彻底删除） |
 | `strategies/` (包) | `rquant/strategy/` |
 | `_test_*.py` (根目录探针) | `tests/test_*.py` |
 | `test_page.html` (根目录) | `templates/test_page.html` |
@@ -95,13 +94,13 @@ rquant/
 
 #### 验证
 
-```text
+```
 ruff check .  → All checks passed!
 ruff format   → 全部格式化
 三地址访问     → 127.0.0.1 / localhost / [::1] 全部 200
 /api/boards   → 200 (5475 bytes)
 策略注册       → 10 个（6 大类 + legacy + router）
-兼容层         → 老 scan_stock / chanlun2b_signal / sell_signal 仍工作
+兼容层         → 老 API 功能已完全重构并迁移至 rquant.strategy 注册中心
 数据池         → sina_kline ✓ healthy / sina_quote ✓ healthy
 市场状态       → 路由器识别当前 SIDEWAYS（close ¥4108 在 MA120 附近）
 ```
@@ -126,7 +125,7 @@ ruff format   → 全部格式化
 
 #### 目录结构
 
-```text
+```
 strategies/
 ├── __init__.py            # 入口：自动注册 + scan_stock / scan_sell
 ├── base.py                # Strategy Protocol + Signal dataclass + 指标工具
@@ -168,9 +167,9 @@ class VpBreakout:
 #### 一键调用
 
 ```python
-from rquant.strategy import scan_stock, scan_category, scan_sell, all_strategies
+from rquant.strategy import scan_stock, scan_sell, scan_category, all_strategies
 
-# 跑所有 10 个策略
+# 跑所有 12 个策略
 sigs = scan_stock(code, name, sector, df)
 
 # 按大类过滤
@@ -187,7 +186,7 @@ for s in all_strategies():
 #### 扩展一个新策略
 
 ```python
-# rquant/strategy/xxx/yyy.py
+# strategies/xxx/yyy.py
 from ..base import Signal, ma
 from ..registry import register
 
@@ -207,7 +206,7 @@ class MyStrategy:
         ...
 ```
 
-`rquant/strategy/__init__.py` 的 import 触发 `@register`，**新策略 0 配置接入**。
+`strategies/__init__.py` 的 import 触发 `@register`，**新策略 0 配置接入**。
 
 #### 数据降级说明
 
@@ -221,29 +220,28 @@ class MyStrategy:
 
 #### 老策略优化
 
-老的 `ChanLun2B` 和 `BuyHold` 从 1 个条件升级到 4-7 个条件，并拆到 `rquant/strategy/legacy/`，接入新引擎自动注册：
+老的 `ChanLun2B` 和 `BuyHold` 从 1 个条件升级到 4-7 个条件，并拆到 `strategies/legacy/`，接入新引擎自动注册：
 
 | 策略 | 老版 | 优化版 |
 |---|---|---|
 | `ChanLun2B` | MA5 上穿 MA20（1 个条件，假信号多） | 底分型（5日窗口）+ 突破 + MA5>MA10>MA20 多头排列 + MA60↑ + 量能 ≥ 1.3×5日均量 + 强势收盘 + RSI≥50（7 重过滤） |
 | `BuyHold` | 现价 < MA60×0.95（1 个条件） | 20 日跌幅 > 10% + MA60 距离 -35%~-5% + RSI < 30 + 3日/20日量比 < 0.7（缩量见底）+ 当日反弹 + 最近 3 日有阴线（4 重确认） |
 
-#### 兼容
+#### 兼容与升级（当前状态）
 
-- `strategy.py` 变成兼容层（薄包装），老的 `chanlun2b_signal / buyhold_signal / scan_stock / sell_signal` **全部保留**
-- `app.py` / `portfolio.py` **零改动**
+- 随着架构演进，老的根目录 `strategy.py` 和 `rquant/compat/` 兼容层已被彻底移除，策略调用已完全迁移并统一走 `rquant.strategy` 注册中心。
+- 策略注册数已升级为 **12 个**（10 个大类：新增了均线交叉 `MovingAverageCross`、RSI 均值回归 `RsiMeanReversion` 等策略）。
 
 #### 验证
 
-```text
+```
 ruff check    → All checks passed!
 ruff format   → 全部格式化
-策略注册       → 10 个（8 大类）
+策略注册       → 12 个（10 大类，包含 legacy 优化版与新策略）
 模拟 K 线单测  → ChanLun2B conf=79.8 触发（底分型+突破+多头排列+放量）
                 BuyHold conf=85.0 触发（-25% 超跌+RSI 18+缩量止跌）
 杂乱反例       → 全部不触发 ✓
-老 API 兼容    → chanlun2b_signal / buyhold_signal 仍可用
-真实 K 线      → sh600460 命中 2 信号，sh512010 命中 1 信号
+真实 K 线      → sh600460 命中信号，sh512010 命中信号
 ```
 
 ---
@@ -256,7 +254,7 @@ ruff format   → 全部格式化
 
 | 文件 | 行数 | 内容 |
 |---|---|---|
-| `rquant/data_source/` | 908 | `DataSourcePool`（多源路由 + 健康度跟踪 + failover）+ `SinaKlineSource`（SQLite 缓存）+ `SinaQuoteSource`（30s 批量缓存 + QuoteCache）+ `ParquetStore` + `Mq`（内存 pub-sub）|
+| `datasources.py` | 230 | `KlineSource` / `QuoteSource` Protocol + `SinaKlineSource`（JSON 缓存）+ `SinaQuoteSource`（30s 批量缓存）+ `DataSourcePool`（优先级路由 + 健康度跟踪 + 自动 failover） |
 
 #### 业务层简化
 
@@ -267,7 +265,7 @@ ruff format   → 全部格式化
 
 #### 接口零变更
 
-```text
+```
 ✓ data.fetch_kline(code, days) -> pd.DataFrame     (签名 + 返回)
 ✓ data.get_watchlist_codes() / add/remove
 ✓ data.get_stock / upsert_stock / get_pool
@@ -287,7 +285,7 @@ ruff format   → 全部格式化
 
 #### 回归证据
 
-```text
+```
 ruff check    → All checks passed!
 ruff format   → 全部格式化
 接口回归       → 8/8 通过
@@ -354,29 +352,44 @@ ruff format   → 全部格式化
 
 ---
 
-## 架构（rquant 包 / 5 层）
+## 架构（rquant 包 / 多层化结构）
 
-```text
+```
+config/                              # 配置加载层（单例，TOML + 环境变量覆盖）
 rquant/                              # 主包
 ├── business/                        # 业务层
 │   ├── data.py          (K线 wrapper / 自选股 / 标的池)
 │   ├── board.py         (板块行情 + Treemap 坐标)
-│   ├── portfolio.py     (持仓管理)
+│   ├── portfolio.py     (持仓管理，JSON 存储)
+│   ├── funds.py         (用户资金管理，多用户 JSON 存储)
+│   ├── pool_store.py    (SQLite 标的池/自选股持久化)
+│   ├── user.py          (多用户管理)
+│   ├── system.py        (系统状态/内存日志)
 │   └── market.py        (大盘指数，给路由器用)
 ├── data_source/                     # 数据层
 │   ├── pool.py          (DataSourcePool 路由)
 │   ├── sina.py          (SinaKlineSource / SinaQuoteSource)
-│   └── cache.py         (缓存目录 + URL 常量)
-├── strategy/                        # 策略层（10 个策略 + 路由器）
-│   ├── base.py / registry.py
+│   ├── eastmoney.py     (akshare拉取东财财务快照)
+│   ├── db.py            (rquant.db 本地缓存数据库)
+│   ├── parquet_store.py (Parquet 列式存储)
+│   ├── quote_cache.py   (行情缓存与防击穿保护)
+│   ├── mq.py            (简易内存 pub-sub 消息队列)
+│   └── cache.py         (全局缓存常量)
+├── strategy/                        # 策略层（12 个策略 + 注册中心）
+│   ├── base.py / registry.py / __init__.py
 │   ├── etf_rotation/  volume_breakout/  turtle/  factor/
-│   ├── grid/  pattern/  legacy/  router/
-├── web/                             # Web 层
+│   ├── grid/  pattern/  legacy/  router/  trend/  mean_reversion/
+├── research/                        # 研究编排层
+│   └── workflow.py      (选池、评分、模拟交易编排，绝对防未来函数)
+├── backtest/                        # 通用回测层
+│   └── engine.py        (按日推进交易引擎、权益曲线、回测指标)
+├── web/                             # Web 展示层
 │   ├── app_factory.py   (create_app / run)
-│   ├── routes.py        (12 路由)
-│   └── views.py         (辅助函数)
-app.py           # 根目录薄转发 → rquant.web.app_factory.run()
-scripts/run.py   # 替代启动入口
+│   ├── routes.py        (16 路由 API)
+│   └── views.py         (辅助视图函数，包括 Treemap 坐标计算)
+├── log/                             # 日志层
+│   └── __init__.py      (loguru 统一包装)
+app.py           # 根目录 Web 启动入口 → rquant.web.app_factory.run()
 ```
 
 ### 扩展示例（加 Tencent 行情源）
@@ -400,47 +413,59 @@ pool.add_quote(TencentQuoteSource(), priority=0)  # Tencent 优先，Sina 兜底
 
 ## 文件
 
-```text
+```
 rQuant/
-├── app.py                 # 启动入口（转发到 rquant.web）
-├── STRATEGIES.md          # 10 个策略详细文档
-├── CHANGELOG.md           # 变更日志（最新修复见 2026-06-22）
+├── app.py                 # Web 启动入口（转发到 rquant.web）
+├── docs/STRATEGIES.md     # 12 个策略详细文档
+├── docs/CHANGELOG.md      # 变更日志（最新修复见 2026-06-22）
 ├── README.md
-├── pyproject.toml / requirements.txt / LICENSE
+├── pyproject.toml / requirements.txt / LICENSE / config.toml
 │
-├── rquant/                # 主包（5 层）
-│   ├── business/          #   业务层（data/board/portfolio/market）
-│   ├── data_source/       #   数据层（pool/sina/cache）
-│   ├── strategy/          #   策略层（10 个策略 + 路由器）
-│   ├── web/               #   Web 层（app_factory/routes/views）
-│   └── compat/            #   向后兼容
+├── rquant/                # 主包
+│   ├── business/          #   业务层（持仓/资金/板块/自选股/用户/系统/标的池/大盘）
+│   ├── data_source/       #   数据层（pool/sina/eastmoney/db/parquet/mq/quote_cache）
+│   ├── strategy/          #   策略层（12 个策略 + 注册中心）
+│   ├── research/          #   研究编排层（workflow）
+│   ├── backtest/          #   通用回测层（engine）
+│   ├── web/               #   Web 展现层（app_factory/routes/views）
+│   └── log/               #   统一日志封装
 │
-├── scripts/run.py         # 替代启动入口
-├── tests/                 # 开发期探针
+├── scripts/               # CLI 脚本（共 12 个 Python 脚本）
+│   ├── run.py             #   替代启动入口
+│   ├── select_board_pool.py #  ① 板块选池
+│   ├── fetch_hist_for_pool.py # ② 候选池拉数
+│   ├── score_stock.py     #   ③ 多策略评分
+│   ├── simulate_trading.py #  ④ 组合模拟 + 收益矩阵
+│   ├── compare_strategies.py # 单股多策略对比
+│   └── run_semiconductor_compute_10x10.py # 半导体 10x10 批量回测
+│
+├── tests/                 # 测试用例
 │   ├── test_api.py
-│   └── test_sina.py
+│   ├── test_sina.py
+│   └── test_phase2_backtest.py
 ├── templates/             # Flask 模板
 │   ├── index.html
 │   ├── error.html
 │   └── test_page.html
 ├── static/                # 静态资源
 │   └── style.css
-├── data/                  # 业务数据（JSON）
+├── data/                  # 业务数据（部分 .gitignore）
 │   ├── portfolio.json
 │   ├── trades.json
-│   └── watchlist.json
-├── cache/                 # K 线 / 行情缓存（自动生成）
-│   ├── sh600460.json
-│   ├── sh000001.json      # 大盘指数（路由器用）
-│   └── ...
+│   ├── snapshots.json
+│   ├── boards/            # 行业/概念板块
+│   └── parquet/           # 历史日频 Parquet
+├── cache/                 # 运行时缓存（自动生成）
+│   ├── rquant.db          # 本地 SQLite 主缓存
+│   └── eastmoney.db       # 财务快照缓存
 └── logs/                  # 运行日志
 ```
 
 ## 注意
 
-- 第一次访问会触发 Sina 拉数，沙箱环境可能慢
-- 数据每 5 天自动刷新（应付周末/节假日）
-- 持仓在 `data/portfolio.json`，删除 = 清空
-- 自选股在 `data/watchlist.json`，手动编辑也生效
-- 数据源健康度：`from datasources import pool; print(pool.status())` 实时查看
-- `_test_*.py` 是开发期探针脚本，发布时可忽略
+- 第一次访问会触发 Sina 拉数并写入 SQLite 缓存，加载可能会稍微花些时间。
+- K 线数据每 5 天自动刷新（可应付周末/节假日）。
+- 持仓在 `data/portfolio.json`，手动删除或表单操作均可。
+- 自选股已全面迁移到本地 SQLite meta 中管理，`data/watchlist.json` 仅作为首次运行时的老数据迁移兼容。
+- 数据源健康度：可以通过 `from rquant.data_source import pool; print(pool.status())` 实时查看。
+- `tests/` 目录下包含了接口与策略回测相关的测试用例。

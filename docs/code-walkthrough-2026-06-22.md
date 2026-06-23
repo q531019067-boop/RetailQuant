@@ -478,7 +478,7 @@ python scripts/backtest_multi_factor.py \
 
 - **路由 `/api/watchlist/analyze/<code>`** 每次访问都跑全策略 + 重新拉 K 线（无缓存），自选股多时慢
 - **首页 `/` 同步跑所有策略信号**，长池子下首屏慢
-- **`system.get_strategy_status()`** 当前是 mock（hash(name) % 30 + 1 随机时间），未真实持久化（TODO 在 TODOLIST.md）
+- **`system.get_strategy_status()`** 当前是 mock（hash(name) % 30 + 1 随机时间），未真实持久化（TODO 在 docs/TODOLIST.md）
 
 ### 8.4 工程
 
@@ -564,7 +564,7 @@ print(state.regime, state.description)
 
 1. **历史 trades/portfolio 是 JSON 格式**，与 SQLite meta 表混合，迁移风险
 2. **业务层缓存（board.py）和数据源缓存（sina.py）是两套独立 TTL**，观察时容易混淆
-3. **回测引擎两套并存**（月频 v1 / 日频 v2），README/STRATEGIES.md 都建议以 `scripts/backtest_multi_factor.py` 为准
+3. **回测引擎两套并存**（月频 v1 / 日频 v2），`README.md` / `docs/STRATEGIES.md` 都建议以 `scripts/backtest_multi_factor.py` 为准
 4. **"严格时序"在路由器的全局缓存里有隐患**——回测时务必 `clear_regime_cache()` + 传 `index_df`
 
 ---

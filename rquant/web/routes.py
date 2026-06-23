@@ -427,7 +427,7 @@ def register_routes(app: Flask) -> None:
 
     @app.route("/api/strategy_status")
     def api_strategy_status():
-        """所有策略的运行时状态（当前为 mock，详见 TODOLIST.md）"""
+        """所有策略的运行时状态（当前为 mock，详见 docs/TODOLIST.md）"""
         return jsonify({"strategies": system.get_strategy_status()})
 
     @app.route("/api/system_log")

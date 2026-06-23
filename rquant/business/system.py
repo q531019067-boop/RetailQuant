@@ -4,7 +4,7 @@ rquant.business.system — 系统层信息
 - 策略状态（mock：4 个内置策略 + 模拟运行/停止 + 信号数）
 
 注：strategy_status 当前是 mock（基于策略注册表 + 内存 dict），
-   真实持久化运行时状态见 TODOLIST.md
+   真实持久化运行时状态见 docs/TODOLIST.md
 """
 
 from __future__ import annotations
