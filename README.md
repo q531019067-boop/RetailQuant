@@ -89,7 +89,7 @@ rquant/
 
 #### 根目录残留
 
-- `app.py` (薄转发) / `strategy.py` (薄转发)：保持老 `python3 app.py` / `from strategy import` 仍能工作
+- `app.py` (薄转发)：保持老 `python3 app.py` 仍能工作
 - 新增 `scripts/run.py`：替代启动入口
 - 新增 `tests/` / `cache/` 目录
 
@@ -375,11 +375,7 @@ rquant/                              # 主包
 │   ├── app_factory.py   (create_app / run)
 │   ├── routes.py        (12 路由)
 │   └── views.py         (辅助函数)
-└── compat/                          # 兼容层
-    └── strategy.py      (老 strategy.py 转发)
-
 app.py           # 根目录薄转发 → rquant.web.app_factory.run()
-strategy.py      # 根目录薄转发 → rquant.compat.strategy (老 API)
 scripts/run.py   # 替代启动入口
 ```
 
@@ -407,7 +403,6 @@ pool.add_quote(TencentQuoteSource(), priority=0)  # Tencent 优先，Sina 兜底
 ```
 rQuant/
 ├── app.py                 # 启动入口（转发到 rquant.web）
-├── strategy.py            # 兼容层（老 API 转发到 rquant.compat）
 ├── STRATEGIES.md          # 10 个策略详细文档
 ├── CHANGELOG.md           # 变更日志（最新修复见 2026-06-22）
 ├── README.md
