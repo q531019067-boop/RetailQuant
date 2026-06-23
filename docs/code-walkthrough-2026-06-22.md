@@ -63,7 +63,6 @@ RetailQuant/
 │   │   ├── app_factory.py               60   Flask 工厂 + waitress 双栈
 │   │   ├── routes.py                   459   14 个路由
 │   │   └── views.py                     96   视图辅助 + Treemap 计算
-│   └── compat/strategy.py               63   向后兼容（老 `from strategy import`）
 ├── scripts/
 │   ├── backtest_multi_factor.py        552   多因子精细版回测引擎（CLI）
 │   ├── fetch_hist.py                   298   Sina 历史数据 → Parquet + SQLite

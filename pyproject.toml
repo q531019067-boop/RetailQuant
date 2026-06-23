@@ -14,6 +14,12 @@ dependencies = [
     "pyarrow",
 ]
 
+[tool.setuptools.packages.find]
+include = ["rquant*", "config"]
+
+[tool.setuptools]
+py-modules = ["app"]
+
 [dependency-groups]
 dev = [
     "ruff>=0.12",
