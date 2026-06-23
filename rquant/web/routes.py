@@ -19,6 +19,7 @@ from flask import (
 )
 
 from rquant.business import board, data, funds, portfolio as pf, system, user as user_mgr
+from rquant.log import get_recent_logs
 from rquant.strategy import all_strategies, scan_sell, scan_stock
 
 from .views import (
@@ -427,7 +428,7 @@ def register_routes(app: Flask) -> None:
     @app.route("/api/system_log")
     def api_system_log():
         """系统日志（最近 50 条，从内存 ring buffer 读）"""
-        return jsonify({"logs": system.get_system_log(limit=50)})
+        return jsonify({"logs": get_recent_logs(limit=50)})
 
     @app.route("/api/funds/add", methods=["POST"])
     def api_funds_add():

@@ -9,15 +9,13 @@ rquant.business.pool_store — 标的池管理（SQLite 持久化 + 内存热数
 
 from __future__ import annotations
 import json
-import logging
 import time
 from json import JSONDecodeError
 from pathlib import Path
 from typing import Optional
 
 from rquant.data_source import db
-
-_log = logging.getLogger("rquant.pool_store")
+from rquant.log import info, warning
 
 # 老 watchlist.json 路径（一次性迁移用）
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -158,9 +156,9 @@ def _migrate_legacy_watchlist() -> None:
             return
         for code in codes:
             add_to_watchlist(code)
-        _log.info(f"watchlist 迁移完成: {len(codes)} 个 code ← {_LEGACY_WATCHLIST_FILE.name}")
+        info("pool_store", f"watchlist 迁移完成: {len(codes)} 个 code ← {_LEGACY_WATCHLIST_FILE.name}")
     except Exception as e:
-        _log.warning(f"watchlist 迁移失败: {e}")
+        warning("pool_store", f"watchlist 迁移失败: {e}")
 
 
 # ============== 公开 API ==============

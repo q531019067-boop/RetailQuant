@@ -14,6 +14,9 @@ Thumbs.db
 # Local cache (auto-generated runtime data)
 cache/
 
+# Logs (auto-generated, do not commit)
+logs/
+
 # Runtime data (local only, do not commit)
 data/portfolio.json
 data/trades.json

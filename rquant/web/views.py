@@ -6,22 +6,18 @@ rquant.web.views — 视图辅助函数
 """
 
 from __future__ import annotations
-import sys
-from datetime import datetime
 
 from config import config
-from rquant.business import data, system
+from rquant.business import data
+from rquant.log import info
 
 # Treemap 画布尺寸（与前端 Canvas 宽高比一致）
 TREEMAP_W, TREEMAP_H = config.treemap.width, config.treemap.height
 
 
 def _log(msg: str):
-    """统一日志输出：带时间戳，写 stderr 确保 waitress 不吞；并桥接到 system ring buffer"""
-    ts = datetime.now().strftime("%H:%M:%S")
-    sys.stderr.write(f"[{ts}] [app] {msg}\n")
-    sys.stderr.flush()
-    system.log_info("app", msg)
+    """统一日志输出（loguru 负责 stderr 输出 + 落盘 + ring buffer）"""
+    info("app", msg)
 
 
 def _safe_float(x, default: float = 0.0) -> float:

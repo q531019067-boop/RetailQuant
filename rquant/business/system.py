@@ -2,20 +2,15 @@
 rquant.business.system — 系统层信息
 - 市场状态（基于当前时间的简单判断）
 - 策略状态（mock：4 个内置策略 + 模拟运行/停止 + 信号数）
-- 系统日志（内存 ring buffer + logging 装饰器）
 
 注：strategy_status 当前是 mock（基于策略注册表 + 内存 dict），
    真实持久化运行时状态见 TODOLIST.md
 """
 
 from __future__ import annotations
-import logging
 import threading
 import time
-from collections import deque
 from datetime import datetime, time as dtime
-
-from config import config
 
 # ============== 市场状态 ==============
 
@@ -131,70 +126,3 @@ def report_strategy_run(name: str, signal_count: int = 0) -> None:
             "signals_today": prev.get("signals_today", 0) + signal_count,
             "last_run": time.time(),
         }
-
-
-# ============== 系统日志 ==============
-
-_MAX_LOG_ENTRIES = config.business.max_log_entries
-_log_buffer: deque[dict] = deque(maxlen=_MAX_LOG_ENTRIES)
-_log_lock = threading.Lock()
-_initialized = False
-
-
-class _RingBufferHandler(logging.Handler):
-    """logging.Handler 装饰器：把日志同时写进内存 ring buffer"""
-
-    def emit(self, record: logging.LogRecord) -> None:
-        try:
-            entry = {
-                "ts": datetime.fromtimestamp(record.created).strftime("%H:%M:%S"),
-                "level": record.levelname,
-                "logger": record.name,
-                "module": record.name,  # 兼容设计图的"模块"字段
-                "message": self.format(record),
-            }
-            with _log_lock:
-                _log_buffer.append(entry)
-        except Exception:
-            pass  # 日志系统不能因为自身 bug 挂掉
-
-
-def _ensure_log_capture() -> None:
-    """装一个全局 handler 到 root logger（只装一次）"""
-    global _initialized
-    if _initialized:
-        return
-    handler = _RingBufferHandler()
-    handler.setLevel(logging.INFO)
-    handler.setFormatter(logging.Formatter("%(message)s"))
-    root = logging.getLogger()
-    root.setLevel(logging.INFO)
-    # 避免重复添加
-    if not any(isinstance(h, _RingBufferHandler) for h in root.handlers):
-        root.addHandler(handler)
-    _initialized = True
-
-
-def get_system_log(limit: int = 50) -> list[dict]:
-    """返回最近 limit 条日志（最新在前）"""
-    _ensure_log_capture()
-    with _log_lock:
-        items = list(_log_buffer)
-    items.reverse()
-    return items[:limit]
-
-
-def log_info(module: str, message: str) -> None:
-    """业务代码统一入口（替代直接 print / stderr）"""
-    _ensure_log_capture()
-    logging.getLogger(module).info(message)
-
-
-def log_warn(module: str, message: str) -> None:
-    _ensure_log_capture()
-    logging.getLogger(module).warning(message)
-
-
-def log_error(module: str, message: str) -> None:
-    _ensure_log_capture()
-    logging.getLogger(module).error(message)
