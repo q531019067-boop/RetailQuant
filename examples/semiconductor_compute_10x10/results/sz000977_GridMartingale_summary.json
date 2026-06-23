@@ -1,0 +1,16 @@
+{
+  "strategy": "GridMartingale",
+  "code": "sz000977",
+  "name": "浪潮信息",
+  "start_date": "2025-06-18",
+  "end_date": "2026-06-18",
+  "initial_capital": 100000.0,
+  "final_equity": 107935.67,
+  "total_return_pct": 7.94,
+  "annual_return_pct": 8.14,
+  "max_drawdown_pct": -9.31,
+  "sharpe": 0.473,
+  "win_rate_pct": 93.75,
+  "trade_count": 57,
+  "total_cost": 488.33
+}

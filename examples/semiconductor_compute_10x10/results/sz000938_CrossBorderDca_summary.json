@@ -1,0 +1,16 @@
+{
+  "strategy": "CrossBorderDca",
+  "code": "sz000938",
+  "name": "紫光股份",
+  "start_date": "2025-06-18",
+  "end_date": "2026-06-18",
+  "initial_capital": 100000.0,
+  "final_equity": 127046.69,
+  "total_return_pct": 27.05,
+  "annual_return_pct": 27.8,
+  "max_drawdown_pct": -14.49,
+  "sharpe": 1.106,
+  "win_rate_pct": 100.0,
+  "trade_count": 6,
+  "total_cost": 399.31
+}

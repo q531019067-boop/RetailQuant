@@ -1,0 +1,16 @@
+{
+  "strategy": "CrossBorderDca",
+  "code": "sz002371",
+  "name": "北方华创",
+  "start_date": "2025-06-18",
+  "end_date": "2026-06-18",
+  "initial_capital": 100000.0,
+  "final_equity": 118127.06,
+  "total_return_pct": 18.13,
+  "annual_return_pct": 18.61,
+  "max_drawdown_pct": -8.16,
+  "sharpe": 0.941,
+  "win_rate_pct": 100.0,
+  "trade_count": 4,
+  "total_cost": 202.93
+}

@@ -1,0 +1,16 @@
+{
+  "strategy": "CrossBorderDca",
+  "code": "sh600460",
+  "name": "士兰微",
+  "start_date": "2025-06-18",
+  "end_date": "2026-06-18",
+  "initial_capital": 100000.0,
+  "final_equity": 112768.89,
+  "total_return_pct": 12.77,
+  "annual_return_pct": 13.1,
+  "max_drawdown_pct": -12.85,
+  "sharpe": 0.776,
+  "win_rate_pct": 66.67,
+  "trade_count": 6,
+  "total_cost": 367.1
+}

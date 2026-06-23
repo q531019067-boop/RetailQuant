@@ -1,0 +1,16 @@
+{
+  "strategy": "GridMartingale",
+  "code": "sz002049",
+  "name": "紫光国微",
+  "start_date": "2025-06-18",
+  "end_date": "2026-06-18",
+  "initial_capital": 100000.0,
+  "final_equity": 106696.44,
+  "total_return_pct": 6.7,
+  "annual_return_pct": 7.17,
+  "max_drawdown_pct": -8.23,
+  "sharpe": 0.611,
+  "win_rate_pct": 91.67,
+  "trade_count": 37,
+  "total_cost": 324.57
+}

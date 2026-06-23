@@ -1,0 +1,16 @@
+{
+  "strategy": "BuyHold",
+  "code": "sh603019",
+  "name": "中科曙光",
+  "start_date": "2025-06-18",
+  "end_date": "2026-06-18",
+  "initial_capital": 100000.0,
+  "final_equity": 107376.57,
+  "total_return_pct": 7.38,
+  "annual_return_pct": 7.56,
+  "max_drawdown_pct": -1.45,
+  "sharpe": 1.031,
+  "win_rate_pct": 100.0,
+  "trade_count": 2,
+  "total_cost": 114.43
+}

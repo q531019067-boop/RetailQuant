@@ -1,0 +1,16 @@
+{
+  "strategy": "DividendLowvolRotation",
+  "code": "sh600460",
+  "name": "士兰微",
+  "start_date": "2025-06-18",
+  "end_date": "2026-06-18",
+  "initial_capital": 100000.0,
+  "final_equity": 151012.04,
+  "total_return_pct": 51.01,
+  "annual_return_pct": 52.55,
+  "max_drawdown_pct": -19.15,
+  "sharpe": 1.366,
+  "win_rate_pct": 53.85,
+  "trade_count": 27,
+  "total_cost": 1759.95
+}

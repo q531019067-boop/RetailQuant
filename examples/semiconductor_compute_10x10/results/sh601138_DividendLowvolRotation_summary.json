@@ -1,0 +1,16 @@
+{
+  "strategy": "DividendLowvolRotation",
+  "code": "sh601138",
+  "name": "工业富联",
+  "start_date": "2025-06-18",
+  "end_date": "2026-06-18",
+  "initial_capital": 100000.0,
+  "final_equity": 377171.88,
+  "total_return_pct": 277.17,
+  "annual_return_pct": 289.69,
+  "max_drawdown_pct": -21.33,
+  "sharpe": 2.921,
+  "win_rate_pct": 71.43,
+  "trade_count": 42,
+  "total_cost": 6041.14
+}

@@ -1,0 +1,16 @@
+{
+  "strategy": "VpBreakout",
+  "code": "sz002049",
+  "name": "紫光国微",
+  "start_date": "2025-06-18",
+  "end_date": "2026-06-18",
+  "initial_capital": 100000.0,
+  "final_equity": 122555.52,
+  "total_return_pct": 22.56,
+  "annual_return_pct": 24.27,
+  "max_drawdown_pct": -10.72,
+  "sharpe": 0.902,
+  "win_rate_pct": 75.0,
+  "trade_count": 8,
+  "total_cost": 526.48
+}

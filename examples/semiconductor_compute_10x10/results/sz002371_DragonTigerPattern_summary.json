@@ -1,0 +1,16 @@
+{
+  "strategy": "DragonTigerPattern",
+  "code": "sz002371",
+  "name": "北方华创",
+  "start_date": "2025-06-18",
+  "end_date": "2026-06-18",
+  "initial_capital": 100000.0,
+  "final_equity": 90829.07,
+  "total_return_pct": -9.17,
+  "annual_return_pct": -9.39,
+  "max_drawdown_pct": -9.17,
+  "sharpe": -1.798,
+  "win_rate_pct": 0.0,
+  "trade_count": 2,
+  "total_cost": 104.93
+}

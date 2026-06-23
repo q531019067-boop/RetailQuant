@@ -1,0 +1,4 @@
+date,side,code,name,strategy,price,raw_open,shares,gross_amount,commission,stamp_tax,slippage_cost,total_cost,cash_after,pnl,pnl_pct,reason
+2026-03-27,BUY,sh603501,韦尔股份,GridMartingale,98.5799,98.57,100,9857.99,5.0,0.0,0.99,5.99,90137.01,0.0,0.0,网格买入：现价 ¥100.000 位于 20 日区间 ¥97.760-¥124.200 的 8% 位置
+2026-06-15,BUY,sh603501,韦尔股份,GridMartingale,86.7087,86.7,100,8670.87,5.0,0.0,0.87,5.87,81461.15,0.0,0.0,网格买入：现价 ¥86.010 位于 20 日区间 ¥85.080-¥109.090 的 4% 位置
+2026-06-18,SELL,sh603501,韦尔股份,GridMartingale,89.961,89.97,200,17992.2,5.0,9.0,1.8,15.8,99439.35,-560.65,-3.02,回测结束强平

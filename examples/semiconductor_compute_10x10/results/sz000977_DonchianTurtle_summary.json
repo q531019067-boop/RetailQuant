@@ -1,0 +1,16 @@
+{
+  "strategy": "DonchianTurtle",
+  "code": "sz000977",
+  "name": "浪潮信息",
+  "start_date": "2025-06-18",
+  "end_date": "2026-06-18",
+  "initial_capital": 100000.0,
+  "final_equity": 104366.35,
+  "total_return_pct": 4.37,
+  "annual_return_pct": 4.48,
+  "max_drawdown_pct": -26.52,
+  "sharpe": 0.227,
+  "win_rate_pct": 60.0,
+  "trade_count": 10,
+  "total_cost": 590.66
+}

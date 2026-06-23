@@ -1,0 +1,16 @@
+{
+  "strategy": "VpBreakout",
+  "code": "sh603019",
+  "name": "中科曙光",
+  "start_date": "2025-06-18",
+  "end_date": "2026-06-18",
+  "initial_capital": 100000.0,
+  "final_equity": 92793.63,
+  "total_return_pct": -7.21,
+  "annual_return_pct": -7.38,
+  "max_drawdown_pct": -14.04,
+  "sharpe": -0.342,
+  "win_rate_pct": 25.0,
+  "trade_count": 8,
+  "total_cost": 417.38
+}

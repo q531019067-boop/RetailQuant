@@ -1,0 +1,16 @@
+{
+  "strategy": "CrossBorderDca",
+  "code": "sh601138",
+  "name": "工业富联",
+  "start_date": "2025-06-18",
+  "end_date": "2026-06-18",
+  "initial_capital": 100000.0,
+  "final_equity": 128030.77,
+  "total_return_pct": 28.03,
+  "annual_return_pct": 28.81,
+  "max_drawdown_pct": -9.38,
+  "sharpe": 1.635,
+  "win_rate_pct": 100.0,
+  "trade_count": 6,
+  "total_cost": 393.22
+}

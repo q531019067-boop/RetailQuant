@@ -43,7 +43,7 @@ def main():
 
     # ----- 2) 执行回测 -----
     print(f"\n{'=' * 50}")
-    print("多因子选股回测 V1.0")
+    print("多因子选股回测（财务因子流水线）")
     print(f"快照: {SNAP_DATE}  |  区间: {START_DATE} → {END_DATE}")
     print(f"初始资金: ¥{INITIAL_CAPITAL:,}  |  Top-N: {TOP_N}")
     print(f"{'=' * 50}\n")

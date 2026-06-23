@@ -1,0 +1,16 @@
+{
+  "strategy": "DragonTigerPattern",
+  "code": "sh603986",
+  "name": "兆易创新",
+  "start_date": "2025-06-18",
+  "end_date": "2026-06-18",
+  "initial_capital": 100000.0,
+  "final_equity": 161254.77,
+  "total_return_pct": 61.25,
+  "annual_return_pct": 63.16,
+  "max_drawdown_pct": -13.52,
+  "sharpe": 2.209,
+  "win_rate_pct": 88.89,
+  "trade_count": 18,
+  "total_cost": 1140.22
+}

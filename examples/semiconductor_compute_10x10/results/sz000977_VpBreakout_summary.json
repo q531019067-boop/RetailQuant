@@ -1,0 +1,16 @@
+{
+  "strategy": "VpBreakout",
+  "code": "sz000977",
+  "name": "浪潮信息",
+  "start_date": "2025-06-18",
+  "end_date": "2026-06-18",
+  "initial_capital": 100000.0,
+  "final_equity": 122913.75,
+  "total_return_pct": 22.91,
+  "annual_return_pct": 23.54,
+  "max_drawdown_pct": -6.94,
+  "sharpe": 1.117,
+  "win_rate_pct": 66.67,
+  "trade_count": 6,
+  "total_cost": 388.24
+}

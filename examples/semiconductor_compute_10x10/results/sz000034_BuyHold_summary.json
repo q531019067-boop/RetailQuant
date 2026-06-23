@@ -1,0 +1,16 @@
+{
+  "strategy": "BuyHold",
+  "code": "sz000034",
+  "name": "神州数码",
+  "start_date": "2025-06-18",
+  "end_date": "2026-06-18",
+  "initial_capital": 100000.0,
+  "final_equity": 100839.3,
+  "total_return_pct": 0.84,
+  "annual_return_pct": 0.86,
+  "max_drawdown_pct": -19.24,
+  "sharpe": 0.012,
+  "win_rate_pct": 50.0,
+  "trade_count": 4,
+  "total_cost": 212.71
+}

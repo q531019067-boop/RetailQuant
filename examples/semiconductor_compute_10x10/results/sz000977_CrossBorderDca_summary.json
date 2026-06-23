@@ -1,0 +1,16 @@
+{
+  "strategy": "CrossBorderDca",
+  "code": "sz000977",
+  "name": "浪潮信息",
+  "start_date": "2025-06-18",
+  "end_date": "2026-06-18",
+  "initial_capital": 100000.0,
+  "final_equity": 131396.34,
+  "total_return_pct": 31.4,
+  "annual_return_pct": 32.28,
+  "max_drawdown_pct": -5.4,
+  "sharpe": 1.605,
+  "win_rate_pct": 100.0,
+  "trade_count": 6,
+  "total_cost": 392.66
+}

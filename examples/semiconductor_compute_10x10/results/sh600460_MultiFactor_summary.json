@@ -1,0 +1,16 @@
+{
+  "strategy": "MultiFactor",
+  "code": "sh600460",
+  "name": "士兰微",
+  "start_date": "2025-06-18",
+  "end_date": "2026-06-18",
+  "initial_capital": 100000.0,
+  "final_equity": 122682.98,
+  "total_return_pct": 22.68,
+  "annual_return_pct": 23.3,
+  "max_drawdown_pct": -23.41,
+  "sharpe": 0.722,
+  "win_rate_pct": 50.0,
+  "trade_count": 12,
+  "total_cost": 759.03
+}

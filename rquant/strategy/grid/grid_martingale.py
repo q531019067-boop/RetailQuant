@@ -1,13 +1,8 @@
 """
-rQuant.strategies.grid.grid_martingale — 网格交易 / 马丁格尔（骨架）
-- 基线版：日线波动率网格（理想是分钟级，但当前数据源只到日线）
-- 信号类型：
-  - "grid_buy"：现价跌入新一格 → 建议买入
-  - "grid_sell"：现价涨入新一格 → 建议卖出
-  - "martingale_buy"：持仓浮亏扩大 → 建议加仓（马丁：量翻倍）
-- 严格时序：网格上下沿用最近 N 日高低点
+rQuant.strategies.grid.grid_martingale — 风控网格交易策略。
 
-注册：@register
+保留历史类名 `GridMartingale` 以兼容注册名，但实现不再做无限马丁。
+核心风控：单票仓位上限、单格资金上限、破网止损。
 """
 
 from __future__ import annotations
@@ -21,42 +16,37 @@ from ..registry import register
 
 @register
 class GridMartingale:
-    """网格交易 / 马丁格尔（骨架版）"""
+    """适合震荡市的日线网格策略，禁止无限补仓。"""
 
     name = "GridMartingale"
     category = "grid"
-    description = "日线波动率网格 + 马丁加仓（骨架版，理想用分钟级）"
+    description = "日线风控网格：等距网格 + 仓位上限 + 破网止损"
 
-    # 参数
-    GRID_N = 20  # 用 20 日高低点定区间
-    GRID_LEVELS = 5  # 分 5 格
-    MARTINGALE_LOSS = -0.05  # 浮亏 5% 触发马丁加仓
-    TAKE_PROFIT = 0.15
-    STOP_LOSS = -0.15  # 网格策略止损放宽
+    GRID_N = 20
+    GRID_LEVELS = 6
+    BASE_MODE = "ma"  # "ma" 或 "initial"，当前信号层用 rolling MA
+    POSITION_CAP_PCT = 0.50
+    PER_GRID_CASH_PCT = 0.10
+    BREAK_STOP_PCT = 0.05
+    TAKE_PROFIT_GRID_RATIO = 0.75
 
     def signal_buy(self, code: str, name: str, sector: str, df: pd.DataFrame) -> Signal | None:
-        """网格下沿买入信号"""
+        """价格跌入下方网格时，生成单格买入信号。"""
         if df is None or len(df) < self.GRID_N + 1:
             return None
 
         close = float(df["close"].iloc[-1])
-        # 网格区间用前 20 日（不含当日）
-        high = float(df["high"].iloc[-(self.GRID_N + 1) : -1].max())
-        low = float(df["low"].iloc[-(self.GRID_N + 1) : -1].min())
-        if high <= low:
+        grid = self._grid(df)
+        if grid is None:
+            return None
+        low, high, grid_size, ratio = grid
+
+        # 只在下半区分批接，越靠近下沿置信度越高；破网交给卖出风控，不继续补仓。
+        if ratio < 0 or ratio > 0.45:
             return None
 
-        grid_size = (high - low) / self.GRID_LEVELS
-        # 当前价相对网格中位的位置（0=最低, 1=最高）
-        position_ratio = (close - low) / (high - low)
-
-        # 信号触发：现价跌入下 1/3 区域（position_ratio <= 0.4）→ 网格买入
-        if position_ratio > 0.4:
-            return None
-
-        confidence = max(40.0, 70.0 - position_ratio * 100)
-
-        suggested = round(close * 1.005, 2)
+        confidence = max(40.0, 70.0 - ratio * 100)
+        suggested = round(close * 1.002, 2)
         return Signal(
             code=code,
             name=name,
@@ -65,23 +55,26 @@ class GridMartingale:
             category=self.category,
             current_price=close,
             suggested_buy=suggested,
-            stop_loss=round(suggested * (1 + self.STOP_LOSS), 2),
-            take_profit=round(suggested * (1 + self.TAKE_PROFIT), 2),
+            stop_loss=round(low * (1 - self.BREAK_STOP_PCT), 2),
+            take_profit=round(low + (self.TAKE_PROFIT_GRID_RATIO * (high - low)), 2),
             reason=(
-                f"网格买入：现价 ¥{close:.3f} 处于 20 日区间 ¥{low:.3f}-¥{high:.3f} 的 {position_ratio * 100:.0f}% 位置"
+                f"网格买入：现价 ¥{close:.3f} 位于 {self.GRID_N} 日区间 "
+                f"¥{low:.3f}-¥{high:.3f} 的 {ratio * 100:.0f}% 位置"
             ),
             confidence=round(confidence, 1),
             extra={
                 "grid_high": high,
                 "grid_low": low,
                 "grid_size": grid_size,
-                "position_ratio": round(position_ratio, 3),
+                "position_ratio": round(ratio, 3),
+                "cash_pct": self.PER_GRID_CASH_PCT,
+                "position_cap_pct": self.POSITION_CAP_PCT,
                 "kind": "grid_buy",
             },
         )
 
     def signal_sell(self, position: dict[str, Any], df: pd.DataFrame) -> dict[str, Any] | None:
-        """马丁加仓 + 网格止盈/止损"""
+        """上沿分批止盈；跌破网格下沿一定比例后清仓退出。"""
         if df is None or df.empty or len(df) < self.GRID_N + 1:
             return None
         close = float(df["close"].iloc[-1])
@@ -89,35 +82,37 @@ class GridMartingale:
         shares = position.get("shares", 0)
         if avg_cost <= 0 or shares <= 0:
             return None
+
+        grid = self._grid(df)
+        if grid is None:
+            return None
+        low, high, _, ratio = grid
         pnl_pct = (close / avg_cost - 1) * 100
+        break_price = low * (1 - self.BREAK_STOP_PCT)
 
-        # 1. 网格上沿止盈（如果 position_ratio > 0.7）
-        high = float(df["high"].iloc[-(self.GRID_N + 1) : -1].max())
-        low = float(df["low"].iloc[-(self.GRID_N + 1) : -1].min())
-        if high > low:
-            pos_ratio = (close - low) / (high - low)
-            if pos_ratio > 0.8 and pnl_pct > 5:
-                return {
-                    "reason": f"网格上沿止盈：现价位于区间 {pos_ratio * 100:.0f}% 位置",
-                    "suggested_price": round(close * 0.995, 2),
-                    "urgency": "normal",
-                }
-
-        # 2. 马丁加仓信号：浮亏 5% 触发（不直接执行，由用户决策）
-        if pnl_pct <= self.MARTINGALE_LOSS * 100 and pnl_pct > self.STOP_LOSS * 100:
+        if close <= break_price:
             return {
-                "reason": (f"马丁加仓预警：浮亏 {pnl_pct:+.1f}%，按策略建议加仓 {shares} 股（翻倍）"),
-                "suggested_price": round(close * 1.005, 2),
-                "urgency": "warning",
-                "action": "martingale_buy",
-                "suggested_shares": shares,  # 加同等数量 = 翻倍总持仓
+                "reason": f"网格破网止损：收盘 {close:.2f} <= {break_price:.2f}，清仓跳出",
+                "urgency": "urgent",
+                "sell_all": True,
             }
 
-        # 3. 兜底止损
-        if pnl_pct <= self.STOP_LOSS * 100:
+        if ratio >= self.TAKE_PROFIT_GRID_RATIO and pnl_pct > 0:
             return {
-                "reason": f"触发 {self.STOP_LOSS * 100:.0f}% 兜底止损（当前 {pnl_pct:+.1f}%）",
-                "suggested_price": round(close * 0.99, 2),
-                "urgency": "urgent",
+                "reason": f"网格上沿止盈：现价位于区间 {ratio * 100:.0f}% 位置，浮盈 {pnl_pct:+.1f}%",
+                "urgency": "normal",
+                "sell_fraction": 0.5,
+                "sell_all": False,
             }
         return None
+
+    def _grid(self, df: pd.DataFrame) -> tuple[float, float, float, float] | None:
+        """用前 N 日高低点定网格，避免当前 K 线扩大网格后再触发信号。"""
+        high = float(df["high"].iloc[-(self.GRID_N + 1) : -1].max())
+        low = float(df["low"].iloc[-(self.GRID_N + 1) : -1].min())
+        close = float(df["close"].iloc[-1])
+        if high <= low:
+            return None
+        grid_size = (high - low) / self.GRID_LEVELS
+        position_ratio = (close - low) / (high - low)
+        return low, high, grid_size, position_ratio

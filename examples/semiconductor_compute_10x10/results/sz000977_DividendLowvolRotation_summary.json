@@ -1,0 +1,16 @@
+{
+  "strategy": "DividendLowvolRotation",
+  "code": "sz000977",
+  "name": "浪潮信息",
+  "start_date": "2025-06-18",
+  "end_date": "2026-06-18",
+  "initial_capital": 100000.0,
+  "final_equity": 97310.39,
+  "total_return_pct": -2.69,
+  "annual_return_pct": -2.75,
+  "max_drawdown_pct": -29.33,
+  "sharpe": 0.01,
+  "win_rate_pct": 42.86,
+  "trade_count": 28,
+  "total_cost": 1559.59
+}

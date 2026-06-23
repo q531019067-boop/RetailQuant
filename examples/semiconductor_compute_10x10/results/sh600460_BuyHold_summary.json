@@ -1,0 +1,16 @@
+{
+  "strategy": "BuyHold",
+  "code": "sh600460",
+  "name": "士兰微",
+  "start_date": "2025-06-18",
+  "end_date": "2026-06-18",
+  "initial_capital": 100000.0,
+  "final_equity": 107899.01,
+  "total_return_pct": 7.9,
+  "annual_return_pct": 8.1,
+  "max_drawdown_pct": -5.1,
+  "sharpe": 0.689,
+  "win_rate_pct": 100.0,
+  "trade_count": 2,
+  "total_cost": 119.99
+}

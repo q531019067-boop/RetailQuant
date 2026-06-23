@@ -1,0 +1,16 @@
+{
+  "strategy": "DonchianTurtle",
+  "code": "sh600460",
+  "name": "士兰微",
+  "start_date": "2025-06-18",
+  "end_date": "2026-06-18",
+  "initial_capital": 100000.0,
+  "final_equity": 122011.46,
+  "total_return_pct": 22.01,
+  "annual_return_pct": 22.61,
+  "max_drawdown_pct": -23.8,
+  "sharpe": 0.717,
+  "win_rate_pct": 42.86,
+  "trade_count": 14,
+  "total_cost": 908.55
+}
