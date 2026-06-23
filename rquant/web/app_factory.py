@@ -17,6 +17,7 @@ from flask import Flask  # noqa: E402
 
 from config import config  # noqa: E402
 from rquant.data_source import start_mq  # noqa: E402
+from rquant.log import init_logging  # noqa: E402
 
 from .routes import register_routes  # noqa: E402
 from .views import _log  # noqa: E402
@@ -26,6 +27,8 @@ DEFAULT_PORT = int(os.environ.get("RQUANT_PORT", str(config.server.port)))
 
 def create_app() -> Flask:
     """Flask 应用工厂"""
+    # 初始化日志系统（幂等，确保后续日志可用）
+    init_logging()
     # 启动后台消息队列 worker（批量刷新 K 线 / 异步任务派发）
     start_mq()
     app = Flask(

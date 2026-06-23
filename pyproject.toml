@@ -12,6 +12,7 @@ dependencies = [
     "curl-cffi>=0.13.0",
     "akshare>=1.18.64",
     "pyarrow",
+    "loguru>=0.7",
 ]
 
 [tool.setuptools.packages.find]

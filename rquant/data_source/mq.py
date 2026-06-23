@@ -16,9 +16,7 @@ rquant.data_source.mq — 简易内存消息队列
 """
 
 from __future__ import annotations
-import logging
 import queue
-import sys
 import threading
 import time
 import traceback
@@ -26,13 +24,7 @@ from collections import defaultdict
 from typing import Any, Callable
 
 from config import config
-
-_log = logging.getLogger("rquant.mq")
-if not _log.handlers:
-    h = logging.StreamHandler(sys.stderr)
-    h.setFormatter(logging.Formatter("[%(asctime)s] [mq] %(levelname)s %(message)s", datefmt="%H:%M:%S"))
-    _log.addHandler(h)
-    _log.setLevel(logging.INFO)
+from rquant.log import info, warning, error
 
 
 Handler = Callable[[Any], None]
@@ -78,7 +70,7 @@ class Mq:
             return True
         except queue.Full:
             self._dropped += 1
-            _log.warning(f"队列满 (size={self._q.maxsize})，降级同步执行: {topic}")
+            warning("mq", f"队列满 (size={self._q.maxsize})，降级同步执行: {topic}")
             self._dispatch(topic, payload)
             return False
 
@@ -95,7 +87,7 @@ class Mq:
             t = threading.Thread(target=self._worker_loop, name=f"mq-worker-{i}", daemon=True)
             t.start()
             self._workers.append(t)
-        _log.info(f"启动 {self._max_workers} 个 worker")
+        info("mq", f"启动 {self._max_workers} 个 worker")
 
     def stop(self, timeout: float = 5.0) -> None:
         self._stop.set()
@@ -108,7 +100,7 @@ class Mq:
         for t in self._workers:
             t.join(timeout=timeout)
         self._workers.clear()
-        _log.info("worker 已停止")
+        info("mq", "worker 已停止")
 
     def status(self) -> dict:
         with self._lock:
@@ -137,7 +129,7 @@ class Mq:
             try:
                 self._dispatch(topic, payload)
             except Exception as e:
-                _log.error(f"handler 异常 {topic}: {e}\n{traceback.format_exc()}")
+                error("mq", f"handler 异常 {topic}: {e}\n{traceback.format_exc()}")
 
     def _dispatch(self, topic: str, payload: Any) -> None:
         with self._lock:
@@ -146,7 +138,7 @@ class Mq:
             try:
                 h(payload)
             except Exception as e:
-                _log.error(f"handler {getattr(h, '__name__', h)} on {topic} 失败: {e}")
+                error("mq", f"handler {getattr(h, '__name__', h)} on {topic} 失败: {e}")
 
 
 # 全局单例
