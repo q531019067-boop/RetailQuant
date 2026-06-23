@@ -343,9 +343,7 @@ def write_report(agg: dict, cfg: RunConfig) -> None:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(
-        description="半导体/算力 10×10 样例：组合调用 scripts/compare_strategies.py"
-    )
+    parser = argparse.ArgumentParser(description="半导体/算力 10×10 样例：组合调用 scripts/compare_strategies.py")
     parser.add_argument("--start", default="2025-06-18", help="交易窗口起始日")
     parser.add_argument("--end", default="2026-06-18", help="交易窗口结束日")
     parser.add_argument("--capital", type=float, default=100_000.0, help="初始资金")

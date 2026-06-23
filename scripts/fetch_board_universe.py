@@ -436,10 +436,7 @@ def run_fetch(
         write_tab(
             out_dir / "Boards.tab",
             ["board_code", "board_name", "board_type", "stock_count", "updated_at"],
-            [
-                [b["board_code"], b["board_name"], b["board_type"], b["stock_count"], updated_at]
-                for b in all_boards
-            ],
+            [[b["board_code"], b["board_name"], b["board_type"], b["stock_count"], updated_at] for b in all_boards],
         )
     elif fetch_relations and (out_dir / "Boards.tab").exists():
         all_boards = load_boards_from_tab(out_dir)
