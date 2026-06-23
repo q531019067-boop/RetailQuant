@@ -1084,7 +1084,7 @@ for dt in trading_days:
     # 按 sigs 决策买卖...
 ```
 
-系统目前已实现了完整的通用回测引擎，位于 `rquant/backtest/` 目录中。我们可以直接运行 `scripts/run_backtest.py`、`scripts/backtest_multi_factor.py` 或者 `scripts/run_semiconductor_compute_10x10.py` 开启回测。
+系统目前已实现了完整的通用回测引擎，位于 `rquant/backtest/` 目录中。我们可以直接运行 `scripts/run_backtest.py`、`scripts/backtest_multi_factor.py`，或场景样例 `examples/semiconductor_compute_10x10/run.py` 开启回测。
 
 ### Q6: 老 API（如 chanlun2b_signal / buyhold_signal）还能用吗？
 

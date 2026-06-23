@@ -1,25 +1,22 @@
 #!/usr/bin/env python
-"""半导体/算力 10 股 × docs/STRATEGIES.md 12 策略批量单股回测与报告生成。"""
+"""半导体/算力 10 股 × 10 策略：薄编排样例，组合调用 scripts/compare_strategies.py。"""
 
 from __future__ import annotations
 
 import argparse
-import json
+import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
 
 import pandas as pd
 
-_PROJECT_ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(_PROJECT_ROOT))
+_EXAMPLE_DIR = Path(__file__).resolve().parent
+_PROJECT_ROOT = _EXAMPLE_DIR.parent.parent
+_COMPARE_SCRIPT = _PROJECT_ROOT / "scripts" / "compare_strategies.py"
 
-from rquant.backtest import BacktestEngine, BrokerConfig  # noqa: E402
-from rquant.research.workflow import load_kline  # noqa: E402
-from rquant.strategy import get  # noqa: E402
-
-DEFAULT_OUT_DIR = "results/semiconductor_compute_10x10_2025-06-18_2026-06-18"
-DEFAULT_REPORT = "docs/semiconductor_compute_10x10_report.md"
+DEFAULT_OUT_DIR = _EXAMPLE_DIR / "results"
+DEFAULT_REPORT = _EXAMPLE_DIR / "report.md"
 
 DOCUMENTED_STRATEGIES = (
     "VpBreakout",
@@ -65,84 +62,57 @@ class RunConfig:
     risk_free_rate: float = 0.02
 
 
-def build_broker(cfg: RunConfig) -> BrokerConfig:
-    return BrokerConfig(
-        commission_rate=cfg.commission_rate,
-        min_commission=cfg.min_commission,
-        stamp_tax_rate=cfg.stamp_tax_rate,
-        slippage_bp=cfg.slippage_bp,
-        slippage_per_share=cfg.slippage_per_share,
-        default_position_pct=cfg.position_pct,
-        risk_free_rate=cfg.risk_free_rate,
-    )
-
-
-def run_single_backtest(
-    *,
-    cfg: RunConfig,
-    broker: BrokerConfig,
-    code: str,
-    name: str,
-    sector: str,
-    df: pd.DataFrame,
-    strategy_name: str,
-) -> dict:
-    strategy = get(strategy_name)
-    if strategy is None:
-        raise RuntimeError(f"策略未注册: {strategy_name}")
-
-    engine = BacktestEngine(initial_capital=cfg.capital, broker=broker)
-    result = engine.run(
-        strategy=strategy,
-        code=code,
-        name=name,
-        sector=sector,
-        df=df,
-        start_date=cfg.start,
-        end_date=cfg.end,
-    )
-
-    prefix = cfg.out_dir / f"{code}_{strategy_name}"
-    pd.DataFrame(result.fills).to_csv(f"{prefix}_trades.csv", index=False)
-    pd.DataFrame(result.equity_curve).to_csv(f"{prefix}_equity.csv", index=False)
-    summary = result.summary()
-    Path(f"{prefix}_summary.json").write_text(
-        json.dumps(summary, indent=2, ensure_ascii=False),
-        encoding="utf-8",
-    )
-    return summary
+def _run_compare_for_stock(cfg: RunConfig, code: str, name: str, sector: str) -> pd.DataFrame:
+    cmd = [
+        sys.executable,
+        str(_COMPARE_SCRIPT),
+        "--code",
+        code,
+        "--name",
+        name,
+        "--sector",
+        sector,
+        "--start",
+        cfg.start,
+        "--end",
+        cfg.end,
+        "--capital",
+        str(cfg.capital),
+        "--strategies",
+        *cfg.strategies,
+        "--out",
+        str(cfg.out_dir),
+        "--position-pct",
+        str(cfg.position_pct),
+        "--commission-rate",
+        str(cfg.commission_rate),
+        "--min-commission",
+        str(cfg.min_commission),
+        "--stamp-tax-rate",
+        str(cfg.stamp_tax_rate),
+        "--slippage-bp",
+        str(cfg.slippage_bp),
+        "--slippage-per-share",
+        str(cfg.slippage_per_share),
+        "--risk-free-rate",
+        str(cfg.risk_free_rate),
+    ]
+    subprocess.run(cmd, check=True, cwd=_PROJECT_ROOT)
+    compare_path = cfg.out_dir / f"{code}_strategy_compare.csv"
+    if not compare_path.exists():
+        raise RuntimeError(f"缺少对比矩阵: {compare_path}")
+    return pd.read_csv(compare_path)
 
 
 def run_batch(cfg: RunConfig) -> pd.DataFrame:
     cfg.out_dir.mkdir(parents=True, exist_ok=True)
-    broker = build_broker(cfg)
     rows: list[dict] = []
-    total = len(STOCK_UNIVERSE) * len(cfg.strategies)
-    done = 0
+    total = len(STOCK_UNIVERSE)
 
-    for code, name, sector in STOCK_UNIVERSE:
-        df = load_kline(code, allow_fetch=False)
-        if df is None or df.empty:
-            raise RuntimeError(f"无法读取 {code} 的 K 线数据")
-
-        stock_rows: list[dict] = []
-        for strategy_name in cfg.strategies:
-            done += 1
-            print(f"[{done}/{total}] {code} × {strategy_name} ...")
-            summary = run_single_backtest(
-                cfg=cfg,
-                broker=broker,
-                code=code,
-                name=name,
-                sector=sector,
-                df=df,
-                strategy_name=strategy_name,
-            )
-            rows.append(summary)
-            stock_rows.append(summary)
-
-        stock_matrix = pd.DataFrame(stock_rows)
-        stock_matrix.to_csv(cfg.out_dir / f"{code}_strategy_compare.csv", index=False)
+    for i, (code, name, sector) in enumerate(STOCK_UNIVERSE, 1):
+        print(f"[{i}/{total}] {code} {name} × {len(cfg.strategies)} 策略 ...")
+        stock_matrix = _run_compare_for_stock(cfg, code, name, sector)
+        rows.extend(stock_matrix.to_dict(orient="records"))
 
     matrix = pd.DataFrame(rows)
     matrix.to_csv(cfg.out_dir / "full_matrix.csv", index=False)
@@ -240,12 +210,13 @@ def write_report(agg: dict, cfg: RunConfig) -> None:
             f"{_fmt_pct(row['best_return_pct'])} |"
         )
 
+    out_rel = cfg.out_dir.relative_to(_PROJECT_ROOT).as_posix()
     content = f"""# 半导体/算力 10×10 策略模拟报告
 
 > 生成时间：2026-06-20  
 > 测试窗口：{cfg.start} ~ {cfg.end}  
 > 初始资金：{_fmt_money(cfg.capital)} 元 / 每次仅 1 只股票 + 1 个策略  
-> 结果目录：`{cfg.out_dir.as_posix()}`
+> 结果目录：`{out_rel}`
 
 ---
 
@@ -340,12 +311,12 @@ def write_report(agg: dict, cfg: RunConfig) -> None:
 
 | 文件 | 说明 |
 |------|------|
-| `{cfg.out_dir.as_posix()}/full_matrix.csv` | 100 次回测汇总矩阵 |
-| `{cfg.out_dir.as_posix()}/strategy_ranking.csv` | 按策略聚合排名 |
-| `{cfg.out_dir.as_posix()}/stock_best_strategy.csv` | 每只股票的最佳策略 |
-| `{cfg.out_dir.as_posix()}/{{code}}_{{strategy}}_summary.json` | 单次回测摘要 |
-| `{cfg.out_dir.as_posix()}/{{code}}_{{strategy}}_trades.csv` | 单次成交明细 |
-| `{cfg.out_dir.as_posix()}/{{code}}_{{strategy}}_equity.csv` | 单次权益曲线 |
+| `{out_rel}/full_matrix.csv` | 100 次回测汇总矩阵 |
+| `{out_rel}/strategy_ranking.csv` | 按策略聚合排名 |
+| `{out_rel}/stock_best_strategy.csv` | 每只股票的最佳策略 |
+| `{out_rel}/{{code}}_{{strategy}}_summary.json` | 单次回测摘要 |
+| `{out_rel}/{{code}}_{{strategy}}_trades.csv` | 单次成交明细 |
+| `{out_rel}/{{code}}_{{strategy}}_equity.csv` | 单次权益曲线 |
 
 ---
 
@@ -372,17 +343,24 @@ def write_report(agg: dict, cfg: RunConfig) -> None:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="半导体/算力 10×10 单股单策略批量回测")
+    parser = argparse.ArgumentParser(
+        description="半导体/算力 10×10 样例：组合调用 scripts/compare_strategies.py"
+    )
     parser.add_argument("--start", default="2025-06-18", help="交易窗口起始日")
     parser.add_argument("--end", default="2026-06-18", help="交易窗口结束日")
     parser.add_argument("--capital", type=float, default=100_000.0, help="初始资金")
-    parser.add_argument("--out", default=DEFAULT_OUT_DIR, help="输出目录")
-    parser.add_argument("--report", default=DEFAULT_REPORT, help="Markdown 报告路径")
+    parser.add_argument("--out", default=str(DEFAULT_OUT_DIR), help="输出目录")
+    parser.add_argument("--report", default=str(DEFAULT_REPORT), help="Markdown 报告路径")
     parser.add_argument(
         "--strategies",
         nargs="+",
         default=list(DOCUMENTED_STRATEGIES),
         help="策略 name 列表",
+    )
+    parser.add_argument(
+        "--aggregate-only",
+        action="store_true",
+        help="仅从已有 results/ 聚合矩阵并更新 report.md，不重新回测",
     )
     return parser
 
@@ -398,8 +376,20 @@ def main() -> None:
         strategies=tuple(args.strategies),
     )
 
-    print(f"开始 10×10 回测: {len(STOCK_UNIVERSE)} 股 × {len(cfg.strategies)} 策略")
-    matrix = run_batch(cfg)
+    if args.aggregate_only:
+        matrix_path = cfg.out_dir / "full_matrix.csv"
+        if matrix_path.exists():
+            matrix = pd.read_csv(matrix_path)
+        else:
+            compare_files = sorted(cfg.out_dir.glob("*_strategy_compare.csv"))
+            if not compare_files:
+                raise RuntimeError(f"未找到可聚合结果: {cfg.out_dir}")
+            matrix = pd.concat([pd.read_csv(p) for p in compare_files], ignore_index=True)
+            matrix.to_csv(matrix_path, index=False)
+    else:
+        print(f"开始 10×10 回测: {len(STOCK_UNIVERSE)} 股 × {len(cfg.strategies)} 策略")
+        matrix = run_batch(cfg)
+
     agg = aggregate(matrix, cfg)
     write_report(agg, cfg)
 

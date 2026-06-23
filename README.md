@@ -437,7 +437,14 @@ rQuant/
 │   ├── score_stock.py     #   ③ 多策略评分
 │   ├── simulate_trading.py #  ④ 组合模拟 + 收益矩阵
 │   ├── compare_strategies.py # 单股多策略对比
-│   └── run_semiconductor_compute_10x10.py # 半导体 10x10 批量回测
+│   ├── backtest_multi_factor.py
+│   └── run_backtest.py
+│
+├── examples/              # 场景样例（薄编排 scripts/）
+│   └── semiconductor_compute_10x10/  # 半导体 10×10 批量回测样例
+│       ├── run.py
+│       ├── report.md
+│       └── results/
 │
 ├── tests/                 # 测试用例
 │   ├── test_api.py

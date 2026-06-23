@@ -3,7 +3,7 @@
 > 生成时间：2026-06-20  
 > 测试窗口：2025-06-18 ~ 2026-06-18  
 > 初始资金：100,000.00 元 / 每次仅 1 只股票 + 1 个策略  
-> 结果目录：`results/semiconductor_compute_10x10_2025-06-18_2026-06-18`
+> 结果目录：`examples/semiconductor_compute_10x10/results`
 
 ---
 
@@ -131,12 +131,12 @@
 
 | 文件 | 说明 |
 |------|------|
-| `results/semiconductor_compute_10x10_2025-06-18_2026-06-18/full_matrix.csv` | 100 次回测汇总矩阵 |
-| `results/semiconductor_compute_10x10_2025-06-18_2026-06-18/strategy_ranking.csv` | 按策略聚合排名 |
-| `results/semiconductor_compute_10x10_2025-06-18_2026-06-18/stock_best_strategy.csv` | 每只股票的最佳策略 |
-| `results/semiconductor_compute_10x10_2025-06-18_2026-06-18/{code}_{strategy}_summary.json` | 单次回测摘要 |
-| `results/semiconductor_compute_10x10_2025-06-18_2026-06-18/{code}_{strategy}_trades.csv` | 单次成交明细 |
-| `results/semiconductor_compute_10x10_2025-06-18_2026-06-18/{code}_{strategy}_equity.csv` | 单次权益曲线 |
+| `examples/semiconductor_compute_10x10/results/full_matrix.csv` | 100 次回测汇总矩阵 |
+| `examples/semiconductor_compute_10x10/results/strategy_ranking.csv` | 按策略聚合排名 |
+| `examples/semiconductor_compute_10x10/results/stock_best_strategy.csv` | 每只股票的最佳策略 |
+| `examples/semiconductor_compute_10x10/results/{code}_{strategy}_summary.json` | 单次回测摘要 |
+| `examples/semiconductor_compute_10x10/results/{code}_{strategy}_trades.csv` | 单次成交明细 |
+| `examples/semiconductor_compute_10x10/results/{code}_{strategy}_equity.csv` | 单次权益曲线 |
 
 ---
 
