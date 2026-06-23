@@ -1,15 +1,15 @@
 {
   "default": true,
   "MD013": {
-    "line_length": 130,
+    "line_length": 300,
     "tables": false,
     "code_blocks": false
   },
   "MD033": false,
-  "MD024": {
-    "siblings_only": true
-  },
+  "MD024": { "siblings_only": true },
   "MD060": false,
   "MD029": false,
-  "MD056": false
+  "MD056": false,
+  "MD036": false,
+  "MD040": false
 }
