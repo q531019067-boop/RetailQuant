@@ -1,3 +1,4 @@
+matplotlib>=3.7
 flask>=3.0
 waitress>=3.0
 pandas>=2.0

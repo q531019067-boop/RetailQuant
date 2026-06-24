@@ -25,7 +25,4 @@ jobs:
         with:
           globs: |
             README.md
-            STRATEGIES.md
-            TODOLIST.md
-            CHANGELOG.md
             docs/*.md

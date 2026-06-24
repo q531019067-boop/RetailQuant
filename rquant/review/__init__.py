@@ -3,6 +3,7 @@ rquant.review — 每日复盘模块
 
 组件：
 - analyzer: 复盘数据分析（策略扫描 + 准确性评估）
+- chart:    股价折线图生成（Top-5 近 90 交易日走势）
 - converter: 格式转换（JSON → Typst / HTML）
 - sender:   邮件发送（SMTP）
 
