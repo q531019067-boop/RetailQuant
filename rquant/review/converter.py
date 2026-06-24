@@ -88,7 +88,7 @@ def _prepare_charts(top_stocks: list[dict]) -> list[dict]:
 
     result = []
     for s in top_stocks:
-        if (CHART_DIR / f'{s["code"]}_90d.svg').exists():
+        if (CHART_DIR / f"{s['code']}_90d.svg").exists():
             result.append({"code": s["code"], "name": s["name"]})
     return result
 
