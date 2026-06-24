@@ -17,9 +17,6 @@ jobs:
       - name: Setup Typst
         uses: typst-community/setup-typst@v5
 
-      - name: Install CJK fonts
-        run: sudo apt-get update -qq && sudo apt-get install -y -qq fonts-noto-cjk
-
       - name: Install uv
         uses: astral-sh/setup-uv@v7
 
@@ -50,7 +47,6 @@ jobs:
             - `.png` — 预览图
           files: |
             reports/${{ steps.meta.outputs.date }}.json
-            reports/${{ steps.meta.outputs.date }}.html
             reports/${{ steps.meta.outputs.date }}.pdf
             reports/${{ steps.meta.outputs.date }}.png
             reports/${{ steps.meta.outputs.date }}.typ

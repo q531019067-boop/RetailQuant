@@ -17,6 +17,14 @@ from config import config
 from rquant.log import error, info, warning
 
 REPORT_DIR = config.project_root / config.review.report_dir
+_FONTS_DIR = Path(__file__).parent / "fonts"
+
+# === 字体配置 ===
+# 仓库内嵌 LXGW WenKai（霞鹜文楷），SIL OFL 开源。
+# Typst 可模拟 Bold，*strong* / weight: "bold" 正常使用。
+_TYPST_FONT = "LXGW WenKai"
+_TYPST_FONT_MONO = "New Computer Modern"
+# ================
 
 
 def _today() -> str:
@@ -107,6 +115,9 @@ def to_typst(report_date: str | None = None) -> Path | None:
             )
         rationale_typ = "\n#v(8pt)\n" + "\n\n".join(items) + "\n"
 
+    # 走势图
+    charts_typ = _format_charts_typst(top_stocks)
+
     # 准确性表格数据
     acc_rows_list = []
     for acc in accuracy:
@@ -177,10 +188,10 @@ def to_typst(report_date: str | None = None) -> Path | None:
 #set page(
   paper: "a4",
   margin: (top: 2cm, left: 1.8cm, right: 1.8cm, bottom: 1.5cm),
-  numbering: "1",
+  height: auto,
 )
 
-#set text(font: ("New Computer Modern", "Noto Serif CJK SC", "Noto Sans CJK SC", "PingFang SC", "Songti SC"), lang: "zh", size: 9.5pt)
+#set text(font: ("{_TYPST_FONT}", "{_TYPST_FONT_MONO}"), lang: "zh", size: 9.5pt)
 #set par(justify: true, leading: 0.55em)
 
 // 标题样式
@@ -228,6 +239,8 @@ def to_typst(report_date: str | None = None) -> Path | None:
 = 推荐理由
 
 {rationale_typ}
+
+{charts_typ}
 
 {accuracy_typ}
 """
@@ -296,6 +309,54 @@ def _format_top5_html(top_stocks: list[dict]) -> str:
     )
 
 
+def _format_charts_html(top_stocks: list[dict]) -> str:
+    """为 Top-5 股票嵌入近 90 日股价折线图（base64 内嵌）"""
+    from rquant.review.chart import CHART_DIR, chart_to_base64
+
+    items: list[str] = []
+    for s in top_stocks:
+        code = s["code"]
+        svg_path = CHART_DIR / f"{code}_90d.svg"
+        if svg_path.exists():
+            b64 = chart_to_base64(svg_path)
+            items.append(
+                f'<div class="chart-card">'
+                f'<img src="{b64}" alt="{s["name"]} 走势" style="width:100%;max-width:700px;display:block;margin:0 auto;">'
+                f"</div>"
+            )
+
+    if not items:
+        return ""
+
+    return '<h2>Top-5 近 90 交易日走势</h2><div class="chart-grid">' + "".join(items) + "</div>"
+
+
+def _format_charts_typst(top_stocks: list[dict]) -> str:
+    """为 Top-5 股票生成 Typst 折线图嵌入代码"""
+    from rquant.review.chart import CHART_DIR
+
+    items: list[str] = []
+    for s in top_stocks:
+        code = s["code"]
+        name = _typst_escape(s["name"])
+        svg_path = CHART_DIR / f"{code}_90d.svg"
+        if svg_path.exists():
+            items.append(
+                f"#figure(\n"
+                f'  image("charts/{code}_90d.svg", width: 100%),\n'
+                f"  caption: [{name} 近 90 交易日收盘价走势],\n"
+                f"  kind: image,\n"
+                f")"
+            )
+        else:
+            items.append(f'#text(size: 9pt, fill: rgb("#94a3b8"))[{name}: 图表数据暂缺]')
+
+    if not items:
+        return ""
+
+    return "= Top-5 近 90 交易日走势\n\n" + "\n\n#v(6pt)\n\n".join(items) + "\n"
+
+
 def to_html(report_date: str | None = None) -> Path | None:
     """将复盘报告导出为 HTML 网页"""
     report = _read_report(report_date)
@@ -313,6 +374,8 @@ def to_html(report_date: str | None = None) -> Path | None:
         error_items = "".join(f"<li>{e}</li>" for e in fetch_errors)
         error_section = f"<h2>拉取异常</h2><ul>{error_items}</ul>"
 
+    charts_section = _format_charts_html(top_stocks)
+
     html = f"""<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -329,6 +392,9 @@ def to_html(report_date: str | None = None) -> Path | None:
   .meta {{ color: #888; font-size: 13px; }}
   ul {{ list-style: none; padding: 0; }}
   li {{ padding: 4px 0; color: #c0392b; font-size: 13px; }}
+  .chart-grid {{ display: flex; flex-wrap: wrap; gap: 16px; justify-content: center; }}
+  .chart-card {{ background: #fafafa; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; flex: 1 1 450px; max-width: 700px; }}
+  .chart-card img {{ border-radius: 4px; }}
 </style>
 </head>
 <body>
@@ -341,6 +407,7 @@ def to_html(report_date: str | None = None) -> Path | None:
 </p>
 {error_section}
 {_format_top5_html(top_stocks)}
+{charts_section}
 {_format_accuracy_html(accuracy)}
 </body>
 </html>"""
@@ -370,7 +437,7 @@ def to_pdf(report_date: str | None = None) -> Path | None:
     pdf_path = REPORT_DIR / f"{report_date}.pdf"
     try:
         subprocess.run(
-            ["typst", "compile", str(typ_path), str(pdf_path)],
+            ["typst", "compile", "--font-path", str(_FONTS_DIR), str(typ_path), str(pdf_path)],
             check=True,
             capture_output=True,
             text=True,
@@ -383,7 +450,10 @@ def to_pdf(report_date: str | None = None) -> Path | None:
 
 
 def to_png(report_date: str | None = None) -> Path | None:
-    """将复盘报告导出为 PNG 图片（需系统安装 typst CLI）"""
+    """将复盘报告导出为单张长图 PNG（Typst 页面 height: auto 自动撑开）。
+
+    需系统安装 typst CLI。返回 PNG 路径，失败返回 None。
+    """
     report_date = report_date or _today()
     typ_path = REPORT_DIR / f"{report_date}.typ"
     if not typ_path.exists():
@@ -397,17 +467,11 @@ def to_png(report_date: str | None = None) -> Path | None:
     png_path = REPORT_DIR / f"{report_date}.png"
     try:
         subprocess.run(
-            ["typst", "compile", str(typ_path), str(REPORT_DIR / f"{report_date}_{{p}}.png")],
+            ["typst", "compile", "--font-path", str(_FONTS_DIR), str(typ_path), str(png_path)],
             check=True,
             capture_output=True,
             text=True,
         )
-        page1 = REPORT_DIR / f"{report_date}_1.png"
-        if page1.exists():
-            page1.rename(png_path)
-        # 清理多余的页文件
-        for extra in sorted(REPORT_DIR.glob(f"{report_date}_*.png")):
-            extra.unlink()
         info("review.converter", f"PNG 导出: {png_path}")
         return png_path
     except subprocess.CalledProcessError as e:
@@ -416,10 +480,9 @@ def to_png(report_date: str | None = None) -> Path | None:
 
 
 def convert_all(report_date: str | None = None) -> dict[str, Path | None]:
-    """一次性导出 Typst + HTML + PDF + PNG"""
+    """一次性导出 Typst + PDF + PNG"""
     return {
         "typst": to_typst(report_date),
-        "html": to_html(report_date),
         "pdf": to_pdf(report_date),
         "png": to_png(report_date),
     }

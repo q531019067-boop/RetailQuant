@@ -17,7 +17,6 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
-
 from config import config
 from rquant.business import data as biz_data
 from rquant.business.pool_store import get_pool
@@ -113,6 +112,7 @@ def run_review() -> dict | None:
 
     all_signals: list[dict] = []
     fetch_errors: list[str] = []
+    kline_cache: dict[str, Any] = {}  # 缓存 K 线供后续图表使用
 
     for item in pool:
         code = item["code"]
@@ -127,6 +127,8 @@ def run_review() -> dict | None:
 
         if df is None or df.empty:
             continue
+
+        kline_cache[code] = df
 
         signals = scan_stock(code, name, sector, df)
         for sig in signals:
@@ -175,4 +177,10 @@ def run_review() -> dict | None:
     path = _report_path(report_date)
     path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
     info("review", f"复盘完成（{elapsed}s），共 {len(all_signals)} 个信号，Top-{len(top5)} 已写入 {path}")
+
+    # 生成 Top-5 股价折线图
+    from rquant.review.chart import plot_top_stocks_charts
+
+    plot_top_stocks_charts(top5, kline_cache)
+
     return report

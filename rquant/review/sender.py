@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import smtplib
 import ssl
+from datetime import date
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from typing import Optional
@@ -55,8 +56,6 @@ def send_report(report_date: str | None = None) -> bool:
     if err:
         warning("review.sender", f"SMTP 配置不完整，跳过发送: {err}")
         return False
-
-    from datetime import date
 
     report_date = report_date or date.today().isoformat()
     report_dir = config.project_root / config.review.report_dir

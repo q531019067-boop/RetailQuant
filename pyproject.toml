@@ -13,6 +13,7 @@ dependencies = [
     "akshare>=1.18.64",
     "pyarrow",
     "loguru>=0.7",
+    "matplotlib>=3.7",
 ]
 
 [tool.setuptools.packages.find]
