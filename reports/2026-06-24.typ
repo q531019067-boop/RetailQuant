@@ -7,7 +7,7 @@
   numbering: "1",
 )
 
-#set text(font: ("New Computer Modern", "PingFang SC", "Songti SC"), lang: "zh", size: 9.5pt)
+#set text(font: ("New Computer Modern", "Noto Serif CJK SC", "Noto Sans CJK SC", "PingFang SC", "Songti SC"), lang: "zh", size: 9.5pt)
 #set par(justify: true, leading: 0.55em)
 
 // 标题样式
@@ -21,7 +21,7 @@
 
 = 每日量化复盘 — 2026-06-24
 
-#text(size: 9pt, fill: rgb("#64748b"))[生成时间: 2026-06-24 05:44:01   |   标的池: 7 只   |   信号总数: 18 条]
+#text(size: 9pt, fill: rgb("#64748b"))[生成时间: 2026-06-24 05:48:30   |   标的池: 7 只   |   信号总数: 18 条]
 
 #v(8pt)
 
