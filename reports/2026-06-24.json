@@ -1,0 +1,76 @@
+{
+  "date": "2026-06-24",
+  "generated_at": "2026-06-24 05:48:30",
+  "elapsed_seconds": 12.7,
+  "pool_size": 7,
+  "total_signals": 18,
+  "fetch_errors": [],
+  "top_stocks": [
+    {
+      "code": "sh600460",
+      "name": "士兰微",
+      "sector": "半导体",
+      "strategy": "DividendLowvolRotation",
+      "category": "etf_rotation",
+      "current_price": 47.04,
+      "suggested_buy": 47.28,
+      "stop_loss": 42.55,
+      "take_profit": 52.95,
+      "reason": "红利低波轮动：20日动量 +37.58%，量比 1.16，现价 > MA20×0.98（¥35.583）",
+      "confidence": 80.0
+    },
+    {
+      "code": "sh512480",
+      "name": "sh512480",
+      "sector": "",
+      "strategy": "MultiFactor",
+      "category": "factor",
+      "current_price": 2.512,
+      "suggested_buy": 2.52,
+      "stop_loss": 2.32,
+      "take_profit": 2.9,
+      "reason": "多因子综合 +0.57（8 因子）| Top3: M2 momentum 60d +0.15 / M1 momentum 20d +0.14 / T1 ma20 bias +0.12",
+      "confidence": 72.2
+    },
+    {
+      "code": "sh600519",
+      "name": "贵州茅台",
+      "sector": "消费",
+      "strategy": "CrossBorderDca",
+      "category": "etf_rotation",
+      "current_price": 1222.45,
+      "suggested_buy": 1228.56,
+      "stop_loss": 1130.28,
+      "take_profit": 1351.42,
+      "reason": "跨境定投：现价 ¥1222.450 < MA60×0.95（¥1288.216），RSI=30.7，量比=1.22",
+      "confidence": 57.1
+    },
+    {
+      "code": "sh510500",
+      "name": "sh510500",
+      "sector": "",
+      "strategy": "DividendLowvolRotation",
+      "category": "etf_rotation",
+      "current_price": 8.815,
+      "suggested_buy": 8.86,
+      "stop_loss": 7.97,
+      "take_profit": 9.92,
+      "reason": "红利低波轮动：20日动量 +0.33%，量比 1.10，现价 > MA20×0.98（¥8.328）",
+      "confidence": 50.7
+    },
+    {
+      "code": "sh601318",
+      "name": "中国平安",
+      "sector": "金融",
+      "strategy": "GridMartingale",
+      "category": "grid",
+      "current_price": 50.4,
+      "suggested_buy": 50.5,
+      "stop_loss": 46.23,
+      "take_profit": 54.13,
+      "reason": "网格买入：现价 ¥50.400 位于 20 日区间 ¥48.660-¥55.960 的 24% 位置",
+      "confidence": 46.2
+    }
+  ],
+  "accuracy": []
+}

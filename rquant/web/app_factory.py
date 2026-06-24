@@ -16,6 +16,7 @@ from flask import Flask
 from config import config
 from rquant.data_source import start_mq
 from rquant.log import error, info, init_logging
+from rquant.review import start_review_scheduler
 
 from .routes import register_routes
 
@@ -29,6 +30,8 @@ def create_app() -> Flask:
     init_logging()
     # 启动后台消息队列 worker（批量刷新 K 线 / 异步任务派发）
     start_mq()
+    # 启动复盘模块定时调度（后台线程，仅 enabled=true 时生效）
+    start_review_scheduler()
 
     # 让 templates / static 能被 Flask 找到（基于项目根目录）
     _project_root = Path(__file__).resolve().parent.parent.parent

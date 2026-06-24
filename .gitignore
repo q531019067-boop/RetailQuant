@@ -27,3 +27,6 @@ data/parquet/
 uv.lock
 
 .venv/
+
+# 复盘报告（本地生成，GitHub Action 会 force-add 推送）
+reports/
