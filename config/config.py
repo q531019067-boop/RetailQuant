@@ -59,6 +59,18 @@ _REQUIRED_SCHEMA: dict[str, Any] = {
     },
     "treemap": {"width", "height"},
     "fetch_hist": {"max_datalen", "request_timeout", "inter_code_delay"},
+    "review": {
+        "enabled",
+        "review_time",
+        "report_dir",
+        "smtp_host",
+        "smtp_port",
+        "smtp_username",
+        "smtp_password",
+        "smtp_use_tls",
+        "sender_email",
+        "email_recipients",
+    },
 }
 
 
@@ -107,6 +119,7 @@ class Config:
     business: _ConfigNode
     treemap: _ConfigNode
     fetch_hist: _ConfigNode
+    review: _ConfigNode
 
     def __init__(self, config_path: Path | None = None):
         self._config_path = config_path or _DEFAULT_CONFIG_PATH

@@ -1,0 +1,44 @@
+name: daily-review
+
+on:
+  schedule:
+    - cron: "30 7 * * 1-5"  # 15:30 CST = 07:30 UTC, Mon-Fri
+  workflow_dispatch:        # 手动触发
+
+permissions:
+  contents: write
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Typst
+        uses: typst-community/setup-typst@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Run daily review
+        run: uv run python scripts/review.py
+
+      - name: Commit and push reports
+        if: success()
+        run: |
+          TODAY=$(date +%Y-%m-%d)
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Only add today's report files
+          git add -f "reports/${TODAY}.json" "reports/${TODAY}.html" "reports/${TODAY}.pdf" "reports/${TODAY}.png" "reports/${TODAY}.typ" 2>/dev/null || true
+
+          if git diff --cached --quiet; then
+            echo "No report changes to commit"
+          else
+            git commit -m "daily review report: ${TODAY}"
+            git push
+          fi

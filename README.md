@@ -54,6 +54,15 @@ uv run ruff format   # 代码自动格式化
 
 > ruff 已声明在 `pyproject.toml` 的 `dev` 依赖组中，`uv sync` 会自动安装，无需系统级安装。
 
+## 每日复盘
+
+```bash
+uv run python scripts/review.py   # 手动触发复盘（分析 → 报告 → 邮件发送）
+```
+
+> 复盘报告产出 `reports/{日期}.json`、`reports/{日期}.typ`、`reports/{日期}.html`。
+> 日常自动触发需在 `config.toml` 中设置 `review.enabled = true` 并配置 SMTP。
+
 ---
 
 ## 修改记录
