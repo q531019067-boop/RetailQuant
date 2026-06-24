@@ -1,0 +1,125 @@
+// rQuant Daily Review — ${report.date}
+// Automatically generated. Confidential. Not investment advice.
+
+#set page(
+  paper: "a4",
+  margin: (top: 2cm, left: 1.8cm, right: 1.8cm, bottom: 1.5cm),
+  height: auto,
+)
+
+#set text(font: ("${fonts.cjk}", "${fonts.mono}"), lang: "zh", size: 9.5pt)
+#set par(justify: true, leading: 0.55em)
+
+// 标题样式
+#show heading.where(level: 1): it => {{
+  set text(size: 13pt, weight: "bold", fill: rgb("#0f172a"))
+  it.body
+  v(2pt)
+  line(length: 100% - 4pt, stroke: (paint: rgb("#0f172a"), thickness: 1pt))
+  v(10pt)
+}}
+
+= 每日量化复盘 — ${report.date}
+
+#text(size: 9pt, fill: rgb("#64748b"))[生成时间: ${report.generated_at}   |   标的池: ${report.pool_size} 只   |   信号总数: ${report.total_signals} 条]
+
+#v(8pt)
+
+{% if report.fetch_errors %}
+= 数据拉取异常
+
+#block(
+  fill: rgb("#fef2f2"),
+  stroke: 0.5pt + rgb("#fecaca"),
+  radius: 4pt,
+  inset: 10pt,
+  [
+    #text(size: 10pt, fill: rgb("#dc2626"), weight: "bold")[以下标的未能拉取数据:]
+    #v(4pt)
+{% for e in report.fetch_errors %}
+    #text(size: 9pt, fill: rgb("#dc2626"))[- ${e}]
+{% endfor %}
+  ]
+)
+{% endif %}
+
+// ---------- Top-5 荐股 ----------
+
+= 明日推荐买入标的 Top-5
+
+#figure(
+  table(
+    stroke: (x, y) => if y == 0 { (top: 1.5pt + rgb("#0f172a"), bottom: 0.5pt + rgb("#0f172a")) } else if y == ${top_stocks|length} { (bottom: 1.5pt + rgb("#0f172a")) },
+    inset: (x: 5pt, y: 4pt),
+    columns: (auto, auto, 1fr, 1fr, auto),
+    align: (center, center, left, left, center),
+    table.header(
+      [*排名*],
+      [*代码*],
+      [*名称*],
+      [*策略*],
+      [*置信度*],
+    ),
+{% for s in top_stocks %}
+    [${loop.index}], [${s.code}], [${s.name}], [${s.strategy}], [#text(fill: rgb("${s.conf_hex}"), weight: "bold")[${s.confidence}\%]],
+{% endfor %}
+  ),
+  caption: [按置信度排序的前 5 个买入信号。],
+  kind: table,
+)
+
+#v(6pt)
+
+= 推荐理由
+
+{% if top_stocks %}
+#v(8pt)
+{% for s in top_stocks %}
++ #text(fill: rgb("${s.conf_hex}"), weight: "bold")[${s.confidence}\%] *${s.name}* (${s.code})  ——  ${s.strategy}
+  #text(size: 8.5pt, fill: rgb("#475569"))[现价 ${s.current_price} / 买入 ${s.suggested_buy} / 止损 ${s.stop_loss} / 止盈 ${s.take_profit}]
+  #text(size: 8.5pt, fill: rgb("#334155"))[${s.reason}]
+{% if not loop.last %}
+
+{% endif %}
+{% endfor %}
+{% endif %}
+
+{% if charts %}
+= Top-5 近 90 交易日走势
+
+{% for c in charts %}
+#figure(
+  image("charts/${c.code}_90d.svg", width: 100%),
+  caption: [${c.name} 近 90 交易日收盘价走势],
+  kind: image,
+)
+
+#v(6pt)
+{% endfor %}
+{% endif %}
+
+{% if accuracy %}
+= 历史复盘准确性回顾
+
+#figure(
+  table(
+    stroke: (x, y) => if y == 0 { (top: 1.5pt + rgb("#0f172a"), bottom: 0.5pt + rgb("#0f172a")) } else if y == ${accuracy|length} { (bottom: 1.5pt + rgb("#0f172a")) },
+    inset: (x: 8pt, y: 5pt),
+    columns: (auto, auto, auto, auto, 1fr, 1fr),
+    align: (center, center, center, center, left, left),
+    table.header(
+      [*日期*],
+      [*推荐总数*],
+      [*命中*],
+      [*命中率*],
+      [*持续信号*],
+      [*衰减信号*],
+    ),
+{% for a in accuracy %}
+    [${a.date}], [${a.total}], [${a.hit}], [#text(fill: rgb("${a.rate_hex}"), weight: "bold")[${a.hit_rate}\%]], [${a.hit_codes}], [${a.miss_codes}],
+{% endfor %}
+  ),
+  caption: [历史复盘推荐的持续准确性。],
+  kind: table,
+)
+{% endif %}
