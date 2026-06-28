@@ -253,6 +253,7 @@
                 <span class="pos-pct">{{ '%.1f'|format(pct) }}%</span>
               </td>
               <td>
+                <button type="button" onclick="showMonteCarlo('{{ p.code }}', {{ p.current_price }})" class="btn-sm btn-view" title="蒙特卡洛路径预测">📊 预测</button>
                 <button type="button" onclick="showSellForm('{{ p.code }}', {{ p.shares }}, {{ p.current_price }})" class="btn-sell btn-sm">卖出</button>
               </td>
             </tr>
@@ -405,7 +406,10 @@
                 <button type="button" onclick="showAddForCode('{{ w.code }}', {{ w.price }})" class="btn-primary btn-sm">买入</button>
               </td>
               <td><button type="button" onclick="removeFromWatchlist('{{ w.code }}')" class="btn-del" title="移出自选">−</button></td>
-              <td><button type="button" onclick="showWatchlistAnalysis('{{ w.code }}')" class="btn-sm btn-view">分析</button></td>
+              <td>
+                <button type="button" onclick="showMonteCarlo('{{ w.code }}', {{ w.price or 0 }})" class="btn-sm btn-view" title="蒙特卡洛路径预测">📊 预测</button>
+                <button type="button" onclick="showWatchlistAnalysis('{{ w.code }}')" class="btn-sm btn-view">分析</button>
+              </td>
             </tr>
             {% endfor %}
           </tbody>
@@ -477,6 +481,41 @@
       </table>
       <p id="analysis-modal-empty" style="color:#78909c;text-align:center;display:none;">暂无分析结果</p>
       <button type="button" onclick="closeAnalysisModal()" class="btn" style="margin-top:14px;">关闭</button>
+    </div>
+  </div>
+
+  <!-- ====== 蒙特卡洛路径预测 Modal ====== -->
+  <div id="mc-modal" class="modal" style="display:none;">
+    <div class="modal-content mc-modal-content">
+      <h3 id="mc-modal-title">📊 蒙特卡洛预测</h3>
+      <p id="mc-modal-meta" class="modal-subtitle"></p>
+
+      <div class="mc-risk-note">
+        ⚠ GBM 模型 · 假设对数收益正态分布 + 独立同分布 · A 股肥尾/政策冲击/跳空会让实际尾部风险 &gt; 模型预测 · 仅供 stress test · 不构成投资建议
+      </div>
+
+      <div class="mc-form">
+        <label>预测天数 <input type="number" id="mc-days" value="20" min="5" max="120"></label>
+        <label>路径数
+          <select id="mc-sims">
+            <option value="500">500</option>
+            <option value="1000" selected>1000</option>
+            <option value="2000">2000</option>
+            <option value="5000">5000</option>
+          </select>
+        </label>
+        <label>止盈 TP <input type="number" id="mc-tp" step="0.01" placeholder="空 = ×1.08 兜底"></label>
+        <label>止损 SL <input type="number" id="mc-sl" step="0.01" placeholder="空 = ×0.96 兜底"></label>
+        <label>Seed <input type="number" id="mc-seed" value="42"></label>
+        <label>实时价 <input type="number" id="mc-live" step="0.01" placeholder="空 = K 线末日 close"></label>
+        <button type="button" id="mc-run-btn" onclick="runMonteCarlo()" class="btn-primary">生成预测</button>
+      </div>
+
+      <div id="mc-summary" class="mc-summary"></div>
+      <div class="mc-chart-wrapper"><canvas id="mc-chart"></canvas></div>
+      <div id="mc-warnings" class="mc-warnings"></div>
+
+      <button type="button" onclick="closeMonteCarlo()" class="btn" style="margin-top:14px;">关闭</button>
     </div>
   </div>
 
@@ -1083,7 +1122,7 @@
             <td>${w.sector || '—'}</td>
             <td><button type="button" onclick="showAddForCode('${w.code}', ${w.price})" class="btn-primary btn-sm">买入</button></td>
             <td><button type="button" onclick="removeFromWatchlist('${w.code}')" class="btn-del">−</button></td>
-            <td><button type="button" onclick="showWatchlistAnalysis('${w.code}')" class="btn-sm btn-view">分析</button></td>
+            <td><button type="button" onclick="showMonteCarlo('${w.code}', ${w.price || 0})" class="btn-sm btn-view" title="蒙特卡洛路径预测">📊 预测</button> <button type="button" onclick="showWatchlistAnalysis('${w.code}')" class="btn-sm btn-view">分析</button></td>
           </tr>`;
         }).join('');
       }
@@ -1158,6 +1197,233 @@
       tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#ff5252;">网络错误，请重试</td></tr>';
       meta.textContent = '';
     }
+  }
+
+  // ========== 蒙特卡洛路径预测 ==========
+  // 来源：rquant.research.montecarlo（从 FactorQ 1:1 复刻）
+  // API：GET /api/montecarlo/<code>?days=...&sims=...&seed=...&tp=...&sl=...&live_price=...
+
+  let _mcChart = null;          // Chart.js 实例缓存（避免重复创建）
+  let _mcCurrentCode = '';      // 当前 modal 里的股票代码
+
+  function _mcFmt(v, suffix = '', digits = 2) {
+    if (v === null || v === undefined || Number.isNaN(v)) return '—';
+    return `${Number(v).toFixed(digits)}${suffix}`;
+  }
+
+  function showMonteCarlo(code, currentPrice) {
+    const modal = document.getElementById('mc-modal');
+    const title = document.getElementById('mc-modal-title');
+    const meta = document.getElementById('mc-modal-meta');
+    const summary = document.getElementById('mc-summary');
+    const warnings = document.getElementById('mc-warnings');
+
+    _mcCurrentCode = code;
+    title.textContent = `📊 蒙特卡洛预测 ${code}`;
+    meta.textContent = '点击 "生成预测" 跑一次蒙特卡洛模拟（GBM）';
+    summary.innerHTML = '<div class="mc-hint">参数配好后点 "生成预测"</div>';
+    warnings.innerHTML = '';
+
+    // TP/SL 默认填 ±8% / -4%（用户可改）
+    const cp = Number(currentPrice || 0);
+    if (cp > 0) {
+      document.getElementById('mc-tp').value = (cp * 1.08).toFixed(2);
+      document.getElementById('mc-sl').value = (cp * 0.96).toFixed(2);
+    } else {
+      document.getElementById('mc-tp').value = '';
+      document.getElementById('mc-sl').value = '';
+    }
+    document.getElementById('mc-live').value = '';
+    // seed 用默认值（form 上的 42）
+
+    // 销毁旧 chart
+    if (_mcChart) {
+      _mcChart.destroy();
+      _mcChart = null;
+    }
+
+    modal.style.display = 'flex';
+  }
+
+  function closeMonteCarlo() {
+    document.getElementById('mc-modal').style.display = 'none';
+    if (_mcChart) {
+      _mcChart.destroy();
+      _mcChart = null;
+    }
+  }
+
+  async function runMonteCarlo() {
+    if (!_mcCurrentCode) return;
+    const meta = document.getElementById('mc-modal-meta');
+    const btn = document.getElementById('mc-run-btn');
+    btn.disabled = true;
+    btn.textContent = '计算中…';
+    meta.textContent = '请求服务端计算…';
+
+    const days = document.getElementById('mc-days').value;
+    const sims = document.getElementById('mc-sims').value;
+    const tp = document.getElementById('mc-tp').value;
+    const sl = document.getElementById('mc-sl').value;
+    const seed = document.getElementById('mc-seed').value;
+    const live = document.getElementById('mc-live').value;
+
+    const params = new URLSearchParams();
+    if (days) params.set('days', days);
+    if (sims) params.set('sims', sims);
+    if (seed) params.set('seed', seed);
+    if (tp && Number(tp) > 0) params.set('tp', tp);
+    if (sl && Number(sl) > 0) params.set('sl', sl);
+    if (live && Number(live) > 0) params.set('live_price', live);
+
+    try {
+      const resp = await fetch(`/api/montecarlo/${encodeURIComponent(_mcCurrentCode)}?${params.toString()}`);
+      const data = await resp.json();
+      if (!data.ok) {
+        meta.textContent = `❌ ${escapeHtml(data.error || '失败')}`;
+        document.getElementById('mc-summary').innerHTML = '';
+        if (Array.isArray(data.warnings) && data.warnings.length) {
+          document.getElementById('mc-warnings').innerHTML =
+            data.warnings.map(w => `<div class="mc-warn-item">⚠ ${escapeHtml(w)}</div>`).join('');
+        } else {
+          document.getElementById('mc-warnings').innerHTML = '';
+        }
+        if (_mcChart) { _mcChart.destroy(); _mcChart = null; }
+        return;
+      }
+      _mcRenderSummary(data);
+      _mcRenderChart(data);
+      meta.textContent = `${data.code} ${data.name || ''} · 现价 ¥${Number(data.current_price).toFixed(2)} · 末日 ${data.last_date} · μ=${data.mu_daily} σ=${data.sigma_daily}`;
+    } catch (e) {
+      meta.textContent = `❌ 网络错误：${escapeHtml(String(e))}`;
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '生成预测';
+    }
+  }
+
+  function _mcRenderSummary(out) {
+    const s = out.stats || {};
+    const upClass = (v) => (Number(v) >= 0 ? 'up' : 'down');
+    document.getElementById('mc-summary').innerHTML = `
+      <div class="mc-stat"><span class="mc-label">中位预期收益</span><span class="mc-val ${upClass(s.expected_return_pct)}">${_mcFmt(s.expected_return_pct, '%')}</span></div>
+      <div class="mc-stat"><span class="mc-label">上涨概率</span><span class="mc-val">${_mcFmt(s.prob_higher_pct, '%')}</span></div>
+      <div class="mc-stat"><span class="mc-label">TP 命中</span><span class="mc-val">${_mcFmt(s.prob_take_profit_pct, '%')}</span></div>
+      <div class="mc-stat"><span class="mc-label">SL 命中</span><span class="mc-val">${_mcFmt(s.prob_stop_loss_pct, '%')}</span></div>
+      <div class="mc-stat"><span class="mc-label">MDD 中位</span><span class="mc-val down">${_mcFmt(s.max_drawdown_median_pct, '%')}</span></div>
+      <div class="mc-stat"><span class="mc-label">MDD 95分位</span><span class="mc-val down">${_mcFmt(s.max_drawdown_worst_5pct_pct, '%')}</span></div>
+      <div class="mc-stat mc-param"><span class="mc-label">μ 日频 / 年化</span><span class="mc-val">${out.mu_daily} / ${out.mu_annualized}</span></div>
+      <div class="mc-stat mc-param"><span class="mc-label">σ 日频 / 年化</span><span class="mc-val">${out.sigma_daily} / ${out.sigma_annualized}${out.sigma_floored ? ' <span class="mc-warn-tag">已兜底</span>' : ''}</span></div>
+      <div class="mc-stat mc-param"><span class="mc-label">有效样本</span><span class="mc-val">${out.lookback_days_used}</span></div>
+      <div class="mc-stat mc-param"><span class="mc-label">兜底 TP / SL</span><span class="mc-val">¥${Number(out.take_profit).toFixed(2)} / ¥${Number(out.stop_loss).toFixed(2)}</span></div>
+    `;
+    const ws = Array.isArray(out.warnings) ? out.warnings : [];
+    document.getElementById('mc-warnings').innerHTML = ws.length
+      ? ws.map(w => `<div class="mc-warn-item">⚠ ${escapeHtml(w)}</div>`).join('')
+      : '';
+  }
+
+  function _mcRenderChart(out) {
+    const ctx = document.getElementById('mc-chart');
+    if (!ctx) return;
+    if (_mcChart) { _mcChart.destroy(); _mcChart = null; }
+
+    // x 轴 = 历史 60 天 (MM-DD) + 未来 N 天 (+1d, +2d, ...)
+    const histDates = out.history_dates || [];
+    const histCloses = out.history_closes || [];
+    const histLen = histDates.length;
+    const futureDates = [];
+    for (let i = 1; i <= (out.forecast_days || 0); i++) futureDates.push(`+${i}d`);
+    const allDates = [...histDates, ...futureDates];
+
+    // 历史 close: 前 histLen 个有值，后 N 个 null
+    const histLine = [...histCloses, ...new Array(out.forecast_days).fill(null)];
+
+    // 路径数据: 前 histLen 个 null（让 line 从 day 0 接上），后 N 个有值
+    const padNulls = new Array(histLen).fill(null);
+    const p05 = [...padNulls, ...out.paths.p05];
+    const p25 = [...padNulls, ...out.paths.p25];
+    const median = [...padNulls, ...out.paths.median];
+    const p75 = [...padNulls, ...out.paths.p75];
+    const p95 = [...padNulls, ...out.paths.p95];
+
+    // TP/SL 横线：整段 constant
+    const tpLine = new Array(allDates.length).fill(Number(out.take_profit));
+    const slLine = new Array(allDates.length).fill(Number(out.stop_loss));
+
+    // 样本路径（最多 5 条）
+    const sampleDatasets = (out.sample_paths || []).slice(0, 5).map((sp) => ({
+      label: `样本 ${sp.id}`,
+      data: [...padNulls, ...sp.prices],
+      borderColor: 'rgba(180,180,210,0.22)',
+      borderWidth: 1,
+      pointRadius: 0,
+      fill: false,
+      order: 6,
+    }));
+
+    // datasets 顺序：history, P05, P25, median, P75, P95, samples..., TP, SL
+    // fill target 用 dataset index（Chart.js 4 推荐语法）
+    const datasets = [
+      { label: '历史收盘', data: histLine, borderColor: '#00d4ff', borderWidth: 2, pointRadius: 0, fill: false, order: 1 },
+      { label: 'P05', data: p05, borderColor: 'transparent', backgroundColor: 'rgba(183,148,244,0.12)', fill: { target: 5 }, pointRadius: 0, order: 5 },
+      { label: 'P25', data: p25, borderColor: 'transparent', backgroundColor: 'rgba(0,212,255,0.22)', fill: { target: 4 }, pointRadius: 0, order: 4 },
+      { label: '中位', data: median, borderColor: '#ffeb3b', borderWidth: 2.5, pointRadius: 0, fill: false, order: 0 },
+      { label: 'P75', data: p75, borderColor: 'transparent', pointRadius: 0, fill: false, order: 4 },
+      { label: 'P95', data: p95, borderColor: 'transparent', pointRadius: 0, fill: false, order: 5 },
+      ...sampleDatasets,
+      { label: 'TP', data: tpLine, borderColor: '#00e676', borderWidth: 1.5, borderDash: [6, 4], pointRadius: 0, fill: false, order: 2 },
+      { label: 'SL', data: slLine, borderColor: '#ff5252', borderWidth: 1.5, borderDash: [6, 4], pointRadius: 0, fill: false, order: 2 },
+    ];
+
+    _mcChart = new Chart(ctx, {
+      type: 'line',
+      data: { labels: allDates, datasets },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: {
+            display: true,
+            position: 'top',
+            labels: {
+              color: '#94a3b8',
+              boxWidth: 14,
+              filter: (item, data) => {
+                // 隐藏 fill 的"虚拟"dataset legend（P05/P75/P95），只显示 P25/P95 (boundary)
+                const label = data.datasets[item.datasetIndex]?.label;
+                return !['P05', 'P75'].includes(label);
+              },
+            },
+          },
+          tooltip: {
+            mode: 'index',
+            intersect: false,
+            callbacks: {
+              label: (ctx) => {
+                const v = ctx.parsed.y;
+                return `${ctx.dataset.label}: ${v == null ? '—' : '¥' + v.toFixed(2)}`;
+              },
+            },
+          },
+        },
+        scales: {
+          x: {
+            ticks: { color: '#94a3b8', maxTicksLimit: 12, maxRotation: 0 },
+            grid: { color: 'rgba(255,255,255,0.04)' },
+          },
+          y: {
+            ticks: {
+              color: '#94a3b8',
+              callback: (v) => '¥' + Number(v).toFixed(2),
+            },
+            grid: { color: 'rgba(255,255,255,0.04)' },
+          },
+        },
+      },
+    });
   }
 
   // ========== 充值与提现 ==========

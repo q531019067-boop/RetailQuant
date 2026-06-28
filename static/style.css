@@ -892,3 +892,134 @@ td.down { color: var(--green); font-weight: 600; }
 ::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.2); }
 ::-webkit-scrollbar-thumb { background: rgba(0, 212, 255, 0.3); border-radius: 4px; }
 ::-webkit-scrollbar-thumb:hover { background: rgba(0, 212, 255, 0.5); }
+/* ====== 蒙特卡洛 Modal（个股路径预测） ====== */
+
+.mc-modal-content {
+  max-width: 960px;
+  width: 95vw;
+  max-height: 92vh;
+  overflow-y: auto;
+}
+
+.mc-risk-note {
+  background: rgba(255, 152, 0, 0.08);
+  border: 1px solid rgba(255, 152, 0, 0.25);
+  color: #ffb74d;
+  font-size: 12px;
+  line-height: 1.6;
+  padding: 8px 12px;
+  border-radius: 6px;
+  margin: 8px 0 12px 0;
+}
+
+.mc-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: flex-end;
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 6px;
+}
+.mc-form label {
+  display: flex;
+  flex-direction: column;
+  font-size: 11px;
+  color: var(--text-dim);
+  gap: 3px;
+}
+.mc-form input,
+.mc-form select {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text);
+  padding: 5px 8px;
+  border-radius: 4px;
+  font-size: 13px;
+  min-width: 90px;
+  font-family: inherit;
+}
+.mc-form input:focus,
+.mc-form select:focus {
+  outline: none;
+  border-color: var(--cyan);
+}
+.mc-form button {
+  height: 32px;
+  align-self: flex-end;
+}
+
+.mc-hint {
+  color: var(--text-dim);
+  text-align: center;
+  padding: 20px;
+  font-size: 13px;
+}
+
+.mc-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+  margin: 12px 0;
+}
+.mc-stat {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 5px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.mc-stat .mc-label {
+  font-size: 11px;
+  color: var(--text-dim);
+}
+.mc-stat .mc-val {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+.mc-stat .mc-val.up { color: #00e676; }
+.mc-stat .mc-val.down { color: #ff5252; }
+.mc-stat.mc-param .mc-val {
+  font-weight: 400;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.mc-warn-tag {
+  display: inline-block;
+  background: rgba(255, 152, 0, 0.2);
+  color: #ffb74d;
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 3px;
+  margin-left: 4px;
+  font-weight: normal;
+}
+
+.mc-chart-wrapper {
+  position: relative;
+  height: 380px;
+  width: 100%;
+  margin: 8px 0 12px 0;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 6px;
+  padding: 8px;
+}
+
+.mc-warnings {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.mc-warn-item {
+  background: rgba(255, 152, 0, 0.08);
+  border-left: 3px solid rgba(255, 152, 0, 0.5);
+  color: #ffb74d;
+  font-size: 12px;
+  padding: 6px 10px;
+  border-radius: 3px;
+}
