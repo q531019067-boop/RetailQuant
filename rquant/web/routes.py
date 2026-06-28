@@ -26,6 +26,7 @@ from rquant.business.pool_store import (
     remove_from_watchlist,
 )
 from rquant.log import get_recent_logs, info
+from rquant.research.montecarlo import run_forecast
 from rquant.strategy import all_strategies, scan_sell, scan_stock
 
 from .views import (
@@ -407,6 +408,125 @@ def register_routes(app: Flask) -> None:
                 "analyses": analyses,
             }
         )
+
+    # ============== 蒙特卡洛路径预测 API（个股 stress test）==============
+    # 来源：rquant.research.montecarlo（从 FactorQ/src/advisor/montecarlo.py 复刻，2026-06-29）
+
+    @app.route("/api/montecarlo/<code>")
+    def api_montecarlo(code):
+        """单只股票蒙特卡洛路径预测（GBM + 分位带 + TP/SL 命中）。
+
+        Query params（全部可选）:
+            days        (int,   default 20)   预测多少个交易日
+            sims        (int,   default 1000) 模拟路径数
+            lookback    (int,   default 252)  历史 lookback 天数
+            kline_days  (int,   default 400)  拉 K 线天数（自动取 max(lookback+30, kline_days)）
+            tp          (float, optional)     止盈价（不传 / ≤0 → 库内按现价 ×1.08 兜底）
+            sl          (float, optional)     止损价（不传 / ≤0 → 库内按现价 ×0.96 兜底）
+            seed        (int,   optional)     随机种子（不传 → 随机）
+            live_price  (float, optional)     覆盖当前价（盘中实时价用），不传 → K 线最后 close
+
+        Returns:
+            {"ok": True, ...out_dict} 或
+            {"ok": False, "error": "...", "code": "...", "warnings": [...]}
+
+        库本身只会返回 {error, code, name} 或 {warnings + ...}，这里把 error 透传为 4xx，
+        其余异常（拉数失败、运行崩溃）为 5xx。
+        """
+        code = (code or "").strip().lower()
+        if not code:
+            return jsonify({"ok": False, "error": "缺少 code"}), 400
+
+        info("web", f"GET /api/montecarlo/{code}")
+
+        # --- 解析参数 ---
+        days = _safe_int(request.args.get("days"), 20)
+        sims = _safe_int(request.args.get("sims"), 1000)
+        lookback = max(30, _safe_int(request.args.get("lookback"), 252))
+        kline_days = max(lookback + 30, _safe_int(request.args.get("kline_days"), 400))
+
+        # 可选浮点：未传或 ≤0 → None（库内会兜底）
+        def _opt_float(raw: str | None) -> float | None:
+            if raw is None or raw == "":
+                return None
+            try:
+                v = float(raw)
+                return v if v > 0 else None
+            except (TypeError, ValueError):
+                return None
+
+        tp = _opt_float(request.args.get("tp"))
+        sl = _opt_float(request.args.get("sl"))
+        live_price = _opt_float(request.args.get("live_price"))
+
+        seed_arg = request.args.get("seed")
+        if seed_arg is None or seed_arg == "":
+            seed = None
+        else:
+            try:
+                seed = int(seed_arg)
+            except (TypeError, ValueError):
+                seed = None
+
+        # --- 拉 K 线 ---
+        try:
+            df = data.fetch_kline(code, kline_days)
+        except Exception as e:
+            info("web", f"/api/montecarlo 拉 K 线失败 {code}: {e}")
+            return jsonify({"ok": False, "error": f"拉 K 线失败: {e}", "code": code}), 500
+
+        if df is None or df.empty:
+            return jsonify({"ok": False, "error": "无可用 K 线", "code": code}), 404
+
+        # --- 当前价 ---
+        if live_price is not None and live_price > 0:
+            current_price = live_price
+        else:
+            current_price = float(df["close"].iloc[-1])
+
+        if current_price <= 0:
+            return jsonify({"ok": False, "error": "当前价无效", "code": code}), 400
+
+        # --- 名字（内存字典，没有就用 code 顶替）---
+        name = data.get_stock(code).get("name") or code
+
+        # --- 跑预测 ---
+        try:
+            out = run_forecast(
+                df,
+                current_price=current_price,
+                forecast_days=days,
+                simulations=sims,
+                lookback_days=lookback,
+                take_profit=tp,
+                stop_loss=sl,
+                seed=seed,
+                code=code,
+                name=name,
+            )
+        except Exception as e:
+            info("web", f"/api/montecarlo 预测异常 {code}: {e}")
+            return jsonify({"ok": False, "error": f"预测异常: {e}", "code": code}), 500
+
+        # --- 库本身返回 error（如数据不足、样本不足）→ 透传 400 ---
+        if "error" in out:
+            info("web", f"/api/montecarlo {code}: {out['error']}")
+            return jsonify(
+                {
+                    "ok": False,
+                    "error": out["error"],
+                    "code": code,
+                    "warnings": out.get("warnings", []),
+                }
+            ), 400
+
+        info(
+            "web",
+            f"/api/montecarlo {code}: forecast={days}d, sims={sims}, "
+            f"expected_return={out['stats']['expected_return_pct']}%, "
+            f"prob_higher={out['stats']['prob_higher_pct']}%",
+        )
+        return jsonify({"ok": True, **out})
 
     # ============== 错误 ==============
 
