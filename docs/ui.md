@@ -224,6 +224,7 @@
 | 持仓表格 | 列：代码/名称/股数/成本/现价/市值/盈亏/操作 | 展示所有持仓 | 无 |
 | 盈亏列 | 正 `.green`，负 `.red` | 颜色标识 | 无 |
 | `卖` 按钮 | `.btn-sell` — 红色边框 | 打开卖出弹窗 | `showSellForm(code, shares, currentPrice)` |
+| `📊 预测` 按钮 | `.btn-sm.btn-view` | 打开蒙特卡洛路径预测弹窗（GBM 分位带 + TP/SL 命中） | `showMonteCarlo(code, currentPrice)` |
 
 ---
 
@@ -275,6 +276,7 @@
 | `买入` | 始终 | `.btn-primary.btn-sm` | 展开买入表单并预填 code + price | `showAddForCode(code, price)` |
 | `−` | 始终 | `.btn-del` 圆形红色按钮 22×22 | 从自选股删除 | `removeFromWatchlist(code)` |
 | `分析` | 始终 | `.btn-sm.btn-view` | 打开策略评分弹窗 | `showWatchlistAnalysis(code)` |
+| `📊 预测` | 始终 | `.btn-sm.btn-view` | 打开蒙特卡洛路径预测弹窗（GBM 分位带 + TP/SL 命中） | `showMonteCarlo(code, price)` |
 
 ---
 
@@ -296,7 +298,59 @@
 
 ---
 
-### 13. 策略状态
+### 13. 蒙特卡洛路径预测弹窗
+
+| 属性 | 值 |
+|---|---|
+| 容器 | `<div id="mc-modal" class="modal">` |
+| 触发 | 自选股行 / 持仓行的 `📊 预测` 按钮 |
+| 数据来源 | `GET /api/montecarlo/<code>?days=…&sims=…&seed=…&tp=…&sl=…&live_price=…` |
+| 渲染 | Chart.js 4.4.1（CDN，已有依赖） |
+| 后端 | `rquant.research.montecarlo`（从 FactorQ 1:1 复刻） |
+
+| 元素 | 样式 / ID | 作用 |
+|---|---|---|
+| 标题 | `#mc-modal-title` | 显示 `📊 蒙特卡洛预测 <code>` |
+| 副标题 | `#mc-modal-meta` | 显示当前价、末日、μ/σ 或错误信息 |
+| 风险提示 | `.mc-risk-note`（顶部固定） | 橙色条 — GBM 假设说明 / 非投资建议 |
+| 参数表单 | `.mc-form` | `days` / `sims`（select）/ `seed` / `tp` / `sl` / `live_price` + "生成预测" 按钮 |
+| TP / SL 默认值 | `#mc-tp` / `#mc-sl` | 打开时按现价 ×1.08 / ×0.96 自动填，用户可改 |
+| 统计摘要 | `#mc-summary` | 网格 6+4 项：中位预期收益 / 上涨概率 / TP 命中 / SL 命中 / MDD 中位 / MDD 95分位 / μ 日频年化 / σ 日频年化 / 有效样本 / 兜底 TP-SL |
+| 涨绿跌红 | `.mc-val.up` / `.mc-val.down` | 收益 / MDD 颜色标识 |
+| σ 退化提示 | `.mc-warn-tag` | 紧贴 σ 值的"已兜底"小标签 |
+| 图表 | `<canvas id="mc-chart">`（380px 高） | Chart.js line chart，dataset 顺序：历史 / P05 / P25 / 中位 / P75 / P95 / 5 条样本路径 / TP / SL |
+| 分位带渐变 | Chart.js `fill: { target: datasetIndex }` | P05→P95 浅紫渐变（外层）、P25→P75 青色渐变（内层） |
+| 横线 | TP 绿色虚线 / SL 红色虚线 | `borderDash: [6, 4]` |
+| 样本路径 | 5 条淡线 | 透明度 0.22，前端画淡线背景用 |
+| Warnings | `#mc-warnings` / `.mc-warn-item` | 库返回的 warnings（σ 退化 / 停牌剔除 / 样本不足 等） |
+
+**Chart.js 数据集顺序（关键）**：
+
+| Index | Label | 作用 | Fill Target |
+|---|---|---|---|
+| 0 | 历史收盘 | 粗青色线，前 60 天有值 | — |
+| 1 | P05 | 起点（下界） | **5**（P95）— 浅紫渐变 |
+| 2 | P25 | 起点（下界） | **4**（P75）— 青色渐变 |
+| 3 | 中位 | 粗黄色线 | — |
+| 4 | P75 | 终点（上界） | — |
+| 5 | P95 | 终点（上界） | — |
+| 6..10 | 样本 1..5 | 极淡灰线 | — |
+| 11 | TP | 绿色虚线 | — |
+| 12 | SL | 红色虚线 | — |
+
+**已知交互**：
+- 打开 modal 时**不自动跑**（避免每次打开都发请求），用户改完参数点 `生成预测`
+- 关闭 modal 时销毁 Chart.js 实例（避免内存泄漏 + 多次打开叠加）
+- 错误时 summary 清空、warnings 显示（库返回的 `warnings` 数组）
+
+**API 错误码**：
+- `400` — 库 error（数据不足 / 样本不足）
+- `404` — 无可用 K 线
+- `500` — fetch 或预测异常
+
+---
+
+### 14. 策略状态
 
 | 属性 | 值 |
 |---|---|
@@ -313,7 +367,7 @@
 
 ---
 
-### 14. 系统日志
+### 15. 系统日志
 
 | 属性 | 值 |
 |---|---|
@@ -323,7 +377,7 @@
 
 ---
 
-### 15. 交易历史
+### 16. 交易历史
 
 | 属性 | 值 |
 |---|---|
@@ -526,6 +580,11 @@ doTopup() / doWithdraw()
 | `escapeHtml(value)` | JS 动态渲染文本前调用 | 转义弹窗表格中的策略说明 | 无 |
 | `showWatchlistAnalysis(code)` | 自选股行"分析" | 打开策略评分弹窗 | `/api/watchlist/analyze/<code>` |
 | `closeAnalysisModal()` | 策略分析弹窗"关闭" | 关闭策略分析弹窗 | 无 |
+| `showMonteCarlo(code, price)` | 自选股行 / 持仓行 "📊 预测" | 打开蒙特卡洛路径预测弹窗（自动填 TP/SL 默认值） | 无（仅 UI） |
+| `runMonteCarlo()` | 弹窗内"生成预测" | 读表单参数 + fetch + 渲染 Chart.js | `/api/montecarlo/<code>?...` |
+| `closeMonteCarlo()` | 弹窗"关闭" | 销毁 Chart.js 实例 + 关闭弹窗 | 无 |
+| `_mcRenderSummary(out)` | `runMonteCarlo()` 成功后 | 渲染统计摘要网格 + warnings | 无 |
+| `_mcRenderChart(out)` | `runMonteCarlo()` 成功后 | 拼历史/未来 x 轴 + 9 个 datasets 建 Chart.js | 无 |
 | `toggleTrades()` | 交易历史标题点击 | 展开/收起交易历史 | 无 |
 | `onCategoryChange()` | 大类筛选变化 | 重建策略筛选下拉 | 无 |
 | `applyFilter()` | 策略筛选变化 | 过滤买入信号列表 | 无 |
@@ -571,6 +630,17 @@ doTopup() / doWithdraw()
 | `.analysis-table` | 策略分析结果表 | 第 5 列加宽 |
 | `.analysis-desc` | 策略描述 | 灰色小字 |
 | `.analysis-hit` / `.analysis-miss` | 分析结果状态 | 触发/未触发标签 |
+| `.mc-modal-content` | 蒙特卡洛弹窗 | max-width 960px / 95vw / max-height 92vh / overflow-y auto |
+| `.mc-risk-note` | 顶部固定风险提示 | 橙色条，左 padding |
+| `.mc-form` | 参数表单容器 | flex-wrap / 半透明底 |
+| `.mc-summary` | 统计摘要网格 | grid auto-fit min 150px |
+| `.mc-stat` | 单个统计项 | 半透明卡 |
+| `.mc-stat.mc-param` | 参数型统计（μ/σ/样本数等） | 灰色弱化 |
+| `.mc-val.up` / `.mc-val.down` | 涨绿跌红 | 收益 / MDD 颜色 |
+| `.mc-warn-tag` | σ 兜底标签 | 橙色小标签 |
+| `.mc-chart-wrapper` | Chart.js canvas 容器 | 380px 高 / 暗底圆角 |
+| `.mc-warnings` / `.mc-warn-item` | warnings 列表 | 橙色左边框 |
+| `.mc-hint` | 初始提示 | 灰色居中文字 |
 | `.form` | 表单容器 | flex，gap 8px |
 | `.held-tag` | 已持仓标签 | 灰色圆角标签 |
 | `.flash-success` / `.flash-error` | 消息条 | 绿/红半透明底 |

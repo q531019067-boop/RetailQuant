@@ -58,6 +58,51 @@
 
 ---
 
+## [Unreleased] - 2026-06-29
+
+### Added（新增）
+
+#### 蒙特卡洛路径预测工具库（个股 stress test）
+
+- **来源**：从 `FactorQ/src/advisor/montecarlo.py` 1:1 复刻而来（保留全部核心算法与 `[2026-06-25]` 修复注释），位置 `rquant/research/montecarlo/`。
+- **新增包**：
+  - `rquant/research/montecarlo/__init__.py` — 公开 API 导出（`MonteCarloConfig` / `MonteCarloForecaster` / `run_forecast` + 5 个经验阈值常量）
+  - `rquant/research/montecarlo/forecaster.py` — 核心 GBM + 停牌日剔除 + σ 退化保护 + TP/SL 自洽校验
+  - `rquant/research/montecarlo/cli.py` — 命令行入口（`python -m rquant.research.montecarlo.cli`）
+  - `rquant/research/montecarlo/README.md` — 用户文档（quick reference）
+  - `rquant/research/montecarlo/DESIGN.md` — 设计文档（13 章 + 2 附录，654 行）
+- **新增 HTTP 路由**：`rquant/web/routes.py` → `GET /api/montecarlo/<code>`（自选股 / 持仓行均可触发）
+  - Query params：`days` / `sims` / `lookback` / `kline_days` / `seed` / `tp` / `sl` / `live_price`
+  - 响应：与 `run_forecast()` 同 schema，`{ok: true, ...out_dict}` 或 4xx/5xx
+- **新增前端 UI**：
+  - `templates/index.html` — 新增 `#mc-modal` + 自选股 / 持仓行 `[📊 预测]` 按钮 + 5 个 JS 函数（`showMonteCarlo` / `runMonteCarlo` / `closeMonteCarlo` / `_mcRenderSummary` / `_mcRenderChart`）
+  - `static/style.css` — 新增 11 个 `.mc-*` 类
+  - Chart.js 4.4.1（已有 CDN 依赖）画分位带渐变（`fill: { target: datasetIndex }`）
+- **新增测试**：
+  - `tests/test_montecarlo.py` — 库 smoke test（13 用例：import / 字段 / 复现 / 单调 / TP-SL 自洽 / 停牌日 / σ 退化 / error 分支）
+  - `tests/test_montecarlo_api.py` — Flask test_client 集成测试（11 用例：路由 / 成功 / seed 复现 / live_price / TP-SL 透传 / 兜底 / 空 K 线 / fetch 异常 / 库 error / 大小写 / lookback 钳位）
+
+### Verified
+
+- ✅ `pytest tests/test_montecarlo.py tests/test_montecarlo_api.py` → 24/24 passed
+- ✅ `ruff check` + `ruff format` 全部通过
+- ✅ 完整链路 smoke：`curl /api/montecarlo/sh600000?days=20&sims=200&seed=42&tp=13.5&sl=11.8` → 200 + 字段齐全
+- ✅ 服务 `python3 app.py` 端口 8080 启动正常
+
+### Documentation
+
+- 新增 `rquant/research/montecarlo/DESIGN.md`（设计 / 数学 / 决策记录）
+- 更新 `docs/ui.md`：§8 持仓行 / §11 自选股行 加 `[📊 预测]` 按钮；新增 §13 蒙特卡洛弹窗章节；§14-§16 重编号；JS 函数速查表 +5 行；CSS 类速查表 +11 行
+- 同步本 CHANGELOG
+
+### Non-breaking（无破坏）
+
+- `rquant/__init__.py` 顶层导出、`web/routes.py` 仅 +1 import + 1 新路由，**不影响**现有页面 / API
+- 没动 `templates/error.html`、`static/style.css` 现有样式（仅 append）
+- 没改 `requirements.txt` / `pyproject.toml` / 任何 `scripts/`
+
+---
+
 ## 历史变更
 
 变更日志自 2026-06-22 起维护。之前的版本演变请查阅 git log。
