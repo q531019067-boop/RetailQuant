@@ -148,26 +148,29 @@ export default function ParamPanel({ onResults }) {
               <div
                 key={s.name}
                 className={`strategy-item-wrap ${sel ? "active" : ""}`}
-                onClick={() => {
-                  if (!strategyParams[s.name]) {
-                    const defaults = {};
-                    if (s.params) {
-                      Object.entries(s.params).forEach(([k, v]) => {
-                        defaults[k] = v.default;
-                      });
-                    }
-                    setStrategyParams((prev) => ({
-                      ...prev,
-                      [s.name]: defaults,
-                    }));
-                  }
-                  setExpandedStrats((prev) => ({
-                    ...prev,
-                    [s.name]: !prev[s.name],
-                  }));
-                }}
-                title="点击编辑参数"
               >
+                <div
+                  className={`strategy-item ${sel ? "active" : ""}`}
+                  onClick={() => {
+                    if (!strategyParams[s.name]) {
+                      const defaults = {};
+                      if (s.params) {
+                        Object.entries(s.params).forEach(([k, v]) => {
+                          defaults[k] = v.default;
+                        });
+                      }
+                      setStrategyParams((prev) => ({
+                        ...prev,
+                        [s.name]: defaults,
+                      }));
+                    }
+                    setExpandedStrats((prev) => ({
+                      ...prev,
+                      [s.name]: !prev[s.name],
+                    }));
+                  }}
+                  title="点击编辑参数"
+                >
                 <div className={`strategy-item ${sel ? "active" : ""}`}>
                   <input
                     type="checkbox"
