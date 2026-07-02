@@ -213,7 +213,7 @@ body {
 .strategy-item-wrap:hover .strategy-tooltip {
   visibility: visible;
   opacity: 1;
-  max-height: 3em;
+  max-height: 10em;
   transition: opacity 0.15s 0.3s, max-height 0s 0s;
 }
 
