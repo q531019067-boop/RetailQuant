@@ -43,13 +43,17 @@ class TestAPIStocks:
 class TestAPIStrategies:
     """GET /api/strategies"""
 
-    def test_returns_three_strategies(self, client):
+    def test_returns_expected_strategies(self, client):
         resp = client.get("/api/strategies")
         assert resp.status_code == 200
         data = json.loads(resp.data)
         assert "strategies" in data
         names = {s["name"] for s in data["strategies"]}
-        assert names == {"equal_weight", "grid_martingale", "vp_breakout"}
+        # 至少包含核心策略，新增策略不破坏此断言
+        assert "equal_weight" in names
+        assert "grid_martingale" in names
+        assert "vp_breakout" in names
+        assert len(data["strategies"]) >= 3
 
     def test_each_strategy_has_params(self, client):
         resp = client.get("/api/strategies")
