@@ -138,7 +138,7 @@ export default function ParamPanel({ onResults }) {
 
       {/* strategy multi-select */}
       <div className="param-group">
-        <label>策略（可多选比较，悬浮查看参数，点击参数编辑）</label>
+        <label>策略（可多选比较，点击名称编辑参数）</label>
         <div className="strategy-list">
           {strategies.map((s, idx) => {
             const sel = selectedStrategies.includes(s.name);
@@ -156,28 +156,20 @@ export default function ParamPanel({ onResults }) {
                     className="strategy-dot"
                     style={{ background: color }}
                   />
-                  {s.label}
-                </label>
-                {/* 悬浮提示：点击打开编辑 */}
-                {sel && s.params && Object.keys(s.params).length > 0 && (
-                  <div
-                    className="strategy-tooltip"
-                    onClick={() =>
+                  <span
+                    className="strategy-name"
+                    onClick={(e) => {
+                      e.preventDefault();
                       setExpandedStrats((prev) => ({
                         ...prev,
                         [s.name]: !prev[s.name],
-                      }))
-                    }
+                      }));
+                    }}
                     title="点击编辑参数"
                   >
-                    {Object.entries(s.params).map(([key, cfg]) => (
-                      <span key={key} className="tooltip-param">
-                        {cfg.label}=
-                        {strategyParams[s.name]?.[key] ?? cfg.default}
-                      </span>
-                    ))}
-                  </div>
-                )}
+                    {s.label}
+                  </span>
+                </label>
                 {/* 编辑区 */}
                 {sel && s.params && expandedStrats[s.name] && (
                   <div className="strategy-params">

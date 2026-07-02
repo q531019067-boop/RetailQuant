@@ -195,35 +195,13 @@ body {
   width: auto;
 }
 
-/* 悬浮参数提示 */
-.strategy-tooltip {
-  opacity: 0;
-  max-height: 0;
-  overflow: hidden;
-  font-size: 0.7rem;
-  color: #555;
-  margin-top: 0;
-  margin-left: 22px;
-  line-height: 1.6;
+.strategy-name {
   cursor: pointer;
-  transition: opacity 0.2s 0.3s, max-height 0.2s 0.3s, margin-top 0.2s 0.3s;
 }
 
-.strategy-item-wrap:hover .strategy-tooltip {
-  opacity: 1;
-  max-height: 10em;
-  margin-top: 4px;
-  transition: opacity 0.2s 0.3s, max-height 0.2s 0.3s, margin-top 0.2s 0.3s;
-}
-
-.tooltip-param {
-  display: inline-block;
-  background: #f0f0f0;
-  color: #444;
-  padding: 1px 6px;
-  border-radius: 3px;
-  margin-right: 4px;
-  margin-bottom: 2px;
+.strategy-name:hover {
+  text-decoration: underline;
+  text-decoration-style: dotted;
 }
 
 .strategy-item {
