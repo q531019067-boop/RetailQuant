@@ -333,7 +333,17 @@ body {
   color: #8884d8;
 }
 
-/* Run button */
+/* Run button — sticky at sidebar bottom */
+.run-btn-sticky {
+  position: sticky;
+  bottom: 0;
+  background: white;
+  padding: 10px 0 4px;
+  margin-top: 12px;
+  border-top: 1px solid #f0f0f0;
+  z-index: 1;
+}
+
 .run-btn {
   width: 100%;
   padding: 10px;

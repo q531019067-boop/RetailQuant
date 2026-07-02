@@ -314,17 +314,19 @@ export default function ParamPanel({ onResults }) {
         <button onClick={() => setSelectedStocks([])}>清空</button>
       </div>
 
-      <button
-        className="run-btn"
-        onClick={handleRun}
-        disabled={
-          loading ||
-          selectedStocks.length === 0 ||
-          selectedStrategies.length === 0
-        }
-      >
-        {loading ? "回测运行中..." : "运行回测"}
-      </button>
+      <div className="run-btn-sticky">
+        <button
+          className="run-btn"
+          onClick={handleRun}
+          disabled={
+            loading ||
+            selectedStocks.length === 0 ||
+            selectedStrategies.length === 0
+          }
+        >
+          {loading ? "回测运行中..." : "运行回测"}
+        </button>
+      </div>
     </div>
   );
 }
