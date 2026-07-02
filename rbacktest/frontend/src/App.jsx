@@ -529,42 +529,45 @@ export default function App() {
                     <div className="history-list">
                       {history.map((entry) => {
                         const p = entry.params || {};
-                        const stratNames = p.strategies || [];
-                        const stockCount = p.vt_symbols?.length || 0;
-                        const title = [
+                        const sn = p.strategies || [];
+                        const sc = p.vt_symbols?.length || 0;
+                        const tip = [
                           entry.saved_at.slice(0, 19).replace("T", " "),
                           `区间: ${p.start || "?"} ~ ${p.end || "?"}`,
                           `资金: ¥${(p.capital || 0).toLocaleString()}`,
-                          `策略: ${stratNames.join(", ") || "?"}`,
-                          `股票: ${stockCount} 只`,
+                          `策略: ${sn.join(", ") || "?"}`,
+                          `股票: ${sc} 只`,
                         ].join("\n");
                         return (
-                        <div
-                          key={entry.task_id}
-                          className="history-item"
-                          onClick={() => {
-                            setResults(entry.results);
-                            setBenchmark(null);
-                          }}
-                          title={title}
-                        >
-                          <span className="history-id">
-                            {entry.task_id.slice(0, 8)}
-                          </span>
-                          <span className="history-meta">
-                            {p.start?.slice(0, 7) || "?"} ~ {p.end?.slice(0, 7) || "?"} · {stratNames.length}策略 · {stockCount}股
-                          </span>
-                          <button
-                            className="history-del"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              deleteFromHistory(entry.task_id);
-                              setHistory(loadHistory());
+                          <div
+                            key={entry.task_id}
+                            className="history-item"
+                            onClick={() => {
+                              setResults(entry.results);
+                              setBenchmark(null);
                             }}
+                            title={tip}
                           >
-                            ✕
-                          </button>
-                        </div>
+                            <span className="history-id">
+                              {entry.task_id.slice(0, 8)}
+                            </span>
+                            <span className="history-meta">
+                              {p.start?.slice(0, 7) || "?"} ~{" "}
+                              {p.end?.slice(0, 7) || "?"} · {sn.length}策略 ·{" "}
+                              {sc}股
+                            </span>
+                            <button
+                              className="history-del"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                deleteFromHistory(entry.task_id);
+                                setHistory(loadHistory());
+                              }}
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        );
                       })}
                     </div>
                   )}
