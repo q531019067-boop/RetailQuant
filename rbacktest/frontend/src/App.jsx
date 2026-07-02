@@ -291,7 +291,7 @@ export default function App() {
     const entry = {
       task_id: res.task_id,
       params: params || {},
-      results: res.results,
+      results: res, // 完整结构 {task_id, results: {strat: {statistics, daily, trades}}}
       saved_at: new Date().toISOString(),
     };
     saveToHistory(entry);
