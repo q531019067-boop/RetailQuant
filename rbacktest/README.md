@@ -99,9 +99,11 @@ class MyStrategy(BaseStrategy):
 ### 股票名称
 
 运行一次即可缓存：
+
 ```bash
 uv run python rbacktest/tools/fetch_stock_names.py
 ```
+
 生成 `rbacktest/stock_names.json`（已提交到仓库，clone 即可用）。定期 `--force` 刷新以获取新上市/改名。
 
 Parquet 文件需包含列：`datetime`, `vt_symbol`, `open`, `high`, `low`, `close`, `volume`, `turnover`。
