@@ -23,6 +23,7 @@ from flask import Flask, request, jsonify  # noqa: E402
 from flask_cors import CORS  # noqa: E402
 
 from backend.backtest_engine import (  # noqa: E402
+    DEFAULT_BENCHMARK,
     get_stock_name,
     get_stock_names,
     list_available_stocks,
@@ -107,7 +108,7 @@ def get_benchmark():
         start (default "2020-01-01") 起始日期
         end   (default "2026-12-31") 结束日期
     """
-    code = request.args.get("code", "000300.SSE")
+    code = request.args.get("code", DEFAULT_BENCHMARK)
     start = request.args.get("start", "2020-01-01")
     end = request.args.get("end", "2026-12-31")
     data = load_benchmark(code, start, end)

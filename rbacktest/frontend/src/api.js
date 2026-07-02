@@ -62,3 +62,53 @@ export async function fetchBenchmark(code, start, end) {
   if (!res.ok) return null;
   return res.json();
 }
+
+/* ------------------------------------------------------------------ */
+/*  localStorage 持久化                                                */
+/* ------------------------------------------------------------------ */
+
+const HISTORY_KEY = "rbacktest_history";
+const MAX_HISTORY = 20;
+
+/**
+ * Save a backtest result to localStorage.
+ * @param {Object} entry - { task_id, params, results, saved_at }
+ */
+export function saveToHistory(entry) {
+  try {
+    const history = loadHistory();
+    history.unshift(entry);
+    if (history.length > MAX_HISTORY) history.length = MAX_HISTORY;
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+  } catch {
+    /* quota exceeded or disabled — silently skip */
+  }
+}
+
+/**
+ * Load all saved backtest entries.
+ * @returns {Array<{task_id: string, params: Object, results: Object, saved_at: string}>}
+ */
+export function loadHistory() {
+  try {
+    const raw = localStorage.getItem(HISTORY_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Delete a single history entry by task_id.
+ */
+export function deleteFromHistory(taskId) {
+  const history = loadHistory().filter((e) => e.task_id !== taskId);
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+}
+
+/**
+ * Clear all history.
+ */
+export function clearHistory() {
+  localStorage.removeItem(HISTORY_KEY);
+}

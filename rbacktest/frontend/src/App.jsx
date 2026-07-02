@@ -12,7 +12,15 @@ import {
   ReferenceLine,
   Legend,
 } from "recharts";
-import { fetchStrategies, fetchBenchmark, fetchStockNames } from "./api";
+import {
+  fetchStrategies,
+  fetchBenchmark,
+  fetchStockNames,
+  saveToHistory,
+  loadHistory,
+  deleteFromHistory,
+  clearHistory,
+} from "./api";
 import "./App.css";
 
 /* ------------------------------------------------------------------ */
@@ -230,8 +238,11 @@ export default function App() {
   const [showTrades, setShowTrades] = useState({});
   const [showCompare, setShowCompare] = useState(true);
   const [stockNames, setStockNames] = useState({});
-  // 系统状态（股票数、策略数、数据日期）
+  // 系统状态
   const [sysStatus, setSysStatus] = useState({ stocks: 0, strats: 0 });
+  // 回测历史（localStorage 持久化）
+  const [history, setHistory] = useState(() => loadHistory());
+  const [showHistory, setShowHistory] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -271,10 +282,21 @@ export default function App() {
     );
   }
 
-  // 当回测结果到达时，自动拉取同期基准数据
-  const handleResults = async (res) => {
+  // 当回测结果到达时，自动拉取同期基准数据并保存到历史
+  const handleResults = async (res, params) => {
     setResults(res);
     setBenchmark(null);
+
+    // 保存到 localStorage
+    const entry = {
+      task_id: res.task_id,
+      params: params || {},
+      results: res,
+      saved_at: new Date().toISOString(),
+    };
+    saveToHistory(entry);
+    setHistory(loadHistory());
+
     // 从 res 直接取策略名，不用 state（setState 异步，此时 stratNames 还是旧值）
     const names = res ? Object.keys(res.results) : [];
     if (names.length > 0) {
@@ -481,7 +503,65 @@ export default function App() {
 
       <main className="app-main">
         <aside className={`sidebar ${sidebarCollapsed ? "collapsed" : ""}`}>
-          {!sidebarCollapsed && <ParamPanel onResults={handleResults} />}
+          {!sidebarCollapsed && (
+            <>
+              <ParamPanel onResults={handleResults} />
+              {history.length > 0 && (
+                <div className="history-panel">
+                  <div
+                    className="history-header"
+                    onClick={() => setShowHistory(!showHistory)}
+                  >
+                    {showHistory ? "▼" : "▶"} 回测历史（{history.length}）
+                    <button
+                      className="history-clear"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        clearHistory();
+                        setHistory([]);
+                      }}
+                      title="清空历史"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  {showHistory && (
+                    <div className="history-list">
+                      {history.map((entry) => (
+                        <div
+                          key={entry.task_id}
+                          className="history-item"
+                          onClick={() => {
+                            setResults(entry.results);
+                            setBenchmark(null);
+                          }}
+                          title={entry.saved_at.slice(0, 19).replace("T", " ")}
+                        >
+                          <span className="history-id">
+                            {entry.task_id.slice(0, 8)}
+                          </span>
+                          <span className="history-meta">
+                            {entry.params.strategies?.length || 0}策略 ·
+                            {entry.params.vt_symbols?.length || 0}股
+                          </span>
+                          <button
+                            className="history-del"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              deleteFromHistory(entry.task_id);
+                              setHistory(loadHistory());
+                            }}
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
+          )}
         </aside>
 
         <section className="content">

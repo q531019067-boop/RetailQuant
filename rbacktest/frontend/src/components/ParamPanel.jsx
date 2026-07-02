@@ -95,15 +95,16 @@ export default function ParamPanel({ onResults }) {
     setLoading(true);
     setError(null);
     try {
-      const result = await runBacktest({
+      const params = {
         vt_symbols: selectedStocks,
         start: startDate,
         end: endDate,
         capital: Number(capital),
         strategies: selectedStrategies,
         strategy_params: strategyParams,
-      });
-      onResults(result);
+      };
+      const result = await runBacktest(params);
+      onResults(result, params);
     } catch (e) {
       setError(e.message);
     } finally {

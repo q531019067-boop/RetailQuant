@@ -330,6 +330,89 @@ body {
   color: #8884d8;
 }
 
+/* History panel */
+.history-panel {
+  margin-top: 20px;
+  border-top: 1px solid #e8e8e8;
+  padding-top: 12px;
+}
+
+.history-header {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #555;
+  cursor: pointer;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.history-clear {
+  background: none;
+  border: none;
+  font-size: 0.7rem;
+  color: #bbb;
+  cursor: pointer;
+  padding: 0 4px;
+}
+
+.history-clear:hover {
+  color: #ff4d4f;
+}
+
+.history-list {
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.history-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 5px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.75rem;
+  transition: background 0.15s;
+  gap: 6px;
+}
+
+.history-item:hover {
+  background: #f5f5f5;
+}
+
+.history-id {
+  font-family: "Consolas", "Monaco", monospace;
+  color: #8884d8;
+  font-size: 0.7rem;
+  flex-shrink: 0;
+}
+
+.history-meta {
+  color: #999;
+  font-size: 0.7rem;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.history-del {
+  background: none;
+  border: none;
+  font-size: 0.65rem;
+  color: #ccc;
+  cursor: pointer;
+  padding: 0 2px;
+  flex-shrink: 0;
+}
+
+.history-del:hover {
+  color: #ff4d4f;
+}
+
 /* Run button — sticky at sidebar bottom */
 .run-btn-sticky {
   position: sticky;
