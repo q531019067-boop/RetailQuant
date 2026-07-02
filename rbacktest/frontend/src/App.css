@@ -165,20 +165,23 @@ body {
 .strategy-list {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
 }
 
 .strategy-item-wrap {
-  border: 1px solid #e8e8e8;
+  border: 1px solid #d9d9d9;
   border-radius: 6px;
-  padding: 6px 8px;
-  transition: border-color 0.2s;
-  cursor: pointer;
+  padding: 8px 10px;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
 }
 
 .strategy-item-wrap:has(.active) {
   border-color: #8884d8;
   background: #fafaff;
+  border-left: 3px solid #8884d8;
+  padding-left: 8px;
 }
 
 .strategy-item {
