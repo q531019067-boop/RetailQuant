@@ -287,11 +287,18 @@ export default function App() {
     setResults(res);
     setBenchmark(null);
 
-    // 保存到 localStorage
+    // 保存到 localStorage（去掉 daily 数据减轻存储压力，5MB 上限）
+    const compact = { task_id: res.task_id, results: {} };
+    for (const [sn, r] of Object.entries(res.results)) {
+      compact.results[sn] = {
+        statistics: r.statistics,
+        trades: (r.trades || []).slice(0, 3),
+      };
+    }
     const entry = {
       task_id: res.task_id,
       params: params || {},
-      results: res,
+      results: compact.results,
       saved_at: new Date().toISOString(),
     };
     saveToHistory(entry);
