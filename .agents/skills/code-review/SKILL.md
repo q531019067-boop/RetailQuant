@@ -29,6 +29,12 @@ Pass 3: 类型 + 文档
 ├── 返回类型注解（含 Optional/Union）
 ├── docstring 完整性（参数、返回值、异常）
 ├── 注释与代码一致性
+├── 文档与代码一致性（README / DATA_CONVERSION.md / SKILL.md 是否反映最新架构）
+│   ├── API 端点列表是否完整
+│   ├── 策略数量、名称、描述是否匹配实际注册
+│   ├── 目录树是否与当前文件结构一致
+│   ├── 测试数量基准是否更新
+│   └── 启动端口、环境变量是否与代码一致
 └── 模块级 docstring
 
 Pass 4: Lint + Format
@@ -47,6 +53,7 @@ Pass 4: Lint + Format
 | `rbacktest/tests/` | Python | ruff |
 | `rbacktest/tools/` | Python | ruff |
 | `rbacktest/frontend/src/` | JavaScript/JSX/CSS | prettier |
+| `rbacktest/*.md` | Markdown | 人工审查文档一致性 |
 
 ## 执行命令
 
@@ -77,6 +84,7 @@ uv run python -m pytest rbacktest/tests/ -q
 - [ ] 所有公共函数有类型注解和 docstring
 - [ ] 边界条件已处理（空输入、None、除零）
 - [ ] 日期格式一致（后端返回到前端消费）
+- [ ] 文档与代码一致（README、SKILL.md 反映最新架构和策略数量）
 
 ## 常见问题速查
 
