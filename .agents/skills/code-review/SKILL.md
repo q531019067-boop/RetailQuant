@@ -53,7 +53,7 @@ Pass 4: Lint + Format
 | `rbacktest/tests/` | Python | ruff |
 | `rbacktest/tools/` | Python | ruff |
 | `rbacktest/frontend/src/` | JavaScript/JSX/CSS | prettier |
-| `rbacktest/*.md` | Markdown | 人工审查文档一致性 |
+| `rbacktest/*.md` | Markdown | markdownlint 人工审查文档一致性 |
 
 ## 执行命令
 
@@ -68,6 +68,9 @@ cd rbacktest/frontend
 npx prettier --check src/
 npx prettier --write src/
 
+# Markdown lint
+npx markdownlint-cli rbacktest/*.md
+
 # 全量测试
 uv run python -m pytest rbacktest/tests/ -q
 ```
@@ -80,6 +83,7 @@ uv run python -m pytest rbacktest/tests/ -q
 - [ ] `ruff check` All checks passed
 - [ ] `ruff format` 无 diff
 - [ ] `prettier --check` All matched files use Prettier code style
+- [ ] `markdownlint` 无错误
 - [ ] 无死代码、无未使用导入
 - [ ] 所有公共函数有类型注解和 docstring
 - [ ] 边界条件已处理（空输入、None、除零）
