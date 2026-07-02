@@ -7,20 +7,24 @@ from pathlib import Path
 
 import pytest
 
-# Ensure backend module is importable from the project root
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "backend"))
+# Ensure backend package is importable when running from project root
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 
 # ---------------------------------------------------------------------------
 # Default test universe
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture(scope="session")
 def default_stocks():
     """Small representative stock pool that covers both exchanges."""
     return [
-        "600519.SSE", "000858.SZSE", "600036.SSE",
-        "000651.SZSE", "600276.SSE",
+        "600519.SSE",
+        "000858.SZSE",
+        "600036.SSE",
+        "000651.SZSE",
+        "600276.SSE",
     ]
 
 
@@ -28,8 +32,14 @@ def default_stocks():
 def large_stocks():
     """Larger pool for strategies that need more candidates."""
     return [
-        "600519.SSE", "000858.SZSE", "600036.SSE", "600030.SSE",
-        "000651.SZSE", "600276.SSE", "600887.SSE", "000002.SZSE",
+        "600519.SSE",
+        "000858.SZSE",
+        "600036.SSE",
+        "600030.SSE",
+        "000651.SZSE",
+        "600276.SSE",
+        "600887.SSE",
+        "000002.SZSE",
     ]
 
 

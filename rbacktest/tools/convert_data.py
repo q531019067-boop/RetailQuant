@@ -21,11 +21,10 @@ from pathlib import Path
 from vnpy.trader.constant import Interval as _  # noqa: F401  确保 trader 模块可导入
 
 # ═══════════════════════════════════════════════════════════════
-PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent / "vnpy"
-QLIB_PARQUET = PROJECT_ROOT / "qlib_daily.parquet"
-OUTPUT_DAILY = PROJECT_ROOT / "research" / "daily"
-OUTPUT_DIR = OUTPUT_DAILY.parent
-CONTRACT_JSON = OUTPUT_DIR / "contract.json"
+RBACKTEST_DIR = Path(__file__).resolve().parent.parent  # rbacktest/（tools/ 的父目录）
+QLIB_PARQUET = RBACKTEST_DIR / "qlib_daily.parquet"
+OUTPUT_DAILY = RBACKTEST_DIR / "data" / "daily"
+CONTRACT_JSON = RBACKTEST_DIR / "data" / "contract.json"
 
 LONG_RATE = 0.0005
 SHORT_RATE = 0.0015
@@ -50,7 +49,7 @@ def convert_from_parquet() -> None:
     import polars as pl
 
     file_size = QLIB_PARQUET.stat().st_size
-    info(f"读取文件: {QLIB_PARQUET.name} ({file_size/1024/1024:.0f} MB)")
+    info(f"读取文件: {QLIB_PARQUET.name} ({file_size / 1024 / 1024:.0f} MB)")
 
     # ── Step 1: duckdb SQL 列映射 ──
     step("Step 1/4: 列映射（stock_id → vt_symbol, amount → turnover...）")
@@ -60,11 +59,11 @@ def convert_from_parquet() -> None:
         CREATE VIEW vnpy_bars AS
         SELECT
             CASE
-                WHEN stock_id LIKE 'sh%' THEN substring(stock_id, 3) || '.SSE'
-                WHEN stock_id LIKE 'sz%' THEN substring(stock_id, 3) || '.SZSE'
+                WHEN upper(stock_id) LIKE 'SH%' THEN substring(stock_id, 3) || '.SSE'
+                WHEN upper(stock_id) LIKE 'SZ%' THEN substring(stock_id, 3) || '.SZSE'
                 ELSE stock_id
             END AS vt_symbol,
-            date AS datetime,
+            datetime AS datetime,
             open, high, low, close, volume,
             amount AS turnover,
             0.0 AS open_interest
@@ -72,16 +71,14 @@ def convert_from_parquet() -> None:
         WHERE close IS NOT NULL AND volume IS NOT NULL
     """)
 
-    symbols = con.execute(
-        "SELECT DISTINCT vt_symbol FROM vnpy_bars ORDER BY vt_symbol"
-    ).fetchall()
+    symbols = con.execute("SELECT DISTINCT vt_symbol FROM vnpy_bars ORDER BY vt_symbol").fetchall()
 
     total = len(symbols)
     total_rows = con.execute("SELECT count(*) FROM vnpy_bars").fetchone()[0]
     info(f"共 {total:,} 只股票，{total_rows:,} 行数据")
 
     # ── Step 2: 写出 Parquet ──
-    step(f"Step 2/4: 写出 Parquet → {OUTPUT_DAILY.relative_to(PROJECT_ROOT)}/")
+    step(f"Step 2/4: 写出 Parquet → {OUTPUT_DAILY.relative_to(RBACKTEST_DIR)}/")
     OUTPUT_DAILY.mkdir(parents=True, exist_ok=True)
 
     # 清理旧文件
@@ -106,13 +103,13 @@ def convert_from_parquet() -> None:
         """)
 
         if (i + 1) % report_every == 0:
-            info(f"  {i+1}/{total} ({(i+1)*100//total}%)")
+            info(f"  {i + 1}/{total} ({(i + 1) * 100 // total}%)")
 
     con.close()
     info(f"完成: {total:,} 个文件")
 
     # ── Step 3: 修正 datetime 类型 ──
-    step(f"Step 3/4: 修正 datetime 列类型（Date → Datetime）")
+    step("Step 3/4: 修正 datetime 列类型（Date → Datetime）")
     parquet_files = sorted(OUTPUT_DAILY.glob("*.parquet"))
 
     for i, f in enumerate(parquet_files):
@@ -121,12 +118,12 @@ def convert_from_parquet() -> None:
         df.write_parquet(f)
 
         if (i + 1) % report_every == 0:
-            info(f"  {i+1}/{total} ({(i+1)*100//total}%)")
+            info(f"  {i + 1}/{total} ({(i + 1) * 100 // total}%)")
 
     info("完成")
 
     # ── Step 4: 生成 contract.json ──
-    step(f"Step 4/4: 生成合约配置 → {CONTRACT_JSON.relative_to(PROJECT_ROOT)}")
+    step(f"Step 4/4: 生成合约配置 → {CONTRACT_JSON.relative_to(RBACKTEST_DIR)}")
     contracts = {}
 
     for f in parquet_files:
@@ -178,12 +175,19 @@ def convert_from_qlib_bin() -> None:
         pdf = D.features(
             batch,
             [
-                "$open", "$high", "$low", "$close",
-                "$volume", "$amount", "$vwap",
-                "$factor", "$adjclose", "$change",
+                "$open",
+                "$high",
+                "$low",
+                "$close",
+                "$volume",
+                "$amount",
+                "$vwap",
+                "$factor",
+                "$adjclose",
+                "$change",
             ],
             start_time="2000-01-01",
-            end_time="2026-06-30",
+            end_time="2026-12-31",
         )
 
         pdf = pdf.reset_index()
@@ -192,15 +196,40 @@ def convert_from_qlib_bin() -> None:
 
     step("合并写入 Parquet...")
     final = pl.concat(all_dfs)
-    final = final.select([
-        "datetime", "stock_id",
-        "open", "high", "low", "close",
-        "volume", "amount", "vwap",
-        "factor", "adjclose", "change",
-    ])
+    # Qlib 返回带 $ 前缀，先重命名再 select
+    final = final.rename(
+        {
+            "$open": "open",
+            "$high": "high",
+            "$low": "low",
+            "$close": "close",
+            "$volume": "volume",
+            "$amount": "amount",
+            "$vwap": "vwap",
+            "$factor": "factor",
+            "$adjclose": "adjclose",
+            "$change": "change",
+        }
+    )
+    final = final.select(
+        [
+            "datetime",
+            "stock_id",
+            "open",
+            "high",
+            "low",
+            "close",
+            "volume",
+            "amount",
+            "vwap",
+            "factor",
+            "adjclose",
+            "change",
+        ]
+    )
 
     final.write_parquet(QLIB_PARQUET)
-    info(f"导出完成: {QLIB_PARQUET.name} ({QLIB_PARQUET.stat().st_size/1024/1024:.0f} MB)")
+    info(f"导出完成: {QLIB_PARQUET.name} ({QLIB_PARQUET.stat().st_size / 1024 / 1024:.0f} MB)")
     info(f"{final.height:,} 行, {final.width} 列, {final['stock_id'].n_unique():,} 只股票")
 
     # 递归调用，走 Parquet 路径
@@ -226,12 +255,12 @@ def main():
     files = list(OUTPUT_DAILY.glob("*.parquet"))
     total_size = sum(p.stat().st_size for p in files)
 
-    print(f"\n{'='*55}")
+    print(f"\n{'=' * 55}")
     print(f"  ✅ 转换完成 ({elapsed:.0f} 秒)")
-    print(f"  输出: {len(files):,} 个文件 / {total_size/1024/1024:.0f} MB")
-    print(f"  目录: {OUTPUT_DAILY.relative_to(PROJECT_ROOT)}")
-    print(f"  配置: {CONTRACT_JSON.relative_to(PROJECT_ROOT)}")
-    print(f"{'='*55}")
+    print(f"  输出: {len(files):,} 个文件 / {total_size / 1024 / 1024:.0f} MB")
+    print(f"  目录: {OUTPUT_DAILY.relative_to(RBACKTEST_DIR)}")
+    print(f"  配置: {CONTRACT_JSON.relative_to(RBACKTEST_DIR)}")
+    print(f"{'=' * 55}")
 
 
 if __name__ == "__main__":
