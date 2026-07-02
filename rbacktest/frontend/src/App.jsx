@@ -243,6 +243,7 @@ export default function App() {
   // 回测历史（localStorage 持久化）
   const [history, setHistory] = useState(() => loadHistory());
   const [showHistory, setShowHistory] = useState(false);
+  const [restoredParams, setRestoredParams] = useState(null);
 
   useEffect(() => {
     Promise.all([
@@ -505,7 +506,10 @@ export default function App() {
         <aside className={`sidebar ${sidebarCollapsed ? "collapsed" : ""}`}>
           {!sidebarCollapsed && (
             <>
-              <ParamPanel onResults={handleResults} />
+              <ParamPanel
+                onResults={handleResults}
+                restoredParams={restoredParams}
+              />
               {history.length > 0 && (
                 <div className="history-panel">
                   <div
@@ -545,6 +549,7 @@ export default function App() {
                             onClick={() => {
                               setResults(entry.results);
                               setBenchmark(null);
+                              setRestoredParams(entry.params);
                             }}
                             title={tip}
                           >

@@ -8,7 +8,7 @@ import {
 
 const DEFAULT_COLORS = ["#cf1322", "#1890ff", "#722ed1", "#eb2f96", "#fa8c16"];
 
-export default function ParamPanel({ onResults }) {
+export default function ParamPanel({ onResults, restoredParams }) {
   const [stocks, setStocks] = useState([]);
   const [stockNames, setStockNames] = useState({});
   const [strategies, setStrategies] = useState([]);
@@ -36,6 +36,23 @@ export default function ParamPanel({ onResults }) {
       }
     });
   }, []);
+
+  // 从历史记录恢复参数
+  useEffect(() => {
+    if (!restoredParams) return;
+    if (restoredParams.start) setStartDate(restoredParams.start);
+    if (restoredParams.end) setEndDate(restoredParams.end);
+    if (restoredParams.capital) setCapital(Number(restoredParams.capital));
+    if (restoredParams.strategies?.length) {
+      setSelectedStrategies(restoredParams.strategies);
+    }
+    if (restoredParams.strategy_params) {
+      setStrategyParams(restoredParams.strategy_params);
+    }
+    if (restoredParams.vt_symbols?.length) {
+      setSelectedStocks(restoredParams.vt_symbols);
+    }
+  }, [restoredParams]);
 
   /* ---- helpers ---- */
 
