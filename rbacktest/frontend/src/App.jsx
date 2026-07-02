@@ -724,6 +724,25 @@ export default function App() {
                 <span className="sort-hint">
                   拖动图表可调整顺序 ｜ 灰色虚线 = 沪深300基准
                 </span>
+                <button
+                  className="export-btn"
+                  onClick={async () => {
+                    const res = await fetch("/api/export", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ results: results.results }),
+                    });
+                    const blob = await res.blob();
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement("a");
+                    a.href = url;
+                    a.download = "backtest_results.csv";
+                    a.click();
+                    URL.revokeObjectURL(url);
+                  }}
+                >
+                  导出 CSV
+                </button>
               </div>
 
               {/* ----- draggable charts ----- */}
