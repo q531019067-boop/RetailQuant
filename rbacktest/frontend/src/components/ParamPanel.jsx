@@ -31,36 +31,33 @@ export default function ParamPanel({ onResults }) {
       .catch(() => {});
     fetchStrategies().then((strats) => {
       setStrategies(strats);
-      if (strats.length === 0) return;
-      const first = strats[0].name;
-      setSelectedStrategies([first]);
-      const defaults = { [first]: {} };
-      if (strats[0].params) {
-        Object.entries(strats[0].params).forEach(([k, v]) => {
-          defaults[first][k] = v.default;
-        });
+      if (strats.length > 0) {
+        setSelectedStrategies([strats[0].name]);
       }
-      setStrategyParams(defaults);
     });
   }, []);
+
+  /* ---- helpers ---- */
+
+  const ensureParams = (name) => {
+    if (strategyParams[name]) return;
+    const strat = strategies.find((s) => s.name === name);
+    const defaults = {};
+    if (strat?.params) {
+      Object.entries(strat.params).forEach(([k, v]) => {
+        defaults[k] = v.default;
+      });
+    }
+    setStrategyParams((prev) => ({ ...prev, [name]: defaults }));
+  };
 
   /* ---- toggle handlers ---- */
 
   const toggleStrategy = (name) => {
     setSelectedStrategies((prev) => {
       if (prev.includes(name)) return prev.filter((s) => s !== name);
-      const next = [...prev, name];
-      if (!strategyParams[name]) {
-        const strat = strategies.find((s) => s.name === name);
-        const defaults = {};
-        if (strat && strat.params) {
-          Object.entries(strat.params).forEach(([k, v]) => {
-            defaults[k] = v.default;
-          });
-        }
-        setStrategyParams((prevP) => ({ ...prevP, [name]: defaults }));
-      }
-      return next;
+      ensureParams(name);
+      return [...prev, name];
     });
   };
 
@@ -152,18 +149,7 @@ export default function ParamPanel({ onResults }) {
                 <div
                   className={`strategy-item ${sel ? "active" : ""}`}
                   onClick={() => {
-                    if (!strategyParams[s.name]) {
-                      const defaults = {};
-                      if (s.params) {
-                        Object.entries(s.params).forEach(([k, v]) => {
-                          defaults[k] = v.default;
-                        });
-                      }
-                      setStrategyParams((prev) => ({
-                        ...prev,
-                        [s.name]: defaults,
-                      }));
-                    }
+                    ensureParams(s.name);
                     setExpandedStrats((prev) => ({
                       ...prev,
                       [s.name]: !prev[s.name],
