@@ -148,12 +148,24 @@ export default function ParamPanel({ onResults }) {
               <div
                 key={s.name}
                 className={`strategy-item-wrap ${sel ? "active" : ""}`}
-                onClick={() =>
+                onClick={() => {
+                  if (!strategyParams[s.name]) {
+                    const defaults = {};
+                    if (s.params) {
+                      Object.entries(s.params).forEach(([k, v]) => {
+                        defaults[k] = v.default;
+                      });
+                    }
+                    setStrategyParams((prev) => ({
+                      ...prev,
+                      [s.name]: defaults,
+                    }));
+                  }
                   setExpandedStrats((prev) => ({
                     ...prev,
                     [s.name]: !prev[s.name],
-                  }))
-                }
+                  }));
+                }}
                 title="点击编辑参数"
               >
                 <div className={`strategy-item ${sel ? "active" : ""}`}>
@@ -170,7 +182,7 @@ export default function ParamPanel({ onResults }) {
                   {s.label}
                 </div>
                 {/* 编辑区 */}
-                {sel && s.params && expandedStrats[s.name] && (
+                {s.params && expandedStrats[s.name] && (
                   <div className="strategy-params">
                     {Object.entries(s.params).map(([key, config]) => (
                       <div className="param-group param-inline" key={key}>
