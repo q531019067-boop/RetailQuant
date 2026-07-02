@@ -30,8 +30,8 @@ class GridMartingaleStrategy(BaseStrategy):
 
     def on_init(self) -> None:
         self.entry_price: dict[str, float] = {}
-        self.bar_cache: dict[str, list[BarData]] = {}
         self.pending_sells: set[str] = set()
+        self.max_cache = self.grid_n + 1
         self.write_log(f"网格马丁格尔 | top_k={self.top_k} grid_n={self.grid_n}")
 
     def on_bars(self, bars: dict[str, BarData]) -> None:
@@ -44,18 +44,12 @@ class GridMartingaleStrategy(BaseStrategy):
             - break_stop_pct → 跌破网格下界一定比例 → 止损
             - take_profit_ratio → 回升到网格上界一定比例 → 止盈
         """
-        # 维护 bar 缓存（滑动窗口，只保留 grid_n+1 根）
-        for sym, bar in bars.items():
-            if sym not in self.bar_cache:
-                self.bar_cache[sym] = []
-            self.bar_cache[sym].append(bar)
-            if len(self.bar_cache[sym]) > self.grid_n + 1:
-                self.bar_cache[sym] = self.bar_cache[sym][-(self.grid_n + 1) :]
+        self._maintain_bars(bars)
 
         # 查找买入候选
         candidates: list[tuple[str, float, float]] = []
         for sym in bars:
-            hist = self.bar_cache.get(sym, [])
+            hist = self.bar_history.get(sym, [])
             if len(hist) < self.grid_n + 1:
                 continue
             recent = hist[-(self.grid_n + 1) : -1]
@@ -74,7 +68,7 @@ class GridMartingaleStrategy(BaseStrategy):
         for sym in [s for s, p in self.pos_data.items() if p > 0]:
             if sym not in bars:
                 continue
-            hist = self.bar_cache.get(sym, [])
+            hist = self.bar_history.get(sym, [])
             if len(hist) < self.grid_n + 1:
                 continue
             recent = hist[-(self.grid_n + 1) : -1]

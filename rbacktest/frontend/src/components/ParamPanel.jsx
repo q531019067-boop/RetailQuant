@@ -31,36 +31,33 @@ export default function ParamPanel({ onResults }) {
       .catch(() => {});
     fetchStrategies().then((strats) => {
       setStrategies(strats);
-      if (strats.length === 0) return;
-      const first = strats[0].name;
-      setSelectedStrategies([first]);
-      const defaults = { [first]: {} };
-      if (strats[0].params) {
-        Object.entries(strats[0].params).forEach(([k, v]) => {
-          defaults[first][k] = v.default;
-        });
+      if (strats.length > 0) {
+        setSelectedStrategies([strats[0].name]);
       }
-      setStrategyParams(defaults);
     });
   }, []);
+
+  /* ---- helpers ---- */
+
+  const ensureParams = (name) => {
+    if (strategyParams[name]) return;
+    const strat = strategies.find((s) => s.name === name);
+    const defaults = {};
+    if (strat?.params) {
+      Object.entries(strat.params).forEach(([k, v]) => {
+        defaults[k] = v.default;
+      });
+    }
+    setStrategyParams((prev) => ({ ...prev, [name]: defaults }));
+  };
 
   /* ---- toggle handlers ---- */
 
   const toggleStrategy = (name) => {
     setSelectedStrategies((prev) => {
       if (prev.includes(name)) return prev.filter((s) => s !== name);
-      const next = [...prev, name];
-      if (!strategyParams[name]) {
-        const strat = strategies.find((s) => s.name === name);
-        const defaults = {};
-        if (strat && strat.params) {
-          Object.entries(strat.params).forEach(([k, v]) => {
-            defaults[k] = v.default;
-          });
-        }
-        setStrategyParams((prevP) => ({ ...prevP, [name]: defaults }));
-      }
-      return next;
+      ensureParams(name);
+      return [...prev, name];
     });
   };
 
@@ -117,9 +114,12 @@ export default function ParamPanel({ onResults }) {
   /* ---- derived data ---- */
 
   const selectedSet = new Set(selectedStocks);
-  const filteredStocks = stocks.filter((s) =>
-    s.toLowerCase().includes(searchTerm.toLowerCase()),
-  );
+  const filteredStocks = stocks.filter((s) => {
+    const term = searchTerm.toLowerCase();
+    if (!term) return true;
+    const name = stockNames[s] || "";
+    return s.toLowerCase().includes(term) || name.toLowerCase().includes(term);
+  });
   const sortedStocks = [
     ...filteredStocks.filter((s) => selectedSet.has(s)).sort(),
     ...filteredStocks.filter((s) => !selectedSet.has(s)).sort(),
@@ -135,41 +135,42 @@ export default function ParamPanel({ onResults }) {
 
       {/* strategy multi-select */}
       <div className="param-group">
-        <label>策略（可多选比较）</label>
+        <label>策略（可多选比较，点击名称编辑参数）</label>
         <div className="strategy-list">
           {strategies.map((s, idx) => {
             const sel = selectedStrategies.includes(s.name);
+            const color =
+              s.color || DEFAULT_COLORS[idx % DEFAULT_COLORS.length];
             return (
-              <div key={s.name} className="strategy-item-wrap">
-                <label className={`strategy-item ${sel ? "active" : ""}`}>
+              <div
+                key={s.name}
+                className={`strategy-item-wrap ${sel ? "active" : ""}`}
+              >
+                <div
+                  className={`strategy-item ${sel ? "active" : ""}`}
+                  onClick={() => {
+                    ensureParams(s.name);
+                    setExpandedStrats((prev) => ({
+                      ...prev,
+                      [s.name]: !prev[s.name],
+                    }));
+                  }}
+                  title="点击编辑参数"
+                >
                   <input
                     type="checkbox"
                     checked={sel}
                     onChange={() => toggleStrategy(s.name)}
+                    onClick={(e) => e.stopPropagation()}
                   />
                   <span
                     className="strategy-dot"
-                    style={{
-                      background:
-                        s.color || DEFAULT_COLORS[idx % DEFAULT_COLORS.length],
-                    }}
+                    style={{ background: color }}
                   />
                   {s.label}
-                </label>
-                {sel && s.params && (
-                  <button
-                    className="expand-toggle"
-                    onClick={() =>
-                      setExpandedStrats((prev) => ({
-                        ...prev,
-                        [s.name]: !prev[s.name],
-                      }))
-                    }
-                  >
-                    {expandedStrats[s.name] ? "收起参数" : "展开参数"}
-                  </button>
-                )}
-                {sel && s.params && expandedStrats[s.name] && (
+                </div>
+                {/* 编辑区 */}
+                {s.params && expandedStrats[s.name] && (
                   <div className="strategy-params">
                     {Object.entries(s.params).map(([key, config]) => (
                       <div className="param-group param-inline" key={key}>
@@ -242,7 +243,7 @@ export default function ParamPanel({ onResults }) {
         </label>
         <input
           type="text"
-          placeholder="搜索股票代码..."
+          placeholder="搜索代码或名称..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="search-input"
@@ -314,17 +315,19 @@ export default function ParamPanel({ onResults }) {
         <button onClick={() => setSelectedStocks([])}>清空</button>
       </div>
 
-      <button
-        className="run-btn"
-        onClick={handleRun}
-        disabled={
-          loading ||
-          selectedStocks.length === 0 ||
-          selectedStrategies.length === 0
-        }
-      >
-        {loading ? "回测运行中..." : "运行回测"}
-      </button>
+      <div className="run-btn-sticky">
+        <button
+          className="run-btn"
+          onClick={handleRun}
+          disabled={
+            loading ||
+            selectedStocks.length === 0 ||
+            selectedStrategies.length === 0
+          }
+        >
+          {loading ? "回测运行中..." : "运行回测"}
+        </button>
+      </div>
     </div>
   );
 }

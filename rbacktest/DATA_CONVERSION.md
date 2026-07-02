@@ -45,11 +45,13 @@
 ### 1.1 数据源
 
 社区每日更新数据（推荐）：
+
 - 仓库: `chenditc/investment_data`
 - 地址: `https://github.com/chenditc/investment_data/releases/latest/download/qlib_bin.tar.gz`
 - 覆盖：沪/深/北交所，6100+ 标的，2000-01-04 ~ 昨天
 
 官方预打包数据（冻结，截止 2020-09-25）：
+
 - `qlib.tests.data.GetData().qlib_data(target_dir='~/.qlib/qlib_data/cn_data', region='cn')`
 - 覆盖：沪/深，3875 标的，1999-11-10 ~ 2020-09-25
 
@@ -99,6 +101,7 @@ GetData(delete_zip_file=True).qlib_data(
 ```
 
 `.day.bin` 的设计优势：
+
 - 零解析开销：`np.memmap()` 直接映射到内存
 - 存一列读一列：要 `close` 就只读 `close.day.bin`，不碰其他字段
 - float32 紧凑：6415 天 × 4 字节 = 25 KB / 列 / 股票，全 A 6100 只约 1.3 GB
@@ -258,6 +261,7 @@ uv run python3 research/backtest_learning/convert_data.py
 总耗时约 **30 分钟**（含下载，不含 pip install 依赖）。
 
 脚本自动检测数据来源：
+
 - 如果 `qlib_daily.parquet` 存在 → 直接从此文件转换（最快）
 - 如果不存在 → 尝试从 `~/.qlib/qlib_data/cn_data/` 的 Qlib `.bin` 格式导出
 
@@ -343,6 +347,7 @@ AttributeError: 'datetime.date' object has no attribute 'date'
 ### 2. contract.json 的 size 参数
 
 vnpy 引擎计算 PnL 时会乘以 `contract["size"]`：
+
 - 期货: `size=300`（IF 合约乘数）
 - A 股: `size=1`（1 股 = 1 单位，不是 100 股/手）
 
@@ -351,6 +356,7 @@ vnpy 引擎计算 PnL 时会乘以 `contract["size"]`：
 ### 3. 数据价格归一化
 
 Qlib 数据将每条 K 线除以首日收盘价（`first_close=1.0`），使所有股票起点一致。这导致：
+
 - ✅ 百分比收益率正确（归一化因子在分子分母抵消）
 - ❌ 绝对仓位规模不反映真实购买力
 

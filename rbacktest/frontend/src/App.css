@@ -165,19 +165,38 @@ body {
 .strategy-list {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
 }
 
 .strategy-item-wrap {
-  border: 1px solid #e8e8e8;
+  border: 1px solid #d9d9d9;
   border-radius: 6px;
-  padding: 6px 8px;
-  transition: border-color 0.2s;
+  padding: 8px 10px;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
 }
 
 .strategy-item-wrap:has(.active) {
   border-color: #8884d8;
   background: #fafaff;
+  border-left: 3px solid #8884d8;
+  padding-left: 8px;
+}
+
+.strategy-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 500;
+  flex: 1;
+}
+
+.strategy-item input[type="checkbox"] {
+  margin: 0;
+  width: auto;
 }
 
 .strategy-item {
@@ -189,33 +208,11 @@ body {
   font-weight: 500;
 }
 
-.strategy-item input[type="checkbox"] {
-  margin: 0;
-  width: auto;
-}
-
 .strategy-dot {
   width: 10px;
   height: 10px;
   border-radius: 50%;
   flex-shrink: 0;
-}
-
-.expand-toggle {
-  margin-top: 6px;
-  margin-left: 22px;
-  font-size: 0.72rem;
-  border: 1px solid #d9d9d9;
-  border-radius: 4px;
-  background: #fafafa;
-  cursor: pointer;
-  padding: 2px 8px;
-  color: #666;
-}
-
-.expand-toggle:hover {
-  border-color: #8884d8;
-  color: #8884d8;
 }
 
 .strategy-params {
@@ -333,7 +330,17 @@ body {
   color: #8884d8;
 }
 
-/* Run button */
+/* Run button — sticky at sidebar bottom */
+.run-btn-sticky {
+  position: sticky;
+  bottom: 0;
+  background: white;
+  padding: 10px 0 4px;
+  margin-top: 12px;
+  border-top: 1px solid #f0f0f0;
+  z-index: 1;
+}
+
 .run-btn {
   width: 100%;
   padding: 10px;

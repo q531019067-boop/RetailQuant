@@ -15,6 +15,10 @@ from .registry import all_strategies, get_strategy, list_strategies_metadata
 from . import equal_weight  # noqa: F401
 from . import grid_martingale  # noqa: F401
 from . import vp_breakout  # noqa: F401
+from . import donchian_turtle  # noqa: F401
+from . import ma_cross  # noqa: F401
+from . import rsi_reversion  # noqa: F401
+from . import buy_hold  # noqa: F401
 
 __all__ = [
     "BaseStrategy",

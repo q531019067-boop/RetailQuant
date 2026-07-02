@@ -40,7 +40,6 @@ class VpBreakoutStrategy(BaseStrategy):
     def on_init(self) -> None:
         self.entry_price: dict[str, float] = {}
         self.max_cache: int = max(self.high_n, self.ma_exit) + 2
-        self.bar_history: dict[str, list[BarData]] = {}
         self.write_log(f"量价突破 | pool={len(self.vt_symbols)} top_k={self.top_k}")
 
     def on_bars(self, bars: dict[str, BarData]) -> None:
@@ -56,13 +55,7 @@ class VpBreakoutStrategy(BaseStrategy):
             - 浮亏 ≤ stop_loss（止损）
             - 收盘价 < MA(ma_exit) × 0.97（破均线）
         """
-        # 维护 bar 缓存（滑动窗口，大小为 max(high_n, ma_exit)+2）
-        for sym, bar in bars.items():
-            if sym not in self.bar_history:
-                self.bar_history[sym] = []
-            self.bar_history[sym].append(bar)
-            if len(self.bar_history[sym]) > self.max_cache:
-                self.bar_history[sym] = self.bar_history[sym][-self.max_cache :]
+        self._maintain_bars(bars)
 
         # 查找突破候选
         candidates: list[tuple[str, float]] = []
