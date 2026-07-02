@@ -207,14 +207,14 @@ body {
   cursor: pointer;
   max-height: 0;
   overflow: hidden;
-  transition: opacity 0.15s 0.3s, max-height 0s 0.3s;
+  transition: opacity 0.15s 0.3s, max-height 0.15s 0.3s;
 }
 
 .strategy-item-wrap:hover .strategy-tooltip {
   visibility: visible;
   opacity: 1;
   max-height: 10em;
-  transition: opacity 0.15s 0.3s, max-height 0s 0s;
+  transition: opacity 0.15s 0.3s, max-height 0.15s 0.3s;
 }
 
 .tooltip-param {
