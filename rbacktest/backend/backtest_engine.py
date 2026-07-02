@@ -28,7 +28,7 @@ except ImportError:
     from backend.strategy import all_strategies, get_strategy
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
-NAME_CACHE = DATA_DIR / "stock_names.json"
+NAME_CACHE = Path(__file__).resolve().parent.parent / "stock_names.json"
 RISK_FREE_RATE = 0.02  # 年化无风险利率，用于 Sharpe / Sortino 计算
 
 # 启动时加载股票名称缓存（幂等，缺失不影响回测）

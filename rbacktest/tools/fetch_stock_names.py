@@ -17,7 +17,7 @@ from pathlib import Path
 import akshare as ak
 
 RBACKTEST_DIR = Path(__file__).resolve().parent.parent
-CACHE_PATH = RBACKTEST_DIR / "data" / "stock_names.json"
+CACHE_PATH = RBACKTEST_DIR / "stock_names.json"
 
 
 def fetch_and_save(force: bool = False) -> int:
@@ -56,7 +56,6 @@ def fetch_and_save(force: bool = False) -> int:
             continue
         names[vt_code] = name
 
-    CACHE_PATH.parent.mkdir(parents=True, exist_ok=True)
     output = {
         "updated": str(date.today()),
         "count": len(names),
