@@ -33,17 +33,10 @@ class MovingAverageCrossStrategy(BaseStrategy):
     def on_init(self) -> None:
         self.entry_price: dict[str, float] = {}
         self.max_cache: int = self.slow_n + 2
-        self.bar_history: dict[str, list[BarData]] = {}
         self.write_log(f"均线交叉 | MA{self.fast_n}/{self.slow_n}")
 
     def on_bars(self, bars: dict[str, BarData]) -> None:
-        # 维护 bar 缓存
-        for sym, bar in bars.items():
-            if sym not in self.bar_history:
-                self.bar_history[sym] = []
-            self.bar_history[sym].append(bar)
-            if len(self.bar_history[sym]) > self.max_cache:
-                self.bar_history[sym] = self.bar_history[sym][-self.max_cache :]
+        self._maintain_bars(bars)
 
         # ---- 查找金叉候选 ----
         candidates: list[tuple[str, float]] = []

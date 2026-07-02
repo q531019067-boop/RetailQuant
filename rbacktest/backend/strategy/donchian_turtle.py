@@ -36,17 +36,10 @@ class DonchianTurtleStrategy(BaseStrategy):
     def on_init(self) -> None:
         self.entry_price: dict[str, float] = {}
         self.max_cache: int = max(self.entry_n, self.atr_n) + 2
-        self.bar_history: dict[str, list[BarData]] = {}
         self.write_log(f"海龟交易 | entry={self.entry_n} exit={self.exit_n} atr={self.atr_n}")
 
     def on_bars(self, bars: dict[str, BarData]) -> None:
-        # 维护 bar 缓存
-        for sym, bar in bars.items():
-            if sym not in self.bar_history:
-                self.bar_history[sym] = []
-            self.bar_history[sym].append(bar)
-            if len(self.bar_history[sym]) > self.max_cache:
-                self.bar_history[sym] = self.bar_history[sym][-self.max_cache :]
+        self._maintain_bars(bars)
 
         # ---- 查找突破候选 ----
         candidates: list[tuple[str, float]] = []

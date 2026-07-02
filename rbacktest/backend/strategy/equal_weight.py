@@ -24,7 +24,7 @@ class EqualWeightStrategy(BaseStrategy):
     }
 
     def on_init(self) -> None:
-        self.bar_history: dict[str, list[BarData]] = {}
+        self.max_cache = self.lookback + 2
         self.write_log(f"动量轮动 | top_k={self.top_k} lookback={self.lookback}")
 
     def on_bars(self, bars: dict[str, BarData]) -> None:
@@ -33,13 +33,7 @@ class EqualWeightStrategy(BaseStrategy):
         卖出：将所有持仓 target 设为 0，引擎自动清仓。
         买入：对每个入选标的，分配 total_value / len(selected) 资金。
         """
-        # 累积 bar 历史（滑动窗口，只保留 lookback+2 根 K 线）
-        for sym, bar in bars.items():
-            if sym not in self.bar_history:
-                self.bar_history[sym] = []
-            self.bar_history[sym].append(bar)
-            if len(self.bar_history[sym]) > self.lookback + 2:
-                self.bar_history[sym] = self.bar_history[sym][-(self.lookback + 2) :]
+        self._maintain_bars(bars)
 
         dt = next(iter(bars.values())).datetime if bars else None
         if dt is None or dt.day > 5:

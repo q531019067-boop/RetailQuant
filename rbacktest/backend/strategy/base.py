@@ -54,6 +54,21 @@ class BaseStrategy(AlphaStrategy):
     # 注意：不在基类设 _param_meta = {}，避免子类间意外共享可变默认值。
     # param_schema() 内部用 getattr(cls, '_param_meta', {}) 安全读取。
 
+    # ---- 子类可覆盖的缓存配置 ----
+    bar_history: dict[str, list]  # 由 _maintain_bars 自动管理
+    max_cache: int = 120  # 默认保留 120 根 K 线，子类在 on_init 中按需覆盖
+
+    def _maintain_bars(self, bars: dict) -> None:
+        """维护滑动窗口 bar 缓存。所有子类在 on_bars 开头调用此方法即可。"""
+        if not hasattr(self, "bar_history"):
+            self.bar_history = {}
+        for sym, bar in bars.items():
+            if sym not in self.bar_history:
+                self.bar_history[sym] = []
+            self.bar_history[sym].append(bar)
+            if len(self.bar_history[sym]) > self.max_cache:
+                self.bar_history[sym] = self.bar_history[sym][-self.max_cache :]
+
     def __init_subclass__(cls, **kwargs) -> None:
         super().__init_subclass__(**kwargs)
         # 检查子类自己的 __dict__（非继承），确保显式定义了 name

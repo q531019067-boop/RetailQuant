@@ -43,19 +43,12 @@ class RsiMeanReversionStrategy(BaseStrategy):
         self.hold_since: dict[str, int] = {}  # symbol → 持仓起始 bar index
         self.bar_count: int = 0
         self.max_cache: int = max(self.trend_ma_n, self.rsi_n, self.atr_n) + 2
-        self.bar_history: dict[str, list[BarData]] = {}
         self.write_log(f"RSI回归 | RSI{self.rsi_n}<{self.rsi_buy} 趋势MA{self.trend_ma_n}")
 
     def on_bars(self, bars: dict[str, BarData]) -> None:
         self.bar_count += 1
 
-        # 维护 bar 缓存
-        for sym, bar in bars.items():
-            if sym not in self.bar_history:
-                self.bar_history[sym] = []
-            self.bar_history[sym].append(bar)
-            if len(self.bar_history[sym]) > self.max_cache:
-                self.bar_history[sym] = self.bar_history[sym][-self.max_cache :]
+        self._maintain_bars(bars)
 
         # ---- 查找 RSI 超卖候选 ----
         candidates: list[tuple[str, float]] = []
