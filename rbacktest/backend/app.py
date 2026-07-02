@@ -25,6 +25,7 @@ from flask_cors import CORS  # noqa: E402
 
 from backend.backtest_engine import (  # noqa: E402
     DEFAULT_BENCHMARK,
+    RISK_FREE_RATE,
     get_stock_name,
     get_stock_names,
     list_available_stocks,
@@ -80,6 +81,35 @@ _check_data_dir()
 def get_stocks():
     """Return all available stock symbols as JSON."""
     return jsonify({"stocks": list_available_stocks()})
+
+
+@app.route("/api/config", methods=["GET"])
+def get_config():
+    """返回当前费率配置（来自 contract.json 抽样 + rbacktest.toml）。"""
+    import json as _json
+
+    contract_path = Path(__file__).resolve().parent.parent / "data" / "contract.json"
+    commission = {"long_rate": 0.0005, "short_rate": 0.0015, "min_commission": 5.0, "stamp_tax": 0.0005}
+    if contract_path.exists():
+        try:
+            contracts = _json.loads(contract_path.read_text(encoding="utf-8"))
+            sample = next(iter(contracts.values()), {})
+            commission = {
+                "long_rate": sample.get("long_rate", 0.0005),
+                "short_rate": sample.get("short_rate", 0.0015),
+                "min_commission": 5.0,
+                "stamp_tax": 0.0005,
+                "pricetick": sample.get("pricetick", 0.01),
+            }
+        except Exception:
+            pass
+    return jsonify(
+        {
+            "benchmark": DEFAULT_BENCHMARK,
+            "risk_free_rate": RISK_FREE_RATE,
+            "commission": commission,
+        }
+    )
 
 
 @app.route("/api/stock-names", methods=["GET"])

@@ -22,6 +22,7 @@ export default function ParamPanel({ onResults, restoredParams }) {
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [expandedStrats, setExpandedStrats] = useState({});
+  const [feeConfig, setFeeConfig] = useState(null);
 
   /* ---- initial data load ---- */
   useEffect(() => {
@@ -35,6 +36,10 @@ export default function ParamPanel({ onResults, restoredParams }) {
         setSelectedStrategies([strats[0].name]);
       }
     });
+    fetch("/api/config")
+      .then((r) => r.json())
+      .then(setFeeConfig)
+      .catch(() => {});
   }, []);
 
   // 从历史记录恢复参数
@@ -248,6 +253,15 @@ export default function ParamPanel({ onResults, restoredParams }) {
           />
         </div>
       </div>
+
+      {/* fee config */}
+      {feeConfig && (
+        <div className="fee-config">
+          费率：佣金 {((feeConfig.commission?.long_rate || 0) * 100).toFixed(2)}
+          % / 印花税 {((feeConfig.commission?.stamp_tax || 0) * 100).toFixed(2)}
+          % / 最低 ¥{feeConfig.commission?.min_commission || 5}
+        </div>
+      )}
 
       {/* stock selector */}
       <div className="param-group stock-selector">
