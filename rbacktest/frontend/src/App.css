@@ -197,17 +197,24 @@ body {
 
 /* 悬浮参数提示 */
 .strategy-tooltip {
-  display: none;
+  visibility: hidden;
+  opacity: 0;
   font-size: 0.7rem;
   color: #888;
   margin-top: 4px;
   margin-left: 22px;
   line-height: 1.6;
   cursor: pointer;
+  max-height: 0;
+  overflow: hidden;
+  transition: opacity 0.15s 0.3s, max-height 0s 0.3s;
 }
 
 .strategy-item-wrap:hover .strategy-tooltip {
-  display: block;
+  visibility: visible;
+  opacity: 1;
+  max-height: 3em;
+  transition: opacity 0.15s 0.3s, max-height 0s 0s;
 }
 
 .tooltip-param {
