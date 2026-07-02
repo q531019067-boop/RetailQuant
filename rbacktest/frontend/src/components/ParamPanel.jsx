@@ -138,40 +138,54 @@ export default function ParamPanel({ onResults }) {
 
       {/* strategy multi-select */}
       <div className="param-group">
-        <label>策略（可多选比较）</label>
+        <label>策略（可多选比较，悬浮查看参数）</label>
         <div className="strategy-list">
           {strategies.map((s, idx) => {
             const sel = selectedStrategies.includes(s.name);
+            const color =
+              s.color || DEFAULT_COLORS[idx % DEFAULT_COLORS.length];
             return (
               <div key={s.name} className="strategy-item-wrap">
-                <label className={`strategy-item ${sel ? "active" : ""}`}>
-                  <input
-                    type="checkbox"
-                    checked={sel}
-                    onChange={() => toggleStrategy(s.name)}
-                  />
-                  <span
-                    className="strategy-dot"
-                    style={{
-                      background:
-                        s.color || DEFAULT_COLORS[idx % DEFAULT_COLORS.length],
-                    }}
-                  />
-                  {s.label}
-                </label>
+                <div className="strategy-item-row">
+                  <label className={`strategy-item ${sel ? "active" : ""}`}>
+                    <input
+                      type="checkbox"
+                      checked={sel}
+                      onChange={() => toggleStrategy(s.name)}
+                    />
+                    <span
+                      className="strategy-dot"
+                      style={{ background: color }}
+                    />
+                    {s.label}
+                  </label>
+                  {sel && s.params && Object.keys(s.params).length > 0 && (
+                    <button
+                      className="strategy-edit-btn"
+                      title="编辑参数"
+                      onClick={() =>
+                        setExpandedStrats((prev) => ({
+                          ...prev,
+                          [s.name]: !prev[s.name],
+                        }))
+                      }
+                    >
+                      ⚙
+                    </button>
+                  )}
+                </div>
+                {/* 悬浮提示：显示当前参数值 */}
                 {sel && s.params && (
-                  <button
-                    className="expand-toggle"
-                    onClick={() =>
-                      setExpandedStrats((prev) => ({
-                        ...prev,
-                        [s.name]: !prev[s.name],
-                      }))
-                    }
-                  >
-                    {expandedStrats[s.name] ? "收起参数" : "展开参数"}
-                  </button>
+                  <div className="strategy-tooltip">
+                    {Object.entries(s.params).map(([key, cfg]) => (
+                      <span key={key} className="tooltip-param">
+                        {cfg.label}=
+                        {strategyParams[s.name]?.[key] ?? cfg.default}
+                      </span>
+                    ))}
+                  </div>
                 )}
+                {/* 展开编辑区 */}
                 {sel && s.params && expandedStrats[s.name] && (
                   <div className="strategy-params">
                     {Object.entries(s.params).map(([key, config]) => (

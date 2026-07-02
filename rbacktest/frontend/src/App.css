@@ -180,6 +180,12 @@ body {
   background: #fafaff;
 }
 
+.strategy-item-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
 .strategy-item {
   display: flex;
   align-items: center;
@@ -187,6 +193,7 @@ body {
   cursor: pointer;
   font-size: 0.82rem;
   font-weight: 500;
+  flex: 1;
 }
 
 .strategy-item input[type="checkbox"] {
@@ -194,28 +201,49 @@ body {
   width: auto;
 }
 
+.strategy-edit-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.85rem;
+  color: #bbb;
+  padding: 0 2px;
+  line-height: 1;
+  transition: color 0.15s;
+}
+
+.strategy-edit-btn:hover {
+  color: #8884d8;
+}
+
+/* 悬浮参数提示 */
+.strategy-tooltip {
+  display: none;
+  font-size: 0.7rem;
+  color: #888;
+  margin-top: 4px;
+  margin-left: 22px;
+  line-height: 1.6;
+}
+
+.strategy-item-wrap:hover .strategy-tooltip {
+  display: block;
+}
+
+.tooltip-param {
+  display: inline-block;
+  background: #f5f5f5;
+  padding: 1px 6px;
+  border-radius: 3px;
+  margin-right: 4px;
+  margin-bottom: 2px;
+}
+
 .strategy-dot {
   width: 10px;
   height: 10px;
   border-radius: 50%;
   flex-shrink: 0;
-}
-
-.expand-toggle {
-  margin-top: 6px;
-  margin-left: 22px;
-  font-size: 0.72rem;
-  border: 1px solid #d9d9d9;
-  border-radius: 4px;
-  background: #fafafa;
-  cursor: pointer;
-  padding: 2px 8px;
-  color: #666;
-}
-
-.expand-toggle:hover {
-  border-color: #8884d8;
-  color: #8884d8;
 }
 
 .strategy-params {
