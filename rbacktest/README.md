@@ -1,37 +1,57 @@
 # rbacktest
 
-基于 VNPY Alpha 引擎的量化回测系统，前端 React + 后端 Flask，支持多策略对比。
+基于 VNPY Alpha 引擎的量化回测系统，前端 React + 后端 Flask，支持多策略对比、基准叠加、扩展指标和交易明细。
 
 ## 架构
 
 ```
 rbacktest/
 ├── backend/
-│   ├── app.py               Flask API 入口
-│   ├── backtest_engine.py    VNPY Alpha 回测封装（三种策略）
-│   └── requirements.txt      Python 依赖
+│   ├── __init__.py
+│   ├── app.py                 Flask API 入口（端口检测 + 数据校验）
+│   ├── backtest_engine.py     回测引擎（指标计算、交易提取、基准加载）
+│   ├── strategy/              策略包（自动注册 + 参数 schema 生成）
+│   │   ├── base.py             BaseStrategy 基类（_maintain_bars 共用工具）
+│   │   ├── registry.py         注册中心（__init_subclass__ 自动发现）
+│   │   ├── equal_weight.py     动量轮动
+│   │   ├── grid_martingale.py  网格马丁格尔
+│   │   ├── vp_breakout.py      量价突破
+│   │   ├── donchian_turtle.py  海龟交易
+│   │   ├── ma_cross.py         均线交叉
+│   │   ├── rsi_reversion.py    RSI 均值回归
+│   │   └── buy_hold.py         低吸策略
+│   └── requirements.txt
 ├── frontend/
 │   ├── src/
-│   │   ├── App.jsx           主布局：对比表 + 三张图表
-│   │   ├── api.js             API 调用层
+│   │   ├── App.jsx             回测结果展示（对比表+图表+交易明细+基准）
+│   │   ├── api.js              API 调用层
 │   │   ├── components/
-│   │   │   ├── ParamPanel.jsx 参数面板（多策略选择、股票筛选）
-│   │   │   └── Icons.jsx      SVG 图标
+│   │   │   ├── ParamPanel.jsx  参数面板（搜索/快速选择/策略编辑）
+│   │   │   └── Icons.jsx
 │   │   ├── App.css
 │   │   ├── index.css
 │   │   └── main.jsx
 │   ├── package.json
 │   ├── vite.config.js
 │   └── index.html
+├── tools/
+│   ├── convert_data.py         Qlib → VNPY AlphaLab 数据转换
+│   └── fetch_stock_names.py    从 akshare 下载股票名称缓存
 ├── tests/
-│   ├── conftest.py               共享 fixtures
-│   ├── test_momentum_rotation.py 动量轮动策略 (8 tests)
-│   ├── test_grid_martingale.py   网格马丁格尔策略 (7 tests)
-│   ├── test_vp_breakout.py       量价突破策略 (7 tests)
-│   ├── test_engine.py            引擎 & 跨策略 (7 tests)
-│   └── test_api.py               REST API (10 tests)
-├── start.sh                   一键启动脚本
-└── .gitignore
+│   ├── conftest.py
+│   ├── test_api.py             (10 tests)
+│   ├── test_engine.py          (10 tests)
+│   ├── test_registry.py        注册 + 工具函数 (19 tests)
+│   ├── test_momentum_rotation.py
+│   ├── test_grid_martingale.py
+│   └── test_vp_breakout.py
+├── data/
+│   ├── daily/                  *.parquet（VNPY AlphaLab 格式）
+│   └── contract.json
+├── stock_names.json            股票代码→名称映射（静态元数据，已提交）
+├── start.sh
+├── DATA_CONVERSION.md
+└── README.md
 ```
 
 ## 内置策略
@@ -40,45 +60,51 @@ rbacktest/
 |------|------|------|
 | `equal_weight` | 动量轮动 | 每月初按过去 N 日收益率排序，等权持有前 top_k 只 |
 | `grid_martingale` | 网格马丁格尔 | 每日计算滚动网格，低位买入/高位止盈或破网止损 |
-| `vp_breakout` | 量价突破 | 突破前N日高点 + 量能放大 + 强势收盘时买入；止盈/止损/破均线卖出 |
+| `vp_breakout` | 量价突破 | 突破前N日高点 + 量能放大 + 强势收盘时买入 |
+| `donchian_turtle` | 海龟交易 | 20 日新高入场，10 日新低离场，2×ATR 移动止损 |
+| `ma_cross` | 均线交叉 | MA5/20 双均线金叉买入，死叉卖出 |
+| `rsi_reversion` | RSI 回归 | RSI(14) 超卖反弹 + MA200 趋势过滤 + ATR 仓位控制 |
+| `buy_hold` | 低吸策略 | 超跌(20日>10%)+超卖(RSI<30)+缩量+止跌 四重确认 |
 
-前端可同时勾选多个策略，结果以对比表格和叠加折线图展示。
+前端可同时勾选多个策略，结果以对比表格和叠加折线图展示。策略通过 `BaseStrategy` 基类自动注册，新增策略只需新建文件 + 一行 import。
+
+## 策略开发
+
+```python
+# backend/strategy/my_strategy.py
+from .base import BaseStrategy
+
+class MyStrategy(BaseStrategy):
+    name = "my_strategy"
+    label = "我的策略"
+    description = "策略说明"
+    color = "#eb2f96"
+
+    top_k: int = 5
+    _param_meta = {
+        "top_k": {"type": "int", "min": 1, "max": 20, "label": "持仓数量"},
+    }
+
+    def on_init(self): ...
+    def on_bars(self, bars): ...
+    def on_trade(self, trade): ...
+```
+
+然后在 `backend/strategy/__init__.py` 加一行 `from . import my_strategy`，策略即自动注册，前端参数面板和 API 都会自动包含。
 
 ## 数据准备
 
-系统依赖 VNPY AlphaLab 格式的日线数据。在项目根目录下创建 `data/` 目录：
+参见 [`DATA_CONVERSION.md`](DATA_CONVERSION.md) 获取完整流程（下载 Qlib 数据 → 转换为 VNPY AlphaLab 格式）。
 
+### 股票名称
+
+运行一次即可缓存：
+```bash
+uv run python rbacktest/tools/fetch_stock_names.py
 ```
-data/
-├── daily/            # 日线 parquet 文件（必需）
-│   ├── 600519.SSE.parquet
-│   ├── 000858.SZSE.parquet
-│   └── ...
-├── contract.json     # 合约交易配置（手续费、每手股数，必需）
-├── minute/           # 分钟线（可选，当前未使用）
-├── component/        # 指数成分股（可选，当前未使用）
-├── signal/           # 因子信号（可选，当前未使用）
-├── dataset/          # 数据集定义（可选，当前未使用）
-└── model/            # 模型文件（可选，当前未使用）
-```
+生成 `rbacktest/stock_names.json`（已提交到仓库，clone 即可用）。定期 `--force` 刷新以获取新上市/改名。
 
 Parquet 文件需包含列：`datetime`, `vt_symbol`, `open`, `high`, `low`, `close`, `volume`, `turnover`。
-
-`contract.json` 格式示例：
-```json
-{
-  "600519.SSE": {
-    "long_rate": 0.0005,
-    "short_rate": 0.0015,
-    "size": 100,
-    "pricetick": 0.01
-  }
-}
-```
-
-> `data/` 下的 `minute/`, `component/`, `signal/`, `dataset/`, `model/` 是 VNPY AlphaLab 的标准目录结构，当前回测仅使用 `daily/` 和 `contract.json`，其余目录留空即可。
-
-如果启动时 `data/daily/` 为空或不存在，后端会打印警告但不会崩溃，API 将返回空股票列表。
 
 ## 安装与运行
 
@@ -92,7 +118,7 @@ uv pip install vnpy --index-url https://pypi.tuna.tsinghua.edu.cn/simple
 .venv/bin/python app.py
 ```
 
-后端运行在 `http://localhost:5000`。
+端口默认 `15000`，可通过 `RBACKTEST_PORT` 环境变量覆盖。启动时会检测端口占用并告警退出。
 
 ### 前端
 
@@ -116,39 +142,38 @@ chmod +x start.sh
 | 方法 | 路径 | 说明 |
 |------|------|------|
 | GET | `/api/stocks` | 获取可用股票列表 |
-| GET | `/api/strategies` | 获取策略元数据（名称、参数schema） |
-| POST | `/api/backtest` | 运行回测，支持多策略 |
+| GET | `/api/stock-names` | 代码→名称映射（支持 `?codes=` 筛选） |
+| GET | `/api/strategies` | 策略元数据（含 color / param schema） |
+| GET | `/api/benchmark` | 基准日线净值（默认沪深300，支持 `?code=` 切换） |
+| POST | `/api/backtest` | 运行回测，返回统计+逐日+交易明细 |
 
-POST `/api/backtest` 请求示例：
+POST `/api/backtest` 返回新增字段：
 
-```json
-{
-  "vt_symbols": ["600519.SSE", "000858.SZSE", "600036.SSE"],
-  "start": "2024-06-01",
-  "end": "2025-01-01",
-  "capital": 1000000,
-  "strategies": ["equal_weight", "vp_breakout"],
-  "strategy_params": {
-    "equal_weight": {"top_k": 3, "lookback": 20, "price_add": 0.01},
-    "vp_breakout": {
-      "high_n": 11, "vol_ratio_min": 1.5, "close_to_high": 0.97,
-      "ma_exit": 10, "take_profit": 0.30, "stop_loss": -0.10,
-      "top_k": 5, "cash_ratio": 0.95, "price_add": 0.005
-    }
-  }
-}
+```
+results[策略名].statistics  → sortino_ratio, calmar_ratio, win_rate, profit_factor,
+                               avg_win, avg_loss, max_consecutive_wins/losses
+results[策略名].trades      → [{date, symbol, side, price, shares, entry_price, pnl, pnl_pct}]
 ```
 
 ## 测试
 
 ```bash
 cd rbacktest
-backend/.venv/bin/python -m pytest tests/ -v
+backend/.venv/bin/python -m pytest tests/ -v   # 63 tests
+```
+
+## Lint & Format
+
+```bash
+uv run ruff check rbacktest/        # Python
+uv run ruff format rbacktest/       # Python
+cd rbacktest/frontend && npx prettier --check src/  # JS/CSS
 ```
 
 ## 技术栈
 
 - 后端：Python 3.11+, Flask, VNPY Alpha, Polars, NumPy
 - 前端：React 18, Vite, Recharts
-- 测试：pytest
+- 测试：pytest（63 tests）
 - 包管理：uv (Python), npm (Node)
+- Lint：ruff (Python), prettier (JS/CSS)
