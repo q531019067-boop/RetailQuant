@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import ParamPanel from "./components/ParamPanel";
+import CompareTable from "./components/CompareTable";
+import TradeTable from "./components/TradeTable";
 import { MenuIcon, CloseIcon, GripIcon } from "./components/Icons";
 import {
   LineChart,
@@ -12,7 +14,15 @@ import {
   ReferenceLine,
   Legend,
 } from "recharts";
-import { fetchStrategies, fetchBenchmark, fetchStockNames } from "./api";
+import {
+  fetchStrategies,
+  fetchBenchmark,
+  fetchStockNames,
+  saveToHistory,
+  loadHistory,
+  deleteFromHistory,
+  clearHistory,
+} from "./api";
 import "./App.css";
 
 /* ------------------------------------------------------------------ */
@@ -149,32 +159,6 @@ const CHART_TYPES = [
 /*  Helpers                                                           */
 /* ------------------------------------------------------------------ */
 
-function bestIndex(values, better) {
-  if (better === "higher") {
-    let best = -Infinity,
-      idx = -1;
-    values.forEach((v, i) => {
-      if (v > best) {
-        best = v;
-        idx = i;
-      }
-    });
-    return idx;
-  }
-  if (better === "lower") {
-    let best = Infinity,
-      idx = -1;
-    values.forEach((v, i) => {
-      if (v < best) {
-        best = v;
-        idx = i;
-      }
-    });
-    return idx;
-  }
-  return -1;
-}
-
 function mergeMultiSeries(stratResults, fn, capitalRef, stratMeta, benchmark) {
   const allDates = new Set();
   const seriesMap = {};
@@ -230,8 +214,12 @@ export default function App() {
   const [showTrades, setShowTrades] = useState({});
   const [showCompare, setShowCompare] = useState(true);
   const [stockNames, setStockNames] = useState({});
-  // 系统状态（股票数、策略数、数据日期）
+  // 系统状态
   const [sysStatus, setSysStatus] = useState({ stocks: 0, strats: 0 });
+  // 回测历史（localStorage 持久化）
+  const [history, setHistory] = useState(() => loadHistory());
+  const [showHistory, setShowHistory] = useState(false);
+  const [restoredParams, setRestoredParams] = useState(null);
 
   useEffect(() => {
     Promise.all([
@@ -271,10 +259,21 @@ export default function App() {
     );
   }
 
-  // 当回测结果到达时，自动拉取同期基准数据
-  const handleResults = async (res) => {
+  // 当回测结果到达时，自动拉取同期基准数据并保存到历史
+  const handleResults = async (res, params) => {
     setResults(res);
     setBenchmark(null);
+
+    // 保存到 localStorage
+    const entry = {
+      task_id: res.task_id,
+      params: params || {},
+      results: res, // 完整结构 {task_id, results: {strat: {statistics, daily, trades}}}
+      saved_at: new Date().toISOString(),
+    };
+    saveToHistory(entry);
+    setHistory(loadHistory());
+
     // 从 res 直接取策略名，不用 state（setState 异步，此时 stratNames 还是旧值）
     const names = res ? Object.keys(res.results) : [];
     if (names.length > 0) {
@@ -481,7 +480,82 @@ export default function App() {
 
       <main className="app-main">
         <aside className={`sidebar ${sidebarCollapsed ? "collapsed" : ""}`}>
-          {!sidebarCollapsed && <ParamPanel onResults={handleResults} />}
+          {!sidebarCollapsed && (
+            <>
+              <ParamPanel
+                onResults={handleResults}
+                restoredParams={restoredParams}
+              />
+              {history.length > 0 && (
+                <div className="history-panel">
+                  <div
+                    className="history-header"
+                    onClick={() => setShowHistory(!showHistory)}
+                  >
+                    {showHistory ? "▼" : "▶"} 回测历史（{history.length}）
+                    <button
+                      className="history-clear"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        clearHistory();
+                        setHistory([]);
+                      }}
+                      title="清空历史"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  {showHistory && (
+                    <div className="history-list">
+                      {history.map((entry) => {
+                        const p = entry.params || {};
+                        const sn = p.strategies || [];
+                        const sc = p.vt_symbols?.length || 0;
+                        const tip = [
+                          entry.saved_at.slice(0, 19).replace("T", " "),
+                          `区间: ${p.start || "?"} ~ ${p.end || "?"}`,
+                          `资金: ¥${(p.capital || 0).toLocaleString()}`,
+                          `策略: ${sn.join(", ") || "?"}`,
+                          `股票: ${sc} 只`,
+                        ].join("\n");
+                        return (
+                          <div
+                            key={entry.task_id}
+                            className="history-item"
+                            onClick={() => {
+                              setResults(entry.results);
+                              setBenchmark(null);
+                              setRestoredParams(entry.params);
+                            }}
+                            title={tip}
+                          >
+                            <span className="history-id">
+                              {entry.task_id.slice(0, 8)}
+                            </span>
+                            <span className="history-meta">
+                              {p.start?.slice(0, 7) || "?"} ~{" "}
+                              {p.end?.slice(0, 7) || "?"} · {sn.length}策略 ·{" "}
+                              {sc}股
+                            </span>
+                            <button
+                              className="history-del"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                deleteFromHistory(entry.task_id);
+                                setHistory(loadHistory());
+                              }}
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
+          )}
         </aside>
 
         <section className="content">
@@ -494,156 +568,52 @@ export default function App() {
           {results && stratNames.length > 0 && (
             <div className="results">
               {/* ----- 策略对比表（可折叠）----- */}
-              <div className="chart-wrapper">
-                <h3
-                  onClick={() => setShowCompare(!showCompare)}
-                  style={{ cursor: "pointer", userSelect: "none" }}
-                >
-                  {showCompare ? "▼" : "▶"} 策略对比
-                </h3>
-                {showCompare && (
-                  <div className="compare-table-wrap">
-                    <table className="compare-table">
-                      <thead>
-                        <tr>
-                          <th>指标</th>
-                          {stratNames.map((sn, i) => (
-                            <th key={sn}>
-                              <span
-                                className="strategy-dot"
-                                style={{ background: getColor(sn, i) }}
-                              />
-                              {getLabel(sn)}
-                            </th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {METRIC_ROWS.map((row) => {
-                          const values = stratNames.map(
-                            (sn) => results.results[sn].statistics[row.key],
-                          );
-                          const best = bestIndex(values, row.better);
-                          return (
-                            <tr key={row.key}>
-                              <td className="metric-label">{row.label}</td>
-                              {values.map((v, i) => (
-                                <td
-                                  key={i}
-                                  className={
-                                    i === best && stratNames.length > 1
-                                      ? "best"
-                                      : ""
-                                  }
-                                >
-                                  {v != null ? row.fmt(v) : "—"}
-                                </td>
-                              ))}
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
+              <CompareTable
+                stratNames={stratNames}
+                stratMeta={stratMeta}
+                results={results.results}
+                metricRows={METRIC_ROWS}
+                show={showCompare}
+                onToggle={() => setShowCompare(!showCompare)}
+              />
 
               {/* ----- 交易明细表 ----- */}
-              {stratNames.map((sn) => {
-                const trades = results.results[sn].trades || [];
-                if (trades.length === 0) return null;
-                return (
-                  <div className="chart-wrapper" key={`trades-${sn}`}>
-                    <h3
-                      onClick={() =>
-                        setShowTrades((prev) => ({ ...prev, [sn]: !prev[sn] }))
-                      }
-                      style={{ cursor: "pointer", userSelect: "none" }}
-                    >
-                      {showTrades[sn] ? "▼" : "▶"} 交易明细 — {getLabel(sn)}（
-                      {trades.length} 笔）
-                    </h3>
-                    {showTrades[sn] && (
-                      <div
-                        className="compare-table-wrap"
-                        style={{ maxHeight: 400, overflowY: "auto" }}
-                      >
-                        <table className="compare-table">
-                          <thead>
-                            <tr>
-                              <th>日期</th>
-                              <th>标的</th>
-                              <th>名称</th>
-                              <th>方向</th>
-                              <th>成交价</th>
-                              <th>股数</th>
-                              <th>成本价</th>
-                              <th>盈亏</th>
-                              <th>盈亏%</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {trades.map((t, i) => (
-                              <tr key={i}>
-                                <td>
-                                  {t.date ? String(t.date).slice(0, 10) : "—"}
-                                </td>
-                                <td>{t.symbol}</td>
-                                <td
-                                  style={{ fontSize: "0.78rem", color: "#888" }}
-                                >
-                                  {stockNames[t.symbol] || ""}
-                                </td>
-                                <td>{t.side}</td>
-                                <td>¥{Number(t.price).toFixed(2)}</td>
-                                <td>{Number(t.shares).toLocaleString()}</td>
-                                <td>
-                                  {t.entry_price != null
-                                    ? `¥${Number(t.entry_price).toFixed(2)}`
-                                    : "—"}
-                                </td>
-                                <td
-                                  style={{
-                                    color:
-                                      t.pnl > 0
-                                        ? "#cf1322"
-                                        : t.pnl < 0
-                                          ? "#389e0d"
-                                          : undefined,
-                                  }}
-                                >
-                                  {t.pnl != null
-                                    ? `¥${Number(t.pnl).toLocaleString()}`
-                                    : "—"}
-                                </td>
-                                <td
-                                  style={{
-                                    color:
-                                      t.pnl_pct > 0
-                                        ? "#cf1322"
-                                        : t.pnl_pct < 0
-                                          ? "#389e0d"
-                                          : undefined,
-                                  }}
-                                >
-                                  {t.pnl_pct != null
-                                    ? `${Number(t.pnl_pct).toFixed(2)}%`
-                                    : "—"}
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+              {stratNames.map((sn) => (
+                <TradeTable
+                  key={`trades-${sn}`}
+                  trades={results.results[sn].trades || []}
+                  stockNames={stockNames}
+                  label={getLabel(sn)}
+                  show={showTrades[sn] || false}
+                  onToggle={() =>
+                    setShowTrades((prev) => ({ ...prev, [sn]: !prev[sn] }))
+                  }
+                />
+              ))}
 
               <div className="chart-sort-bar">
                 <span className="sort-hint">
                   拖动图表可调整顺序 ｜ 灰色虚线 = 沪深300基准
                 </span>
+                <button
+                  className="export-btn"
+                  onClick={async () => {
+                    const res = await fetch("/api/export", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ results: results.results }),
+                    });
+                    const blob = await res.blob();
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement("a");
+                    a.href = url;
+                    a.download = "backtest_results.csv";
+                    a.click();
+                    URL.revokeObjectURL(url);
+                  }}
+                >
+                  导出 CSV
+                </button>
               </div>
 
               {/* ----- draggable charts ----- */}

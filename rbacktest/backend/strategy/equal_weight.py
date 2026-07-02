@@ -25,6 +25,7 @@ class EqualWeightStrategy(BaseStrategy):
 
     def on_init(self) -> None:
         self.max_cache = self.lookback + 2
+        self._last_month: int | None = None  # 防同月重复调仓
         self.write_log(f"动量轮动 | top_k={self.top_k} lookback={self.lookback}")
 
     def on_bars(self, bars: dict[str, BarData]) -> None:
@@ -38,6 +39,11 @@ class EqualWeightStrategy(BaseStrategy):
         dt = next(iter(bars.values())).datetime if bars else None
         if dt is None or dt.day > 5:
             return
+        # 每月只调仓一次（避免月初 1~5 日重复交易）
+        current_month = dt.year * 12 + dt.month
+        if self._last_month is not None and current_month <= self._last_month:
+            return
+        self._last_month = current_month
 
         # 按 lookback 收益率打分
         scored: list[tuple[str, float]] = []

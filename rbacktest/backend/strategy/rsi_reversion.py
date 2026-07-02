@@ -126,15 +126,6 @@ class RsiMeanReversionStrategy(BaseStrategy):
                     self.hold_since[sym] = self.bar_count
 
     def on_trade(self, trade: TradeData) -> None:
-        sym = trade.vt_symbol
-        if trade.direction == Direction.LONG:
-            new_pos = self.pos_data.get(sym, 0)
-            old_pos = new_pos - trade.volume
-            old_entry = self.entry_price.get(sym, trade.price)
-            self.entry_price[sym] = (
-                (old_pos * old_entry + trade.volume * trade.price) / new_pos if new_pos > 0 else trade.price
-            )
-        else:
-            if self.pos_data.get(sym, 0) <= 0:
-                self.entry_price.pop(sym, None)
-                self.hold_since.pop(sym, None)
+        self._update_entry_price(trade)
+        if trade.direction == Direction.SHORT and self.pos_data.get(trade.vt_symbol, 0) <= 0:
+            self.hold_since.pop(trade.vt_symbol, None)

@@ -69,7 +69,7 @@ npx prettier --check src/
 npx prettier --write src/
 
 # Markdown lint
-npx markdownlint-cli rbacktest/*.md
+npx markdownlint-cli2 rbacktest/*.md
 
 # 全量测试
 uv run python -m pytest rbacktest/tests/ -q

@@ -1,0 +1,18 @@
+# rbacktest 全局配置
+# 修改后重启服务生效
+
+[server]
+port = 15000                         # 后端监听端口（环境变量 RBACKTEST_PORT 可覆盖）
+frontend_port = 5173                 # 前端端口（start.sh 用）
+
+[benchmark]
+default_code = "000300.SSE"          # 默认基准指数代码
+
+[metrics]
+risk_free_rate = 0.02               # 年化无风险利率（Sharpe / Sortino 计算用）
+
+[paths]
+data_dir = "data"                    # 日线 parquet 数据目录（相对于 rbacktest/）
+
+[history]
+max_entries = 20                     # 前端 localStorage 最多保存条数

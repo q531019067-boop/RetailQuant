@@ -109,15 +109,6 @@ class GridMartingaleStrategy(BaseStrategy):
                     self.buy(sym, price, shares)
 
     def on_trade(self, trade: TradeData) -> None:
-        if trade.direction == Direction.LONG:
-            cur = self.entry_price.get(trade.vt_symbol)
-            pos = self.pos_data.get(trade.vt_symbol, 0)
-            if cur is None or pos - trade.volume <= 0:
-                self.entry_price[trade.vt_symbol] = trade.price
-            else:
-                old_size = max(0.0, pos - trade.volume)
-                self.entry_price[trade.vt_symbol] = (old_size * cur + trade.volume * trade.price) / pos
-        else:
+        self._update_entry_price(trade)
+        if trade.direction == Direction.SHORT:
             self.pending_sells.discard(trade.vt_symbol)
-            if self.pos_data.get(trade.vt_symbol, 0) <= 0:
-                self.entry_price.pop(trade.vt_symbol, None)

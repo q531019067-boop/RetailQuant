@@ -238,6 +238,14 @@ body {
 }
 
 /* Stock selector */
+.fee-config {
+  font-size: 0.72rem;
+  color: #999;
+  padding: 6px 0;
+  border-top: 1px solid #f0f0f0;
+  margin-top: 6px;
+}
+
 .stock-selector .search-input {
   margin-bottom: 8px;
 }
@@ -328,6 +336,89 @@ body {
 .quick-select button:hover {
   border-color: #8884d8;
   color: #8884d8;
+}
+
+/* History panel */
+.history-panel {
+  margin-top: 20px;
+  border-top: 1px solid #e8e8e8;
+  padding-top: 12px;
+}
+
+.history-header {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #555;
+  cursor: pointer;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.history-clear {
+  background: none;
+  border: none;
+  font-size: 0.7rem;
+  color: #bbb;
+  cursor: pointer;
+  padding: 0 4px;
+}
+
+.history-clear:hover {
+  color: #ff4d4f;
+}
+
+.history-list {
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.history-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 5px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.75rem;
+  transition: background 0.15s;
+  gap: 6px;
+}
+
+.history-item:hover {
+  background: #f5f5f5;
+}
+
+.history-id {
+  font-family: "Consolas", "Monaco", monospace;
+  color: #8884d8;
+  font-size: 0.7rem;
+  flex-shrink: 0;
+}
+
+.history-meta {
+  color: #999;
+  font-size: 0.7rem;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.history-del {
+  background: none;
+  border: none;
+  font-size: 0.65rem;
+  color: #ccc;
+  cursor: pointer;
+  padding: 0 2px;
+  flex-shrink: 0;
+}
+
+.history-del:hover {
+  color: #ff4d4f;
 }
 
 /* Run button — sticky at sidebar bottom */
@@ -431,6 +522,7 @@ body {
 .chart-sort-bar {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   margin-bottom: 12px;
   padding: 0 4px;
 }
@@ -438,6 +530,22 @@ body {
 .sort-hint {
   font-size: 0.75rem;
   color: #aaa;
+}
+
+.export-btn {
+  padding: 4px 12px;
+  font-size: 0.75rem;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  background: #fafafa;
+  cursor: pointer;
+  color: #666;
+  transition: all 0.15s;
+}
+
+.export-btn:hover {
+  border-color: #8884d8;
+  color: #8884d8;
 }
 
 .chart-slot {

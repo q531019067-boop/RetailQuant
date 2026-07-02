@@ -16,6 +16,11 @@ from datetime import datetime, date
 from pathlib import Path
 from typing import Any
 
+try:
+    import tomllib
+except ImportError:
+    import tomli as tomllib  # Python < 3.11
+
 import numpy as np
 import polars as pl
 
@@ -29,7 +34,18 @@ except ImportError:
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 NAME_CACHE = Path(__file__).resolve().parent.parent / "stock_names.json"
-RISK_FREE_RATE = 0.02  # 年化无风险利率，用于 Sharpe / Sortino 计算
+
+# 加载 rbacktest.toml 配置（缺失时使用硬编码默认值）
+_config: dict[str, object] = {}
+_CONFIG_PATH = Path(__file__).resolve().parent.parent / "rbacktest.toml"
+try:
+    if _CONFIG_PATH.exists():
+        _config = tomllib.loads(_CONFIG_PATH.read_text(encoding="utf-8"))
+except Exception:
+    pass
+
+RISK_FREE_RATE = float(_config.get("metrics", {}).get("risk_free_rate", 0.02))
+DEFAULT_BENCHMARK = str(_config.get("benchmark", {}).get("default_code", "000300.SSE"))
 
 # 启动时加载股票名称缓存（幂等，缺失不影响回测）
 _stock_names: dict[str, str] = {}
