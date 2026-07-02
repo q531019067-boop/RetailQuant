@@ -148,27 +148,27 @@ export default function ParamPanel({ onResults }) {
               <div
                 key={s.name}
                 className={`strategy-item-wrap ${sel ? "active" : ""}`}
-                onClick={(e) => {
-                  if (e.target.tagName === "INPUT") return;
+                onClick={() =>
                   setExpandedStrats((prev) => ({
                     ...prev,
                     [s.name]: !prev[s.name],
-                  }));
-                }}
+                  }))
+                }
                 title="点击编辑参数"
               >
-                <label className={`strategy-item ${sel ? "active" : ""}`}>
+                <div className={`strategy-item ${sel ? "active" : ""}`}>
                   <input
                     type="checkbox"
                     checked={sel}
                     onChange={() => toggleStrategy(s.name)}
+                    onClick={(e) => e.stopPropagation()}
                   />
                   <span
                     className="strategy-dot"
                     style={{ background: color }}
                   />
                   {s.label}
-                </label>
+                </div>
                 {/* 编辑区 */}
                 {sel && s.params && expandedStrats[s.name] && (
                   <div className="strategy-params">
