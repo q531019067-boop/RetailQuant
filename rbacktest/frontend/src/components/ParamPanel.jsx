@@ -171,7 +171,6 @@ export default function ParamPanel({ onResults }) {
                   }}
                   title="点击编辑参数"
                 >
-                <div className={`strategy-item ${sel ? "active" : ""}`}>
                   <input
                     type="checkbox"
                     checked={sel}
