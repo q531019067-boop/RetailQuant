@@ -266,11 +266,16 @@ export default function App() {
     });
   }, []);
 
-  const stratNames = results ? Object.keys(results.results) : [];
+  // 兼容旧格式：旧条目存的是内层 dict {strat: {...}}，没有外层 results 包裹
+  const normalized = results?.results ? results : results ? { results } : null;
+  const stratNames = normalized ? Object.keys(normalized.results) : [];
   const capitalRef =
     stratNames.length > 0
-      ? results.results[stratNames[0]].statistics.capital
+      ? normalized.results[stratNames[0]].statistics.capital
       : 1000000;
+
+  // 后面所有 R.results 引用改为 normalized.results
+  const R = normalized;
 
   function getLabel(sn) {
     return (stratMeta[sn] && stratMeta[sn].label) || sn;
@@ -334,7 +339,7 @@ export default function App() {
   const renderReturnChart = () => {
     if (stratNames.length === 0) return null;
     const data = mergeMultiSeries(
-      results.results,
+      R.results,
       (d) => (d.balance / capitalRef - 1) * 100,
       capitalRef,
       stratMeta,
@@ -390,7 +395,7 @@ export default function App() {
     if (stratNames.length === 0) return null;
     // 回撤图不叠加基准——基准 nav 无法直接映射为策略回撤
     const data = mergeMultiSeries(
-      results.results,
+      R.results,
       (d) => d.ddpercent,
       capitalRef,
       stratMeta,
@@ -435,7 +440,7 @@ export default function App() {
     if (stratNames.length === 0) return null;
     // 资金变化图不叠加基准——基准 nav 与策略绝对金额尺度不同
     const data = mergeMultiSeries(
-      results.results,
+      R.results,
       (d) => d.balance - capitalRef,
       capitalRef,
       stratMeta,
@@ -601,7 +606,7 @@ export default function App() {
                       <tbody>
                         {METRIC_ROWS.map((row) => {
                           const values = stratNames.map(
-                            (sn) => results.results[sn].statistics[row.key],
+                            (sn) => R.results[sn].statistics[row.key],
                           );
                           const best = bestIndex(values, row.better);
                           return (
@@ -630,7 +635,7 @@ export default function App() {
 
               {/* ----- 交易明细表 ----- */}
               {stratNames.map((sn) => {
-                const trades = results.results[sn].trades || [];
+                const trades = R.results[sn].trades || [];
                 if (trades.length === 0) return null;
                 return (
                   <div className="chart-wrapper" key={`trades-${sn}`}>
@@ -730,7 +735,7 @@ export default function App() {
                     const res = await fetch("/api/export", {
                       method: "POST",
                       headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ results: results.results }),
+                      body: JSON.stringify({ results: R.results }),
                     });
                     const blob = await res.blob();
                     const url = URL.createObjectURL(blob);
