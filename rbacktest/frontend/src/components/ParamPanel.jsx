@@ -138,7 +138,7 @@ export default function ParamPanel({ onResults }) {
 
       {/* strategy multi-select */}
       <div className="param-group">
-        <label>策略（可多选比较，悬浮查看参数）</label>
+        <label>策略（可多选比较，悬浮查看参数，点击参数编辑）</label>
         <div className="strategy-list">
           {strategies.map((s, idx) => {
             const sel = selectedStrategies.includes(s.name);
@@ -146,37 +146,30 @@ export default function ParamPanel({ onResults }) {
               s.color || DEFAULT_COLORS[idx % DEFAULT_COLORS.length];
             return (
               <div key={s.name} className="strategy-item-wrap">
-                <div className="strategy-item-row">
-                  <label className={`strategy-item ${sel ? "active" : ""}`}>
-                    <input
-                      type="checkbox"
-                      checked={sel}
-                      onChange={() => toggleStrategy(s.name)}
-                    />
-                    <span
-                      className="strategy-dot"
-                      style={{ background: color }}
-                    />
-                    {s.label}
-                  </label>
-                  {sel && s.params && Object.keys(s.params).length > 0 && (
-                    <button
-                      className="strategy-edit-btn"
-                      title="编辑参数"
-                      onClick={() =>
-                        setExpandedStrats((prev) => ({
-                          ...prev,
-                          [s.name]: !prev[s.name],
-                        }))
-                      }
-                    >
-                      ⚙
-                    </button>
-                  )}
-                </div>
-                {/* 悬浮提示：显示当前参数值 */}
-                {sel && s.params && (
-                  <div className="strategy-tooltip">
+                <label className={`strategy-item ${sel ? "active" : ""}`}>
+                  <input
+                    type="checkbox"
+                    checked={sel}
+                    onChange={() => toggleStrategy(s.name)}
+                  />
+                  <span
+                    className="strategy-dot"
+                    style={{ background: color }}
+                  />
+                  {s.label}
+                </label>
+                {/* 悬浮提示：点击打开编辑 */}
+                {sel && s.params && Object.keys(s.params).length > 0 && (
+                  <div
+                    className="strategy-tooltip"
+                    onClick={() =>
+                      setExpandedStrats((prev) => ({
+                        ...prev,
+                        [s.name]: !prev[s.name],
+                      }))
+                    }
+                    title="点击编辑参数"
+                  >
                     {Object.entries(s.params).map(([key, cfg]) => (
                       <span key={key} className="tooltip-param">
                         {cfg.label}=
@@ -185,7 +178,7 @@ export default function ParamPanel({ onResults }) {
                     ))}
                   </div>
                 )}
-                {/* 展开编辑区 */}
+                {/* 编辑区 */}
                 {sel && s.params && expandedStrats[s.name] && (
                   <div className="strategy-params">
                     {Object.entries(s.params).map(([key, config]) => (
