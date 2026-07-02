@@ -12,6 +12,7 @@ Endpoints:
 import os
 import sys
 import traceback
+import uuid
 from pathlib import Path
 
 # 确保 backend 包可导入（无论从哪个目录启动）
@@ -99,6 +100,74 @@ def get_strategies():
     return jsonify({"strategies": list_strategies_metadata()})
 
 
+@app.route("/api/optimize", methods=["POST"])
+def run_optimize():
+    """参数网格搜索：对单个策略在参数网格上跑回测，返回所有组合的指标矩阵。
+
+    Request body:
+        { vt_symbols, start, end, capital, strategy,
+          param_grid: {param_name: [value1, value2, ...]} }
+    Returns:
+        { task_id, strategy, param_grid, results: [{params, metrics}] }
+    """
+    try:
+        params = request.get_json(force=True)
+        strategy_name = params["strategy"]
+        param_grid = params["param_grid"]
+        vt_symbols = params["vt_symbols"]
+        start = params["start"]
+        end = params["end"]
+        capital = int(params.get("capital", 1_000_000))
+
+        from itertools import product
+
+        keys = list(param_grid.keys())
+        values = list(param_grid.values())
+        combinations = list(product(*values))
+
+        grid_results = []
+        for combo in combinations:
+            strat_params = dict(zip(keys, combo))
+            result = run_backtest(
+                {
+                    "vt_symbols": vt_symbols,
+                    "start": start,
+                    "end": end,
+                    "capital": capital,
+                    "strategies": [strategy_name],
+                    "strategy_params": {strategy_name: strat_params},
+                }
+            )
+            stats = result["results"][strategy_name]["statistics"]
+            grid_results.append(
+                {
+                    "params": strat_params,
+                    "total_return": stats.get("total_return", 0),
+                    "annual_return": stats.get("annual_return", 0),
+                    "sharpe_ratio": stats.get("sharpe_ratio", 0),
+                    "max_ddpercent": stats.get("max_ddpercent", 0),
+                    "sortino_ratio": stats.get("sortino_ratio", 0),
+                    "calmar_ratio": stats.get("calmar_ratio", 0),
+                    "win_rate": stats.get("win_rate", 0),
+                    "profit_factor": stats.get("profit_factor", 0),
+                    "total_trade_count": stats.get("total_trade_count", 0),
+                }
+            )
+
+        return jsonify(
+            {
+                "task_id": str(uuid.uuid4()),
+                "strategy": strategy_name,
+                "param_grid": param_grid,
+                "combinations": len(combinations),
+                "results": grid_results,
+            }
+        )
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/benchmark", methods=["GET"])
 def get_benchmark():
     """返回基准（如沪深300 000300.SSE）的日线净值序列。
@@ -130,6 +199,57 @@ def run_backtest_api():
         params = request.get_json(force=True)
         result = run_backtest(params)
         return jsonify(result)
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/export", methods=["POST"])
+def export_results():
+    """导出回测结果为 CSV。"""
+    try:
+        body = request.get_json(force=True)
+        results = body.get("results", {})
+
+        import csv
+        import io
+
+        output = io.StringIO()
+        writer = csv.writer(output)
+        metric_keys = [
+            "strategy",
+            "total_return",
+            "annual_return",
+            "sharpe_ratio",
+            "sortino_ratio",
+            "calmar_ratio",
+            "max_ddpercent",
+            "win_rate",
+            "profit_factor",
+            "avg_win",
+            "avg_loss",
+            "max_consecutive_wins",
+            "max_consecutive_losses",
+            "total_trade_count",
+            "total_days",
+            "total_commission",
+            "end_balance",
+        ]
+        writer.writerow(metric_keys)
+        for sn, r in results.items():
+            s = r["statistics"]
+            row = [sn] + [s.get(k, "") for k in metric_keys[1:]]
+            writer.writerow(row)
+
+        csv_content = output.getvalue()
+        output.close()
+        from flask import Response
+
+        return Response(
+            csv_content,
+            mimetype="text/csv",
+            headers={"Content-Disposition": "attachment; filename=backtest_results.csv"},
+        )
     except Exception as e:
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500

@@ -147,7 +147,9 @@ chmod +x start.sh
 | GET | `/api/stock-names` | 代码→名称映射（支持 `?codes=` 筛选） |
 | GET | `/api/strategies` | 策略元数据（含 color / param schema） |
 | GET | `/api/benchmark` | 基准日线净值（默认沪深300，支持 `?code=` 切换） |
+| POST | `/api/optimize` | 参数网格搜索，返回所有组合的指标矩阵 |
 | POST | `/api/backtest` | 运行回测，返回统计+逐日+交易明细 |
+| POST | `/api/export` | 导出回测结果为 CSV 下载 |
 
 POST `/api/backtest` 返回新增字段：
 
