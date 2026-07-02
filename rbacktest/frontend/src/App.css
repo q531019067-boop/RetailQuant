@@ -173,6 +173,7 @@ body {
   border-radius: 6px;
   padding: 6px 8px;
   transition: border-color 0.2s;
+  cursor: pointer;
 }
 
 .strategy-item-wrap:has(.active) {
@@ -193,15 +194,6 @@ body {
 .strategy-item input[type="checkbox"] {
   margin: 0;
   width: auto;
-}
-
-.strategy-name {
-  cursor: pointer;
-}
-
-.strategy-name:hover {
-  text-decoration: underline;
-  text-decoration-style: dotted;
 }
 
 .strategy-item {

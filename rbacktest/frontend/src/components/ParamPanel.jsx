@@ -145,7 +145,18 @@ export default function ParamPanel({ onResults }) {
             const color =
               s.color || DEFAULT_COLORS[idx % DEFAULT_COLORS.length];
             return (
-              <div key={s.name} className="strategy-item-wrap">
+              <div
+                key={s.name}
+                className={`strategy-item-wrap ${sel ? "active" : ""}`}
+                onClick={(e) => {
+                  if (e.target.tagName === "INPUT") return;
+                  setExpandedStrats((prev) => ({
+                    ...prev,
+                    [s.name]: !prev[s.name],
+                  }));
+                }}
+                title="点击编辑参数"
+              >
                 <label className={`strategy-item ${sel ? "active" : ""}`}>
                   <input
                     type="checkbox"
@@ -156,19 +167,7 @@ export default function ParamPanel({ onResults }) {
                     className="strategy-dot"
                     style={{ background: color }}
                   />
-                  <span
-                    className="strategy-name"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      setExpandedStrats((prev) => ({
-                        ...prev,
-                        [s.name]: !prev[s.name],
-                      }));
-                    }}
-                    title="点击编辑参数"
-                  >
-                    {s.label}
-                  </span>
+                  {s.label}
                 </label>
                 {/* 编辑区 */}
                 {sel && s.params && expandedStrats[s.name] && (
