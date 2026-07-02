@@ -11,6 +11,7 @@ frontend/dist/
 
 # Data (large binary files — must be provided separately)
 data/
+qlib_daily.parquet
 
 # IDE
 .idea/

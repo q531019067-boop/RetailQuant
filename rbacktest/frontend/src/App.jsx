@@ -1,85 +1,213 @@
-import { useState } from 'react';
-import ParamPanel from './components/ParamPanel';
-import { MenuIcon, CloseIcon, GripIcon } from './components/Icons';
+import { useState, useEffect } from "react";
+import ParamPanel from "./components/ParamPanel";
+import { MenuIcon, CloseIcon, GripIcon } from "./components/Icons";
 import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid,
-  Tooltip, ResponsiveContainer, ReferenceLine, Legend,
-} from 'recharts';
-import './App.css';
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  ReferenceLine,
+  Legend,
+} from "recharts";
+import { fetchStrategies, fetchBenchmark, fetchStockNames } from "./api";
+import "./App.css";
 
 /* ------------------------------------------------------------------ */
 /*  Constants                                                         */
 /* ------------------------------------------------------------------ */
 
-const STRATEGY_COLORS = ['#cf1322', '#1890ff', '#722ed1'];
-
-const STRATEGY_LABELS = {
-  equal_weight: '动量轮动',
-  grid_martingale: '网格马丁格尔',
-  vp_breakout: '量价突破',
-};
+const DEFAULT_COLORS = ["#cf1322", "#1890ff", "#722ed1", "#eb2f96", "#fa8c16"];
+const BENCHMARK_COLOR = "#999999";
 
 const METRIC_ROWS = [
-  { key: 'total_return',          label: '总收益率',   fmt: v => `${v.toFixed(2)}%`, better: 'higher' },
-  { key: 'annual_return',         label: '年化收益率', fmt: v => `${v.toFixed(2)}%`, better: 'higher' },
-  { key: 'max_ddpercent',         label: '最大回撤',   fmt: v => `${v.toFixed(2)}%`, better: 'lower'  },
-  { key: 'sharpe_ratio',          label: '夏普比率',   fmt: v => v.toFixed(2),        better: 'higher' },
-  { key: 'end_balance',           label: '结束资金',   fmt: v => `¥${Number(v).toLocaleString()}`, better: 'higher' },
-  { key: 'total_trade_count',     label: '总成交笔数', fmt: v => v,                  better: 'neutral'},
-  { key: 'total_days',            label: '总交易日',   fmt: v => v,                  better: 'neutral'},
-  { key: 'profit_days',           label: '盈利天数',   fmt: v => v,                  better: 'higher' },
-  { key: 'loss_days',             label: '亏损天数',   fmt: v => v,                  better: 'lower'  },
-  { key: 'total_commission',      label: '总手续费',   fmt: v => `¥${Number(v).toFixed(2)}`, better: 'lower'  },
-  { key: 'return_drawdown_ratio', label: '收益回撤比', fmt: v => v.toFixed(2),        better: 'higher' },
+  // 收益类
+  {
+    key: "total_return",
+    label: "总收益率",
+    fmt: (v) => `${v.toFixed(2)}%`,
+    better: "higher",
+  },
+  {
+    key: "annual_return",
+    label: "年化收益率",
+    fmt: (v) => `${v.toFixed(2)}%`,
+    better: "higher",
+  },
+  {
+    key: "end_balance",
+    label: "结束资金",
+    fmt: (v) => `¥${Number(v).toLocaleString()}`,
+    better: "higher",
+  },
+  // 风险类
+  {
+    key: "max_ddpercent",
+    label: "最大回撤",
+    fmt: (v) => `${v.toFixed(2)}%`,
+    better: "lower",
+  },
+  {
+    key: "return_std",
+    label: "收益波动率",
+    fmt: (v) => `${v.toFixed(2)}%`,
+    better: "lower",
+  },
+  {
+    key: "max_drawdown_duration",
+    label: "最长回撤(天)",
+    fmt: (v) => v,
+    better: "lower",
+  },
+  // 风险调整收益
+  {
+    key: "sharpe_ratio",
+    label: "夏普比率",
+    fmt: (v) => v.toFixed(2),
+    better: "higher",
+  },
+  {
+    key: "sortino_ratio",
+    label: "索提诺比率",
+    fmt: (v) => v.toFixed(2),
+    better: "higher",
+  },
+  {
+    key: "calmar_ratio",
+    label: "卡尔玛比率",
+    fmt: (v) => v.toFixed(2),
+    better: "higher",
+  },
+  {
+    key: "return_drawdown_ratio",
+    label: "收益回撤比",
+    fmt: (v) => v.toFixed(2),
+    better: "higher",
+  },
+  // 交易统计
+  {
+    key: "win_rate",
+    label: "胜率",
+    fmt: (v) => `${v.toFixed(1)}%`,
+    better: "higher",
+  },
+  {
+    key: "profit_factor",
+    label: "盈亏比",
+    fmt: (v) => v.toFixed(2),
+    better: "higher",
+  },
+  {
+    key: "avg_win",
+    label: "均盈(%)",
+    fmt: (v) => `${v.toFixed(2)}%`,
+    better: "higher",
+  },
+  {
+    key: "avg_loss",
+    label: "均亏(%)",
+    fmt: (v) => `${v.toFixed(2)}%`,
+    better: "higher",
+  },
+  {
+    key: "total_trade_count",
+    label: "总成交笔数",
+    fmt: (v) => v,
+    better: "neutral",
+  },
+  {
+    key: "max_consecutive_wins",
+    label: "最长连赢",
+    fmt: (v) => v,
+    better: "higher",
+  },
+  {
+    key: "max_consecutive_losses",
+    label: "最长连亏",
+    fmt: (v) => v,
+    better: "lower",
+  },
+  // 杂项
+  { key: "total_days", label: "总交易日", fmt: (v) => v, better: "neutral" },
+  {
+    key: "total_commission",
+    label: "总手续费",
+    fmt: (v) => `¥${Number(v).toFixed(2)}`,
+    better: "lower",
+  },
 ];
 
 const CHART_TYPES = [
-  { key: 'return',   label: '收益率曲线' },
-  { key: 'drawdown', label: '回撤曲线'   },
-  { key: 'capital',  label: '资金变化'   },
+  { key: "return", label: "收益率曲线" },
+  { key: "drawdown", label: "回撤曲线" },
+  { key: "capital", label: "资金变化" },
 ];
 
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                           */
 /* ------------------------------------------------------------------ */
 
-/** Find the index of the "best" value (highest or lowest) in an array. */
 function bestIndex(values, better) {
-  if (better === 'higher') {
-    let best = -Infinity, idx = -1;
-    values.forEach((v, i) => { if (v > best) { best = v; idx = i; } });
+  if (better === "higher") {
+    let best = -Infinity,
+      idx = -1;
+    values.forEach((v, i) => {
+      if (v > best) {
+        best = v;
+        idx = i;
+      }
+    });
     return idx;
   }
-  if (better === 'lower') {
-    let best = Infinity, idx = -1;
-    values.forEach((v, i) => { if (v < best) { best = v; idx = i; } });
+  if (better === "lower") {
+    let best = Infinity,
+      idx = -1;
+    values.forEach((v, i) => {
+      if (v < best) {
+        best = v;
+        idx = i;
+      }
+    });
     return idx;
   }
   return -1;
 }
 
-/**
- * Merge daily data from multiple strategies into a single Recharts-ready array.
- * @param {Object} stratResults - { strategyName: { daily: [...] } }
- * @param {Function} fn - (dailyRecord, capitalRef) => number
- * @param {number} capitalRef - reference capital for return/pnl calculations
- */
-function mergeMultiSeries(stratResults, fn, capitalRef) {
+function mergeMultiSeries(stratResults, fn, capitalRef, stratMeta, benchmark) {
   const allDates = new Set();
   const seriesMap = {};
   const snames = Object.keys(stratResults);
 
-  snames.forEach(sn => {
+  snames.forEach((sn) => {
     seriesMap[sn] = {};
-    (stratResults[sn].daily || []).forEach(d => {
+    (stratResults[sn].daily || []).forEach((d) => {
       allDates.add(d.date);
       seriesMap[sn][d.date] = fn(d, capitalRef);
     });
   });
 
-  return [...allDates].sort().map(d => {
+  // 注入基准数据
+  if (benchmark && benchmark.dates) {
+    benchmark.dates.forEach((d, i) => {
+      allDates.add(d);
+      // 基准净值转为与策略相同的尺度
+      const benchVal = (benchmark.nav[i] - 1) * 100; // 百分比
+      if (!seriesMap["__bench__"]) seriesMap["__bench__"] = {};
+      seriesMap["__bench__"][d] = benchVal;
+    });
+  }
+
+  return [...allDates].sort().map((d) => {
     const row = { date: d };
-    snames.forEach(sn => { row[STRATEGY_LABELS[sn] || sn] = seriesMap[sn][d] ?? null; });
+    snames.forEach((sn) => {
+      const label = (stratMeta[sn] && stratMeta[sn].label) || sn;
+      row[label] = seriesMap[sn][d] ?? null;
+    });
+    if (seriesMap["__bench__"]) {
+      row["沪深300"] = seriesMap["__bench__"][d] ?? null;
+    }
     return row;
   });
 }
@@ -90,14 +218,77 @@ function mergeMultiSeries(stratResults, fn, capitalRef) {
 
 export default function App() {
   const [results, setResults] = useState(null);
+  const [benchmark, setBenchmark] = useState(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [chartOrder, setChartOrder] = useState(['return', 'drawdown', 'capital']);
+  const [chartOrder, setChartOrder] = useState([
+    "return",
+    "drawdown",
+    "capital",
+  ]);
   const [dragIdx, setDragIdx] = useState(null);
+  const [stratMeta, setStratMeta] = useState({});
+  const [showTrades, setShowTrades] = useState({});
+  const [showCompare, setShowCompare] = useState(true);
+  const [stockNames, setStockNames] = useState({});
+  // 系统状态（股票数、策略数、数据日期）
+  const [sysStatus, setSysStatus] = useState({ stocks: 0, strats: 0 });
+
+  useEffect(() => {
+    Promise.all([
+      fetchStrategies(),
+      fetch("/api/stocks").then((r) => r.json()),
+      fetchStockNames(),
+    ]).then(([strats, stockData, nameData]) => {
+      const meta = {};
+      strats.forEach((s, i) => {
+        meta[s.name] = {
+          label: s.label,
+          color: s.color || DEFAULT_COLORS[i % DEFAULT_COLORS.length],
+        };
+      });
+      setStratMeta(meta);
+      setStockNames(nameData.names || {});
+      setSysStatus({
+        stocks: stockData.stocks?.length || 0,
+        strats: strats.length || 0,
+      });
+    });
+  }, []);
 
   const stratNames = results ? Object.keys(results.results) : [];
-  const capitalRef = stratNames.length > 0
-    ? results.results[stratNames[0]].statistics.capital
-    : 1000000;
+  const capitalRef =
+    stratNames.length > 0
+      ? results.results[stratNames[0]].statistics.capital
+      : 1000000;
+
+  function getLabel(sn) {
+    return (stratMeta[sn] && stratMeta[sn].label) || sn;
+  }
+  function getColor(sn, i) {
+    return (
+      (stratMeta[sn] && stratMeta[sn].color) ||
+      DEFAULT_COLORS[i % DEFAULT_COLORS.length]
+    );
+  }
+
+  // 当回测结果到达时，自动拉取同期基准数据
+  const handleResults = async (res) => {
+    setResults(res);
+    setBenchmark(null);
+    // 从 res 直接取策略名，不用 state（setState 异步，此时 stratNames 还是旧值）
+    const names = res ? Object.keys(res.results) : [];
+    if (names.length > 0) {
+      const daily = res.results[names[0]]?.daily;
+      if (daily && daily.length >= 2) {
+        const bm = await fetchBenchmark(
+          "000300.SSE",
+          daily[0].date,
+          daily[daily.length - 1].date,
+        );
+        if (bm && !bm.error) setBenchmark(bm);
+      }
+    }
+  };
 
   /* ---- drag handlers ---- */
   const handleDragStart = (idx) => setDragIdx(idx);
@@ -113,28 +304,61 @@ export default function App() {
   };
 
   const sortedCharts = chartOrder
-    .map(key => CHART_TYPES.find(c => c.key === key))
+    .map((key) => CHART_TYPES.find((c) => c.key === key))
     .filter(Boolean);
 
-  /* ---- inline chart renders (avoid separate files for 3 charts) ---- */
+  /* ---- inline chart renders ---- */
 
   const renderReturnChart = () => {
     if (stratNames.length === 0) return null;
-    const data = mergeMultiSeries(results.results, d => (d.balance / capitalRef - 1) * 100, capitalRef);
+    const data = mergeMultiSeries(
+      results.results,
+      (d) => (d.balance / capitalRef - 1) * 100,
+      capitalRef,
+      stratMeta,
+      benchmark,
+    );
 
     return (
       <ResponsiveContainer width="100%" height={400}>
         <LineChart data={data}>
           <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey="date" tick={{ fontSize: 11 }} interval="preserveStartEnd" minTickGap={40} />
-          <YAxis tick={{ fontSize: 11 }} tickFormatter={v => `${v.toFixed(2)}%`} />
-          <Tooltip formatter={(v, name) => [`${Number(v).toFixed(4)}%`, name]} />
+          <XAxis
+            dataKey="date"
+            tick={{ fontSize: 11 }}
+            interval="preserveStartEnd"
+            minTickGap={40}
+          />
+          <YAxis
+            tick={{ fontSize: 11 }}
+            tickFormatter={(v) => `${v.toFixed(0)}%`}
+          />
+          <Tooltip
+            formatter={(v, name) => [`${Number(v).toFixed(4)}%`, name]}
+          />
           <ReferenceLine y={0} stroke="#666" strokeDasharray="3 3" />
           <Legend />
           {stratNames.map((sn, i) => (
-            <Line key={sn} type="monotone" dataKey={STRATEGY_LABELS[sn] || sn}
-                  stroke={STRATEGY_COLORS[i % STRATEGY_COLORS.length]} strokeWidth={2} dot={false} />
+            <Line
+              key={sn}
+              type="monotone"
+              dataKey={getLabel(sn)}
+              stroke={getColor(sn, i)}
+              strokeWidth={2}
+              dot={false}
+            />
           ))}
+          {benchmark && (
+            <Line
+              key="bench"
+              type="monotone"
+              dataKey="沪深300"
+              stroke={BENCHMARK_COLOR}
+              strokeWidth={1.5}
+              strokeDasharray="6 3"
+              dot={false}
+            />
+          )}
         </LineChart>
       </ResponsiveContainer>
     );
@@ -142,19 +366,43 @@ export default function App() {
 
   const renderDrawdownChart = () => {
     if (stratNames.length === 0) return null;
-    const data = mergeMultiSeries(results.results, d => d.ddpercent, capitalRef);
+    // 回撤图不叠加基准——基准 nav 无法直接映射为策略回撤
+    const data = mergeMultiSeries(
+      results.results,
+      (d) => d.ddpercent,
+      capitalRef,
+      stratMeta,
+      null,
+    );
 
     return (
       <ResponsiveContainer width="100%" height={400}>
         <LineChart data={data}>
           <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey="date" tick={{ fontSize: 11 }} interval="preserveStartEnd" minTickGap={40} />
-          <YAxis tick={{ fontSize: 11 }} tickFormatter={v => `${v.toFixed(2)}%`} domain={['auto', 0]} />
-          <Tooltip formatter={(v, name) => [`${Number(v).toFixed(3)}%`, name]} />
+          <XAxis
+            dataKey="date"
+            tick={{ fontSize: 11 }}
+            interval="preserveStartEnd"
+            minTickGap={40}
+          />
+          <YAxis
+            tick={{ fontSize: 11 }}
+            tickFormatter={(v) => `${v.toFixed(0)}%`}
+            domain={["auto", 0]}
+          />
+          <Tooltip
+            formatter={(v, name) => [`${Number(v).toFixed(2)}%`, name]}
+          />
           <Legend />
           {stratNames.map((sn, i) => (
-            <Line key={sn} type="monotone" dataKey={STRATEGY_LABELS[sn] || sn}
-                  stroke={STRATEGY_COLORS[i % STRATEGY_COLORS.length]} strokeWidth={2} dot={false} />
+            <Line
+              key={sn}
+              type="monotone"
+              dataKey={getLabel(sn)}
+              stroke={getColor(sn, i)}
+              strokeWidth={2}
+              dot={false}
+            />
           ))}
         </LineChart>
       </ResponsiveContainer>
@@ -163,21 +411,43 @@ export default function App() {
 
   const renderCapitalChart = () => {
     if (stratNames.length === 0) return null;
-
-    const data = mergeMultiSeries(results.results, d => d.balance - capitalRef, capitalRef);
+    // 资金变化图不叠加基准——基准 nav 与策略绝对金额尺度不同
+    const data = mergeMultiSeries(
+      results.results,
+      (d) => d.balance - capitalRef,
+      capitalRef,
+      stratMeta,
+      null,
+    );
 
     return (
       <ResponsiveContainer width="100%" height={400}>
         <LineChart data={data}>
           <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey="date" tick={{ fontSize: 11 }} interval="preserveStartEnd" minTickGap={40} />
-          <YAxis tick={{ fontSize: 11 }} tickFormatter={v => `¥${(v / 10000).toFixed(0)}万`} />
-          <Tooltip formatter={(v, name) => [`¥${Number(v).toLocaleString()}`, name]} />
+          <XAxis
+            dataKey="date"
+            tick={{ fontSize: 11 }}
+            interval="preserveStartEnd"
+            minTickGap={40}
+          />
+          <YAxis
+            tick={{ fontSize: 11 }}
+            tickFormatter={(v) => `¥${(v / 10000).toFixed(0)}万`}
+          />
+          <Tooltip
+            formatter={(v, name) => [`¥${Number(v).toLocaleString()}`, name]}
+          />
           <ReferenceLine y={0} stroke="#666" strokeDasharray="3 3" />
           <Legend />
           {stratNames.map((sn, i) => (
-            <Line key={sn} type="monotone" dataKey={STRATEGY_LABELS[sn] || sn}
-                  stroke={STRATEGY_COLORS[i % STRATEGY_COLORS.length]} strokeWidth={2} dot={false} />
+            <Line
+              key={sn}
+              type="monotone"
+              dataKey={getLabel(sn)}
+              stroke={getColor(sn, i)}
+              strokeWidth={2}
+              dot={false}
+            />
           ))}
         </LineChart>
       </ResponsiveContainer>
@@ -191,17 +461,27 @@ export default function App() {
         <button
           className="sidebar-toggle"
           onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-          title={sidebarCollapsed ? '展开参数面板' : '收起参数面板'}
+          title={sidebarCollapsed ? "展开参数面板" : "收起参数面板"}
         >
           {sidebarCollapsed ? <MenuIcon /> : <CloseIcon />}
         </button>
-        <h1>量化回测系统</h1>
-        <span className="subtitle">VNPY + Flask + React</span>
+        <h1>量化回测</h1>
+        <span className="header-stats">
+          {sysStatus.stocks > 0 && (
+            <>
+              <span className="stat-item">
+                {sysStatus.stocks.toLocaleString()} 只股票
+              </span>
+              <span className="stat-divider">·</span>
+              <span className="stat-item">{sysStatus.strats} 个策略</span>
+            </>
+          )}
+        </span>
       </header>
 
       <main className="app-main">
-        <aside className={`sidebar ${sidebarCollapsed ? 'collapsed' : ''}`}>
-          {!sidebarCollapsed && <ParamPanel onResults={setResults} />}
+        <aside className={`sidebar ${sidebarCollapsed ? "collapsed" : ""}`}>
+          {!sidebarCollapsed && <ParamPanel onResults={handleResults} />}
         </aside>
 
         <section className="content">
@@ -213,52 +493,164 @@ export default function App() {
 
           {results && stratNames.length > 0 && (
             <div className="results">
-              {/* ----- comparison table ----- */}
+              {/* ----- 策略对比表（可折叠）----- */}
               <div className="chart-wrapper">
-                <h3>策略对比</h3>
-                <div className="compare-table-wrap">
-                  <table className="compare-table">
-                    <thead>
-                      <tr>
-                        <th>指标</th>
-                        {stratNames.map((sn, i) => (
-                          <th key={sn}>
-                            <span className="strategy-dot"
-                                  style={{ background: STRATEGY_COLORS[i % STRATEGY_COLORS.length] }} />
-                            {STRATEGY_LABELS[sn] || sn}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {METRIC_ROWS.map(row => {
-                        const values = stratNames.map(sn => results.results[sn].statistics[row.key]);
-                        const best = bestIndex(values, row.better);
-                        return (
-                          <tr key={row.key}>
-                            <td className="metric-label">{row.label}</td>
-                            {values.map((v, i) => (
-                              <td key={i} className={i === best && stratNames.length > 1 ? 'best' : ''}>
-                                {row.fmt(v)}
-                              </td>
-                            ))}
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
+                <h3
+                  onClick={() => setShowCompare(!showCompare)}
+                  style={{ cursor: "pointer", userSelect: "none" }}
+                >
+                  {showCompare ? "▼" : "▶"} 策略对比
+                </h3>
+                {showCompare && (
+                  <div className="compare-table-wrap">
+                    <table className="compare-table">
+                      <thead>
+                        <tr>
+                          <th>指标</th>
+                          {stratNames.map((sn, i) => (
+                            <th key={sn}>
+                              <span
+                                className="strategy-dot"
+                                style={{ background: getColor(sn, i) }}
+                              />
+                              {getLabel(sn)}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {METRIC_ROWS.map((row) => {
+                          const values = stratNames.map(
+                            (sn) => results.results[sn].statistics[row.key],
+                          );
+                          const best = bestIndex(values, row.better);
+                          return (
+                            <tr key={row.key}>
+                              <td className="metric-label">{row.label}</td>
+                              {values.map((v, i) => (
+                                <td
+                                  key={i}
+                                  className={
+                                    i === best && stratNames.length > 1
+                                      ? "best"
+                                      : ""
+                                  }
+                                >
+                                  {v != null ? row.fmt(v) : "—"}
+                                </td>
+                              ))}
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
 
+              {/* ----- 交易明细表 ----- */}
+              {stratNames.map((sn) => {
+                const trades = results.results[sn].trades || [];
+                if (trades.length === 0) return null;
+                return (
+                  <div className="chart-wrapper" key={`trades-${sn}`}>
+                    <h3
+                      onClick={() =>
+                        setShowTrades((prev) => ({ ...prev, [sn]: !prev[sn] }))
+                      }
+                      style={{ cursor: "pointer", userSelect: "none" }}
+                    >
+                      {showTrades[sn] ? "▼" : "▶"} 交易明细 — {getLabel(sn)}（
+                      {trades.length} 笔）
+                    </h3>
+                    {showTrades[sn] && (
+                      <div
+                        className="compare-table-wrap"
+                        style={{ maxHeight: 400, overflowY: "auto" }}
+                      >
+                        <table className="compare-table">
+                          <thead>
+                            <tr>
+                              <th>日期</th>
+                              <th>标的</th>
+                              <th>名称</th>
+                              <th>方向</th>
+                              <th>成交价</th>
+                              <th>股数</th>
+                              <th>成本价</th>
+                              <th>盈亏</th>
+                              <th>盈亏%</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {trades.map((t, i) => (
+                              <tr key={i}>
+                                <td>
+                                  {t.date ? String(t.date).slice(0, 10) : "—"}
+                                </td>
+                                <td>{t.symbol}</td>
+                                <td
+                                  style={{ fontSize: "0.78rem", color: "#888" }}
+                                >
+                                  {stockNames[t.symbol] || ""}
+                                </td>
+                                <td>{t.side}</td>
+                                <td>¥{Number(t.price).toFixed(2)}</td>
+                                <td>{Number(t.shares).toLocaleString()}</td>
+                                <td>
+                                  {t.entry_price != null
+                                    ? `¥${Number(t.entry_price).toFixed(2)}`
+                                    : "—"}
+                                </td>
+                                <td
+                                  style={{
+                                    color:
+                                      t.pnl > 0
+                                        ? "#cf1322"
+                                        : t.pnl < 0
+                                          ? "#389e0d"
+                                          : undefined,
+                                  }}
+                                >
+                                  {t.pnl != null
+                                    ? `¥${Number(t.pnl).toLocaleString()}`
+                                    : "—"}
+                                </td>
+                                <td
+                                  style={{
+                                    color:
+                                      t.pnl_pct > 0
+                                        ? "#cf1322"
+                                        : t.pnl_pct < 0
+                                          ? "#389e0d"
+                                          : undefined,
+                                  }}
+                                >
+                                  {t.pnl_pct != null
+                                    ? `${Number(t.pnl_pct).toFixed(2)}%`
+                                    : "—"}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+
               <div className="chart-sort-bar">
-                <span className="sort-hint">拖动图表可调整顺序</span>
+                <span className="sort-hint">
+                  拖动图表可调整顺序 ｜ 灰色虚线 = 沪深300基准
+                </span>
               </div>
 
               {/* ----- draggable charts ----- */}
               {sortedCharts.map(({ key, label }, idx) => (
                 <div
                   key={key}
-                  className={`chart-slot ${dragIdx === idx ? 'dragging' : ''}`}
+                  className={`chart-slot ${dragIdx === idx ? "dragging" : ""}`}
                   draggable
                   onDragStart={() => handleDragStart(idx)}
                   onDragOver={handleDragOver}
@@ -269,9 +661,9 @@ export default function App() {
                     <GripIcon /> {label}
                   </div>
                   <div className="chart-wrapper">
-                    {key === 'return'   && renderReturnChart()}
-                    {key === 'drawdown' && renderDrawdownChart()}
-                    {key === 'capital'  && renderCapitalChart()}
+                    {key === "return" && renderReturnChart()}
+                    {key === "drawdown" && renderDrawdownChart()}
+                    {key === "capital" && renderCapitalChart()}
                   </div>
                 </div>
               ))}
