@@ -117,9 +117,12 @@ export default function ParamPanel({ onResults }) {
   /* ---- derived data ---- */
 
   const selectedSet = new Set(selectedStocks);
-  const filteredStocks = stocks.filter((s) =>
-    s.toLowerCase().includes(searchTerm.toLowerCase()),
-  );
+  const filteredStocks = stocks.filter((s) => {
+    const term = searchTerm.toLowerCase();
+    if (!term) return true;
+    const name = stockNames[s] || "";
+    return s.toLowerCase().includes(term) || name.toLowerCase().includes(term);
+  });
   const sortedStocks = [
     ...filteredStocks.filter((s) => selectedSet.has(s)).sort(),
     ...filteredStocks.filter((s) => !selectedSet.has(s)).sort(),
@@ -242,7 +245,7 @@ export default function ParamPanel({ onResults }) {
         </label>
         <input
           type="text"
-          placeholder="搜索股票代码..."
+          placeholder="搜索代码或名称..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="search-input"
