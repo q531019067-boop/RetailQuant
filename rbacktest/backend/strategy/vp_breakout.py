@@ -3,7 +3,6 @@
 """
 
 import numpy as np
-from vnpy.trader.constant import Direction
 from vnpy.trader.object import TradeData, BarData
 
 from .base import BaseStrategy, calc_shares
@@ -118,14 +117,4 @@ class VpBreakoutStrategy(BaseStrategy):
                     self.buy(sym, price, volume)
 
     def on_trade(self, trade: TradeData) -> None:
-        sym = trade.vt_symbol
-        if trade.direction == Direction.LONG:
-            new_pos = self.pos_data.get(sym, 0)
-            old_pos = new_pos - trade.volume
-            old_entry = self.entry_price.get(sym, trade.price)
-            self.entry_price[sym] = (
-                (old_pos * old_entry + trade.volume * trade.price) / new_pos if new_pos > 0 else trade.price
-            )
-        else:
-            if self.pos_data.get(sym, 0) <= 0:
-                self.entry_price.pop(sym, None)
+        self._update_entry_price(trade)

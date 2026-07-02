@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import ParamPanel from "./components/ParamPanel";
+import CompareTable from "./components/CompareTable";
+import TradeTable from "./components/TradeTable";
 import { MenuIcon, CloseIcon, GripIcon } from "./components/Icons";
 import {
   LineChart,
@@ -156,32 +158,6 @@ const CHART_TYPES = [
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                           */
 /* ------------------------------------------------------------------ */
-
-function bestIndex(values, better) {
-  if (better === "higher") {
-    let best = -Infinity,
-      idx = -1;
-    values.forEach((v, i) => {
-      if (v > best) {
-        best = v;
-        idx = i;
-      }
-    });
-    return idx;
-  }
-  if (better === "lower") {
-    let best = Infinity,
-      idx = -1;
-    values.forEach((v, i) => {
-      if (v < best) {
-        best = v;
-        idx = i;
-      }
-    });
-    return idx;
-  }
-  return -1;
-}
 
 function mergeMultiSeries(stratResults, fn, capitalRef, stratMeta, benchmark) {
   const allDates = new Set();
@@ -592,151 +568,28 @@ export default function App() {
           {results && stratNames.length > 0 && (
             <div className="results">
               {/* ----- 策略对比表（可折叠）----- */}
-              <div className="chart-wrapper">
-                <h3
-                  onClick={() => setShowCompare(!showCompare)}
-                  style={{ cursor: "pointer", userSelect: "none" }}
-                >
-                  {showCompare ? "▼" : "▶"} 策略对比
-                </h3>
-                {showCompare && (
-                  <div className="compare-table-wrap">
-                    <table className="compare-table">
-                      <thead>
-                        <tr>
-                          <th>指标</th>
-                          {stratNames.map((sn, i) => (
-                            <th key={sn}>
-                              <span
-                                className="strategy-dot"
-                                style={{ background: getColor(sn, i) }}
-                              />
-                              {getLabel(sn)}
-                            </th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {METRIC_ROWS.map((row) => {
-                          const values = stratNames.map(
-                            (sn) => results.results[sn].statistics[row.key],
-                          );
-                          const best = bestIndex(values, row.better);
-                          return (
-                            <tr key={row.key}>
-                              <td className="metric-label">{row.label}</td>
-                              {values.map((v, i) => (
-                                <td
-                                  key={i}
-                                  className={
-                                    i === best && stratNames.length > 1
-                                      ? "best"
-                                      : ""
-                                  }
-                                >
-                                  {v != null ? row.fmt(v) : "—"}
-                                </td>
-                              ))}
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
+              <CompareTable
+                stratNames={stratNames}
+                stratMeta={stratMeta}
+                results={results.results}
+                metricRows={METRIC_ROWS}
+                show={showCompare}
+                onToggle={() => setShowCompare(!showCompare)}
+              />
 
               {/* ----- 交易明细表 ----- */}
-              {stratNames.map((sn) => {
-                const trades = results.results[sn].trades || [];
-                if (trades.length === 0) return null;
-                return (
-                  <div className="chart-wrapper" key={`trades-${sn}`}>
-                    <h3
-                      onClick={() =>
-                        setShowTrades((prev) => ({ ...prev, [sn]: !prev[sn] }))
-                      }
-                      style={{ cursor: "pointer", userSelect: "none" }}
-                    >
-                      {showTrades[sn] ? "▼" : "▶"} 交易明细 — {getLabel(sn)}（
-                      {trades.length} 笔）
-                    </h3>
-                    {showTrades[sn] && (
-                      <div
-                        className="compare-table-wrap"
-                        style={{ maxHeight: 400, overflowY: "auto" }}
-                      >
-                        <table className="compare-table">
-                          <thead>
-                            <tr>
-                              <th>日期</th>
-                              <th>标的</th>
-                              <th>名称</th>
-                              <th>方向</th>
-                              <th>成交价</th>
-                              <th>股数</th>
-                              <th>成本价</th>
-                              <th>盈亏</th>
-                              <th>盈亏%</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {trades.map((t, i) => (
-                              <tr key={i}>
-                                <td>
-                                  {t.date ? String(t.date).slice(0, 10) : "—"}
-                                </td>
-                                <td>{t.symbol}</td>
-                                <td
-                                  style={{ fontSize: "0.78rem", color: "#888" }}
-                                >
-                                  {stockNames[t.symbol] || ""}
-                                </td>
-                                <td>{t.side}</td>
-                                <td>¥{Number(t.price).toFixed(2)}</td>
-                                <td>{Number(t.shares).toLocaleString()}</td>
-                                <td>
-                                  {t.entry_price != null
-                                    ? `¥${Number(t.entry_price).toFixed(2)}`
-                                    : "—"}
-                                </td>
-                                <td
-                                  style={{
-                                    color:
-                                      t.pnl > 0
-                                        ? "#cf1322"
-                                        : t.pnl < 0
-                                          ? "#389e0d"
-                                          : undefined,
-                                  }}
-                                >
-                                  {t.pnl != null
-                                    ? `¥${Number(t.pnl).toLocaleString()}`
-                                    : "—"}
-                                </td>
-                                <td
-                                  style={{
-                                    color:
-                                      t.pnl_pct > 0
-                                        ? "#cf1322"
-                                        : t.pnl_pct < 0
-                                          ? "#389e0d"
-                                          : undefined,
-                                  }}
-                                >
-                                  {t.pnl_pct != null
-                                    ? `${Number(t.pnl_pct).toFixed(2)}%`
-                                    : "—"}
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+              {stratNames.map((sn) => (
+                <TradeTable
+                  key={`trades-${sn}`}
+                  trades={results.results[sn].trades || []}
+                  stockNames={stockNames}
+                  label={getLabel(sn)}
+                  show={showTrades[sn] || false}
+                  onToggle={() =>
+                    setShowTrades((prev) => ({ ...prev, [sn]: !prev[sn] }))
+                  }
+                />
+              ))}
 
               <div className="chart-sort-bar">
                 <span className="sort-hint">

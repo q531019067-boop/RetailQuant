@@ -9,6 +9,9 @@ Endpoints:
     POST /api/backtest      Run backtest(s) for one or more strategies.
 """
 
+import csv
+import io
+import json as _json
 import os
 import sys
 import traceback
@@ -86,8 +89,6 @@ def get_stocks():
 @app.route("/api/config", methods=["GET"])
 def get_config():
     """返回当前费率配置（来自 contract.json 抽样 + rbacktest.toml）。"""
-    import json as _json
-
     contract_path = Path(__file__).resolve().parent.parent / "data" / "contract.json"
     commission = {"long_rate": 0.0005, "short_rate": 0.0015, "min_commission": 5.0, "stamp_tax": 0.0005}
     if contract_path.exists():
@@ -240,9 +241,6 @@ def export_results():
     try:
         body = request.get_json(force=True)
         results = body.get("results", {})
-
-        import csv
-        import io
 
         output = io.StringIO()
         writer = csv.writer(output)

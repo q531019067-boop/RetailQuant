@@ -33,6 +33,11 @@
 from __future__ import annotations
 
 from vnpy.alpha import AlphaStrategy
+from vnpy.trader.constant import Direction
+from vnpy.trader.object import TradeData
+
+# 向后兼容别名：旧 import 路径仍可使用
+from .indicators import calc_atr as _calc_atr, calc_rsi as _calc_rsi, ma_from_bars as _ma_from_bars  # noqa: F401
 
 
 class BaseStrategy(AlphaStrategy):
@@ -57,6 +62,28 @@ class BaseStrategy(AlphaStrategy):
     # ---- 子类可覆盖的缓存配置 ----
     bar_history: dict[str, list]  # 由 _maintain_bars 自动管理
     max_cache: int = 120  # 默认保留 120 根 K 线，子类在 on_init 中按需覆盖
+
+    # ---- 交易后处理（子类复用） ----
+
+    def _update_entry_price(self, trade: TradeData) -> None:
+        """根据成交更新加权平均入场价。
+
+        买入(LONG)：按成交量加权合并到 entry_price 持仓均价。
+        卖出(SHORT)：若清仓则清除入场价记录。
+
+        所有子类在 on_trade 中调用此方法即可，无需各自实现。
+        """
+        sym = trade.vt_symbol
+        if trade.direction == Direction.LONG:
+            new_pos = self.pos_data.get(sym, 0)
+            old_pos = new_pos - trade.volume
+            old_entry = self.entry_price.get(sym, trade.price)
+            self.entry_price[sym] = (
+                (old_pos * old_entry + trade.volume * trade.price) / new_pos if new_pos > 0 else trade.price
+            )
+        else:
+            if self.pos_data.get(sym, 0) <= 0:
+                self.entry_price.pop(sym, None)
 
     def _maintain_bars(self, bars: dict) -> None:
         """维护滑动窗口 bar 缓存。所有子类在 on_bars 开头调用此方法即可。"""
@@ -147,47 +174,6 @@ def calc_shares(target_value: float, price: float, cash_available: float | None 
 
 
 # ---------------------------------------------------------------------------
-# 共享技术指标 —— 所有策略子类可直接引用，避免跨文件重复定义
+# 共享技术指标（向后兼容重导出，新代码请直接从 indicators 导入）
 # ---------------------------------------------------------------------------
-
-
-def _ma_from_bars(hist: list, n: int) -> float:
-    """N 日收盘均价，基于 BarData 列表。"""
-    if len(hist) < n:
-        return float(hist[-1].close_price)
-    return float(sum(b.close_price for b in hist[-n:]) / n)
-
-
-def _calc_rsi(hist: list, n: int = 14) -> float:
-    """标准 Wilder RSI(N)。"""
-    if len(hist) < n + 1:
-        return 50.0
-    closes = [b.close_price for b in hist[-(n + 1) :]]
-    gains, losses = [], []
-    for i in range(1, len(closes)):
-        diff = closes[i] - closes[i - 1]
-        gains.append(diff if diff > 0 else 0.0)
-        losses.append(-diff if diff < 0 else 0.0)
-    avg_gain = sum(gains) / len(gains)
-    avg_loss = sum(losses) / len(losses)
-    if avg_loss == 0:
-        return 100.0
-    return float(100 - 100 / (1 + avg_gain / avg_loss))
-
-
-def _calc_atr(hist: list, n: int) -> float:
-    """ATR(N) —— Average True Range。"""
-    if len(hist) < n + 1:
-        return 0.0
-    tr_values: list[float] = []
-    recent = hist[-n:]
-    prev_close = hist[-(n + 1)].close_price
-    for b in recent:
-        tr = max(
-            b.high_price - b.low_price,
-            abs(b.high_price - prev_close),
-            abs(b.low_price - prev_close),
-        )
-        tr_values.append(tr)
-        prev_close = b.close_price
-    return float(sum(tr_values) / len(tr_values)) if tr_values else 0.0
+# _ma_from_bars, _calc_rsi, _calc_atr 已在文件头部通过 from .indicators import ... 重导出
