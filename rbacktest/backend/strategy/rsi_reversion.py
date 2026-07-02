@@ -2,11 +2,10 @@
 RSI 均值回归策略 —— RSI(14) 超卖反弹，MA200 趋势过滤，ATR 风险控制。
 """
 
-import numpy as np
 from vnpy.trader.constant import Direction
 from vnpy.trader.object import TradeData, BarData
 
-from .base import BaseStrategy, calc_shares
+from .base import BaseStrategy, _calc_atr, _calc_rsi, _ma_from_bars, calc_shares
 
 
 class RsiMeanReversionStrategy(BaseStrategy):
@@ -67,13 +66,13 @@ class RsiMeanReversionStrategy(BaseStrategy):
             if self.pos_data.get(sym, 0) > 0:
                 continue
 
-            rsi_val = self._calc_rsi(hist, self.rsi_n)
+            rsi_val = _calc_rsi(hist, self.rsi_n)
             if rsi_val >= self.rsi_buy:
                 continue
 
             close = hist[-1].close_price
-            ma_trend = self._ma(hist, self.trend_ma_n)
-            atr_val = self._calc_atr(hist, self.atr_n)
+            ma_trend = _ma_from_bars(hist, self.trend_ma_n)
+            atr_val = _calc_atr(hist, self.atr_n)
 
             # 趋势过滤：价格在 MA 上方或附近（不超过 1.5×ATR 下方）
             if close < ma_trend - 1.5 * atr_val:
@@ -94,8 +93,8 @@ class RsiMeanReversionStrategy(BaseStrategy):
 
             close = hist[-1].close_price
             pnl_pct = close / entry_p - 1
-            rsi_val = self._calc_rsi(hist, self.rsi_n)
-            atr_val = self._calc_atr(hist, self.atr_n)
+            rsi_val = _calc_rsi(hist, self.rsi_n)
+            atr_val = _calc_atr(hist, self.atr_n)
 
             # ATR 止损
             stop_price = entry_p - self.stop_atr * atr_val
@@ -146,44 +145,3 @@ class RsiMeanReversionStrategy(BaseStrategy):
             if self.pos_data.get(sym, 0) <= 0:
                 self.entry_price.pop(sym, None)
                 self.hold_since.pop(sym, None)
-
-    @staticmethod
-    def _ma(hist: list[BarData], n: int) -> float:
-        if len(hist) < n:
-            return float(hist[-1].close_price)
-        return float(np.mean([b.close_price for b in hist[-n:]]))
-
-    @staticmethod
-    def _calc_atr(hist: list[BarData], n: int) -> float:
-        if len(hist) < n + 1:
-            return 0.0
-        tr_values: list[float] = []
-        recent = hist[-n:]
-        prev_close = hist[-(n + 1)].close_price
-        for b in recent:
-            tr = max(
-                b.high_price - b.low_price,
-                abs(b.high_price - prev_close),
-                abs(b.low_price - prev_close),
-            )
-            tr_values.append(tr)
-            prev_close = b.close_price
-        return float(np.mean(tr_values)) if tr_values else 0.0
-
-    @staticmethod
-    def _calc_rsi(hist: list[BarData], n: int = 14) -> float:
-        """标准 Wilder RSI 计算。"""
-        if len(hist) < n + 1:
-            return 50.0
-        closes = [b.close_price for b in hist[-(n + 1) :]]
-        gains = []
-        losses = []
-        for i in range(1, len(closes)):
-            diff = closes[i] - closes[i - 1]
-            gains.append(diff if diff > 0 else 0.0)
-            losses.append(-diff if diff < 0 else 0.0)
-        avg_gain = float(np.mean(gains))
-        avg_loss = float(np.mean(losses))
-        if avg_loss == 0:
-            return 100.0
-        return float(100 - 100 / (1 + avg_gain / avg_loss))

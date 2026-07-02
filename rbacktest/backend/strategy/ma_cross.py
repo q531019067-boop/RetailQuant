@@ -2,11 +2,10 @@
 双均线交叉策略 —— MA5 上穿 MA20 金叉买入，MA5 下穿 MA20 死叉卖出。
 """
 
-import numpy as np
 from vnpy.trader.constant import Direction
 from vnpy.trader.object import TradeData, BarData
 
-from .base import BaseStrategy, calc_shares
+from .base import BaseStrategy, _ma_from_bars, calc_shares
 
 
 class MovingAverageCrossStrategy(BaseStrategy):
@@ -55,10 +54,10 @@ class MovingAverageCrossStrategy(BaseStrategy):
             if self.pos_data.get(sym, 0) > 0:
                 continue
 
-            fast_now = self._ma(hist, self.fast_n)
-            slow_now = self._ma(hist, self.slow_n)
-            fast_prev = self._ma(hist[:-1], self.fast_n)
-            slow_prev = self._ma(hist[:-1], self.slow_n)
+            fast_now = _ma_from_bars(hist, self.fast_n)
+            slow_now = _ma_from_bars(hist, self.slow_n)
+            fast_prev = _ma_from_bars(hist[:-1], self.fast_n)
+            slow_prev = _ma_from_bars(hist[:-1], self.slow_n)
 
             # 金叉：昨日快线 ≤ 慢线，今日快线 > 慢线
             if fast_prev <= slow_prev and fast_now > slow_now:
@@ -84,8 +83,8 @@ class MovingAverageCrossStrategy(BaseStrategy):
                 continue
 
             # 死叉：今日快线 < 慢线（仅在有浮亏时离场）
-            fast_now = self._ma(hist, self.fast_n)
-            slow_now = self._ma(hist, self.slow_n)
+            fast_now = _ma_from_bars(hist, self.fast_n)
+            slow_now = _ma_from_bars(hist, self.slow_n)
             if fast_now < slow_now and pnl_pct < 0:
                 self.target_data[sym] = 0.0
                 continue
@@ -120,9 +119,3 @@ class MovingAverageCrossStrategy(BaseStrategy):
         else:
             if self.pos_data.get(sym, 0) <= 0:
                 self.entry_price.pop(sym, None)
-
-    @staticmethod
-    def _ma(hist: list[BarData], n: int) -> float:
-        if len(hist) < n:
-            return float(hist[-1].close_price)
-        return float(np.mean([b.close_price for b in hist[-n:]]))

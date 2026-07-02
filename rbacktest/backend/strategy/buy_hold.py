@@ -3,11 +3,10 @@
 站上 MA60 或止盈/止损时卖出。
 """
 
-import numpy as np
 from vnpy.trader.constant import Direction
 from vnpy.trader.object import TradeData, BarData
 
-from .base import BaseStrategy, calc_shares
+from .base import BaseStrategy, _calc_rsi, _ma_from_bars, calc_shares
 
 
 class BuyHoldStrategy(BaseStrategy):
@@ -79,7 +78,7 @@ class BuyHoldStrategy(BaseStrategy):
                 continue
 
             # 2. MA 距离
-            ma_val = self._ma(hist, self.ma_n)
+            ma_val = _ma_from_bars(hist, self.ma_n)
             if ma_val <= 0:
                 continue
             drop_to_ma = (close / ma_val - 1) * 100
@@ -87,13 +86,13 @@ class BuyHoldStrategy(BaseStrategy):
                 continue
 
             # 3. RSI 超卖
-            rsi_val = self._calc_rsi(hist, 14)
+            rsi_val = _calc_rsi(hist, 14)
             if rsi_val >= self.rsi_buy:
                 continue
 
             # 4. 缩量
-            vol_3avg = float(np.mean([b.volume for b in hist[-3:]]))
-            vol_20avg = float(np.mean([b.volume for b in hist[-20:]]))
+            vol_3avg = sum(b.volume for b in hist[-3:]) / 3
+            vol_20avg = sum(b.volume for b in hist[-20:]) / 20
             if vol_20avg <= 0 or vol_3avg > vol_20avg * self.vol_shrink_ratio:
                 continue
 
@@ -127,7 +126,7 @@ class BuyHoldStrategy(BaseStrategy):
 
             close = hist[-1].close_price
             pnl_pct = close / entry_p - 1
-            ma_val = self._ma(hist, self.ma_n)
+            ma_val = _ma_from_bars(hist, self.ma_n)
 
             if pnl_pct >= self.take_profit:
                 self.target_data[sym] = 0.0
@@ -170,25 +169,3 @@ class BuyHoldStrategy(BaseStrategy):
         else:
             if self.pos_data.get(sym, 0) <= 0:
                 self.entry_price.pop(sym, None)
-
-    @staticmethod
-    def _ma(hist: list[BarData], n: int) -> float:
-        if len(hist) < n:
-            return float(hist[-1].close_price)
-        return float(np.mean([b.close_price for b in hist[-n:]]))
-
-    @staticmethod
-    def _calc_rsi(hist: list[BarData], n: int = 14) -> float:
-        if len(hist) < n + 1:
-            return 50.0
-        closes = [b.close_price for b in hist[-(n + 1) :]]
-        gains, losses = [], []
-        for i in range(1, len(closes)):
-            diff = closes[i] - closes[i - 1]
-            gains.append(diff if diff > 0 else 0.0)
-            losses.append(-diff if diff < 0 else 0.0)
-        avg_gain = float(np.mean(gains))
-        avg_loss = float(np.mean(losses))
-        if avg_loss == 0:
-            return 100.0
-        return float(100 - 100 / (1 + avg_gain / avg_loss))

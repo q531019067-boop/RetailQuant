@@ -3,11 +3,10 @@
 20 日新高入场，10 日新低离场，2×ATR 移动止损。
 """
 
-import numpy as np
 from vnpy.trader.constant import Direction
 from vnpy.trader.object import TradeData, BarData
 
-from .base import BaseStrategy, calc_shares
+from .base import BaseStrategy, _calc_atr, calc_shares
 
 
 class DonchianTurtleStrategy(BaseStrategy):
@@ -89,7 +88,7 @@ class DonchianTurtleStrategy(BaseStrategy):
                 continue
 
             # 2×ATR 移动止损
-            atr_val = self._calc_atr(hist, self.atr_n)
+            atr_val = _calc_atr(hist, self.atr_n)
             if entry_p - 2 * atr_val > 0 and close < entry_p - 2 * atr_val:
                 self.target_data[sym] = 0.0
                 continue
@@ -124,21 +123,3 @@ class DonchianTurtleStrategy(BaseStrategy):
         else:
             if self.pos_data.get(sym, 0) <= 0:
                 self.entry_price.pop(sym, None)
-
-    @staticmethod
-    def _calc_atr(hist: list[BarData], n: int) -> float:
-        """计算 ATR(N) —— Average True Range。"""
-        if len(hist) < n + 1:
-            return 0.0
-        tr_values: list[float] = []
-        recent = hist[-n:]
-        prev_close = hist[-(n + 1)].close_price
-        for b in recent:
-            tr = max(
-                b.high_price - b.low_price,
-                abs(b.high_price - prev_close),
-                abs(b.low_price - prev_close),
-            )
-            tr_values.append(tr)
-            prev_close = b.close_price
-        return float(np.mean(tr_values)) if tr_values else 0.0
