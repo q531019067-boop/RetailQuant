@@ -318,6 +318,7 @@ def tool_run_backtest(
 
     return {
         "strategies": strategies,
+        "strategy_params": strategy_params,
         "vt_symbols": vt_symbols,
         "start": start,
         "end": end,
