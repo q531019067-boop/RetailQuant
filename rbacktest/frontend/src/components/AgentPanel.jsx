@@ -99,6 +99,23 @@ export default function AgentPanel({
     if (!done || !sessionId) return;
     const save = async () => {
       try {
+        // 拉取所有缓存的全量回测结果（含 daily + trades），嵌入文件避免重启丢失
+        const cachedWithFull: Record<string, unknown> = {};
+        for (const [cid, entry] of Object.entries(cachedResults)) {
+          cachedWithFull[cid] = { ...entry };
+          const cacheId = (entry as Record<string, unknown>)?._cache_id as string | undefined;
+          if (cacheId) {
+            try {
+              const res = await fetch(`/api/agent/result/${cacheId}`);
+              if (res.ok) {
+                const full = await res.json();
+                cachedWithFull[cid]._full_data = full;
+              }
+            } catch {
+              /* ignore */
+            }
+          }
+        }
         await fetch("/api/agent/sessions", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -106,7 +123,7 @@ export default function AgentPanel({
             id: sessionId,
             first_question: firstQuestionRef.current,
             events: events.filter((e) => e.type !== "heartbeat"),
-            cached_results: cachedResults,
+            cached_results: cachedWithFull,
           }),
         });
       } catch {
@@ -246,6 +263,13 @@ export default function AgentPanel({
     const cached = cachedResults[cacheKey];
     if (!cached || !onViewResults) return;
 
+    // 优先用保存的全量数据（回放模式，无需 API）
+    if (cached._full_data?.results) {
+      onViewResults({ task_id: cacheKey, results: cached._full_data.results });
+      return;
+    }
+
+    // 其次查后端内存缓存
     if (cached._cache_id) {
       try {
         const res = await fetch(`/api/agent/result/${cached._cache_id}`);

@@ -51,8 +51,8 @@ def _cache_backtest_result(cache_id: str, result: dict) -> None:
 
 
 def get_cached_result(cache_id: str) -> dict | None:
-    """获取缓存回测结果，取后即删（一次性使用）。"""
-    return _result_cache.pop(cache_id, None)
+    """获取缓存回测结果（不删除，供回放复用）。"""
+    return _result_cache.get(cache_id)
 
 
 # ---------------------------------------------------------------------------

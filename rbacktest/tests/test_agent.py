@@ -262,13 +262,14 @@ class TestToolRegistry:
         assert "capital" in result
 
     def test_backtest_cache_roundtrip(self):
-        """缓存的回测结果能通过 get_cached_result 取出，取后即删。"""
+        """缓存的回测结果能通过 get_cached_result 取出。"""
         from backend.agent.tools import _cache_backtest_result, get_cached_result
 
         fake = {"strategy": "test", "results": {"daily": [1, 2, 3]}}
         _cache_backtest_result("cache-1", fake)
         assert get_cached_result("cache-1") == fake
-        assert get_cached_result("cache-1") is None  # 取后即删
+        # 不删除，再次读取仍存在
+        assert get_cached_result("cache-1") == fake
 
     def test_register_tool_optional_params(self):
         """有 optional 参数的字段不在 required 列表中。"""

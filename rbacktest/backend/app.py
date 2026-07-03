@@ -372,7 +372,7 @@ def delete_agent_session(sid: str):
 
 @app.route("/api/agent/result/<cache_id>", methods=["GET"])
 def agent_cached_result(cache_id: str):
-    """获取 Agent 工具缓存的全量回测结果。取后即删。"""
+    """获取 Agent 工具缓存的全量回测结果。"""
     from backend.agent.tools import get_cached_result
 
     r = get_cached_result(cache_id)
