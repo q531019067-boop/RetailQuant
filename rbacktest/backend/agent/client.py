@@ -96,7 +96,7 @@ class LLMClient:
     """
 
     def __init__(self) -> None:
-        cfg = _load_agent_config()
+        cfg = load_agent_config()
         self._model: str = cfg.get("model", "deepseek-chat")
         base_url: str = cfg.get("base_url", "https://api.deepseek.com")
         api_key_env: str = cfg.get("api_key_env", "DEEPSEEK_API_KEY")

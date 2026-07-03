@@ -105,12 +105,7 @@ export default function AgentPanel({
           body: JSON.stringify({
             id: sessionId,
             first_question: firstQuestionRef.current,
-            events: events
-              .filter((e) => e.type !== "heartbeat")
-              .map((e) => {
-                const { _cacheId, ...rest } = e;
-                return rest;
-              }),
+            events: events.filter((e) => e.type !== "heartbeat"),
             cached_results: cachedResults,
           }),
         });
