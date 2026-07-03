@@ -57,7 +57,7 @@ export default function CompareTable({
             <thead>
               <tr>
                 <th>指标</th>
-                {stratNames.map((sn, i) => (
+                {stratNames.map((sn, _i) => (
                   <th key={sn}>
                     <span
                       className="strategy-dot"
