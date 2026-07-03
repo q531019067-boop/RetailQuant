@@ -439,7 +439,7 @@ class TestLLMClient:
         from backend.agent.client import _validate_agent_config
 
         cfg = {"max_iterations": "50", "model": "x", "base_url": "https://x", "api_key_env": "K"}
-        w = _validate_agent_config(cfg)
+        _validate_agent_config(cfg)
         assert isinstance(cfg["max_iterations"], int)
         assert cfg["max_iterations"] == 50
 

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import ParamPanel from "./components/ParamPanel";
 import CompareTable from "./components/CompareTable";
 import TradeTable from "./components/TradeTable";
@@ -70,9 +70,6 @@ export default function App() {
 
   // Agent 状态
   const [agentOpen, setAgentOpen] = useState(false);
-  const [resultVersion, setResultVersion] = useState(0);
-  const resultVersionRef = useRef(0);
-  useEffect(() => { resultVersionRef.current = resultVersion; }, [resultVersion]);
 
   /* ---- initial data fetch ---- */
 
@@ -104,7 +101,6 @@ export default function App() {
     setResults(res);
     setBenchmark(null);
     setLastParams(params || null);
-    setResultVersion((v) => v + 1);
 
     const entry = {
       task_id: res.task_id,
@@ -131,7 +127,6 @@ export default function App() {
     setResults(entry.results);
     setBenchmark(null);
     setRestoredParams(entry.params);
-    setResultVersion((v) => v + 1);
   };
 
   const handleDeleteHistory = (taskId) => {
@@ -147,12 +142,6 @@ export default function App() {
   /* ---- Agent handlers ---- */
 
   const handleAgentViewResults = useCallback((data) => {
-    const cv = resultVersionRef.current;
-    setResultVersion((v) => v + 1);
-    if (cv > 0) {
-      const ok = window.confirm("Agent 查看图表将覆盖当前的图表和数据。\n确定要切换吗？");
-      if (!ok) return;
-    }
     setResults(data);
     setBenchmark(null);
   }, []);
