@@ -72,8 +72,9 @@ cd rbacktest/frontend
 npx prettier --check src/
 npx prettier --write src/
 
-# Markdown lint
-npx markdownlint-cli2 rbacktest/*.md
+# Markdown lint（从项目根目录跑，确保读到 .markdownlint.json 配置）
+cd /Users/kenshin/dev/github/RetailQuant
+npx markdownlint-cli2 rbacktest/*.md .agents/skills/code-review/SKILL.md
 
 # 全量测试
 uv run python -m pytest rbacktest/tests/ -q
