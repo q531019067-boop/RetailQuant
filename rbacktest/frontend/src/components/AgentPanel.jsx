@@ -85,7 +85,6 @@ export default function AgentPanel({
   );
   const [sessionId, setSessionId] = useState(sessionData?.id || null);
   const [hintIdx, setHintIdx] = useState(0);
-  const [hasSent, setHasSent] = useState(!!sessionData);
   const isReplay = !!sessionData;
   const cacheIdRef = useRef(0);
   const bottomRef = useRef(null);
@@ -100,10 +99,10 @@ export default function AgentPanel({
     const save = async () => {
       try {
         // 拉取所有缓存的全量回测结果（含 daily + trades），嵌入文件避免重启丢失
-        const cachedWithFull: Record<string, unknown> = {};
+        const cachedWithFull = {};
         for (const [cid, entry] of Object.entries(cachedResults)) {
           cachedWithFull[cid] = { ...entry };
-          const cacheId = (entry as Record<string, unknown>)?._cache_id as string | undefined;
+          const cacheId = entry._cache_id;
           if (cacheId) {
             try {
               const res = await fetch(`/api/agent/result/${cacheId}`);
@@ -170,7 +169,6 @@ export default function AgentPanel({
       setLoading(true);
       setDone(false);
       setError(null);
-      setHasSent(true);
 
       const controller = new AbortController();
       abortRef.current = controller;
