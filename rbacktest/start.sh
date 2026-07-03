@@ -48,7 +48,7 @@ if [ ! -d ".venv" ]; then
 fi
 
 log "Installing / updating Python dependencies ..."
-uv pip install flask flask-cors polars pytest -q --index-url "$MIRROR" 2>&1 | tail -1
+uv pip install flask flask-cors polars pytest openai -q --index-url "$MIRROR" 2>&1 | tail -1
 uv pip install vnpy -q --index-url "$MIRROR" 2>&1 | tail -1
 uv pip install alphalens-reloaded scipy scikit-learn pyarrow -q --index-url "$MIRROR" 2>&1 | tail -1
 

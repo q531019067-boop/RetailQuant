@@ -7,6 +7,7 @@ Endpoints:
     GET  /api/strategies    List available strategies and their parameters.
     GET  /api/benchmark     Benchmark (e.g. CSI 300) daily NAV.
     POST /api/backtest      Run backtest(s) for one or more strategies.
+    POST /api/agent/chat    Agent 对话（SSE 流式）
 """
 
 import csv
@@ -23,7 +24,7 @@ _PROJECT_DIR = Path(__file__).resolve().parent.parent
 if str(_PROJECT_DIR) not in sys.path:
     sys.path.insert(0, str(_PROJECT_DIR))
 
-from flask import Flask, request, jsonify  # noqa: E402
+from flask import Flask, Response, request, jsonify  # noqa: E402
 from flask_cors import CORS  # noqa: E402
 
 from backend.backtest_engine import (  # noqa: E402
@@ -271,7 +272,6 @@ def export_results():
 
         csv_content = output.getvalue()
         output.close()
-        from flask import Response
 
         return Response(
             csv_content,
@@ -293,6 +293,90 @@ def _check_port(port: int) -> bool:
             return True
         except OSError:
             return False
+
+
+# ---------------------------------------------------------------------------
+# Agent 回测结果缓存（避免「查看图表」重复跑回测）
+# ---------------------------------------------------------------------------
+
+
+@app.route("/api/agent/result/<cache_id>", methods=["GET"])
+def agent_cached_result(cache_id: str):
+    """获取 Agent 工具缓存的全量回测结果。取后即删。"""
+    from backend.agent.tools import get_cached_result
+
+    r = get_cached_result(cache_id)
+    if r is None:
+        return jsonify({"error": "缓存已过期或不存在，请重新让 Agent 分析"}), 404
+    return jsonify(r)
+
+
+# ---------------------------------------------------------------------------
+# Agent 对话（SSE 流式）
+# ---------------------------------------------------------------------------
+
+
+@app.route("/api/agent/chat", methods=["POST"])
+def agent_chat():
+    """Agent 对话端点 —— 返回 SSE 流式事件。"""
+    import json
+
+    from backend.agent import run_agent
+    from backend.log import logger
+
+    # 鉴权：如果设置了 RBACKTEST_API_KEY 环境变量，要求请求头匹配
+    expected_key = os.environ.get("RBACKTEST_API_KEY", "")
+    if expected_key:
+        req_key = request.headers.get("X-Api-Key", "")
+        if req_key != expected_key:
+            logger.warning("Agent 鉴权失败: X-Api-Key 不匹配")
+            return jsonify({"error": "未授权", "hint": "请在请求头中设置 X-Api-Key"}), 401
+
+    # 必须在进入生成器之前提取 request 数据（生成器 yield 后请求上下文会被销毁）
+    try:
+        body = request.get_json(force=True)
+    except Exception as e:
+        logger.error(f"Agent 请求 JSON 解析失败: {e}")
+        body = None
+
+    results = body.get("results") if body else None
+    params = body.get("params") if body else None
+    question = body.get("question", "") if body else ""
+    session_id = body.get("session_id") if body else None
+
+    def generate():
+        """所有逻辑放生成器内部，确保异常都转为 SSE 事件而非 500。"""
+        if body is None:
+            yield f"data: {json.dumps({'type': 'error', 'content': '请求体 JSON 解析失败'}, ensure_ascii=False)}\n\n"
+            yield "data: [DONE]\n\n"
+            return
+
+        try:
+            logger.info(f"Agent 会话开始: has_results={bool(results)} has_params={bool(params)}")
+
+            for event in run_agent(
+                results=results, params=params, user_question=question, session_id=session_id
+            ):
+                yield f"data: {json.dumps(event, ensure_ascii=False, default=str)}\n\n"
+
+            yield "data: [DONE]\n\n"
+            logger.info("Agent 会话完成")
+        except Exception as e:
+            logger.error(f"Agent SSE 致命异常: {e}", exc_info=True)
+            traceback.print_exc()
+            err = json.dumps({"type": "error", "content": f"系统错误: {e}"}, ensure_ascii=False)
+            yield f"data: {err}\n\n"
+            yield "data: [DONE]\n\n"
+
+    return Response(
+        generate(),
+        mimetype="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 
 if __name__ == "__main__":

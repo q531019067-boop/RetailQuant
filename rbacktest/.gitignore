@@ -22,3 +22,6 @@ qlib_daily.parquet
 # OS
 .DS_Store
 Thumbs.db
+
+# Logs
+logs/
