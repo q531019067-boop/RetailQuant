@@ -69,25 +69,57 @@ const HINTS = [
 export default function AgentPanel({
   results,
   params,
+  sessionData,
   onClose,
   onViewResults,
 }) {
-  const [events, setEvents] = useState([]);
-  const [done, setDone] = useState(false);
+  const [events, setEvents] = useState(sessionData?.events || []);
+  const [done, setDone] = useState(!!sessionData);
   const [error, setError] = useState(null);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [maximized, setMaximized] = useState(false);
   const [minimized, setMinimized] = useState(false);
-  const [cachedResults, setCachedResults] = useState({});
-  const [sessionId, setSessionId] = useState(null);
+  const [cachedResults, setCachedResults] = useState(
+    sessionData?.cached_results || {},
+  );
+  const [sessionId, setSessionId] = useState(sessionData?.id || null);
   const [hintIdx, setHintIdx] = useState(0);
-  const [hasSent, setHasSent] = useState(false);
+  const [hasSent, setHasSent] = useState(!!sessionData);
+  const isReplay = !!sessionData;
   const cacheIdRef = useRef(0);
   const bottomRef = useRef(null);
   const abortRef = useRef(null);
   const initialResultsRef = useRef(results);
   const dataChanged = results !== initialResultsRef.current && results != null;
+  const firstQuestionRef = useRef("");
+
+  // session 完成时自动保存到后端文件
+  useEffect(() => {
+    if (!done || !sessionId) return;
+    const save = async () => {
+      try {
+        await fetch("/api/agent/sessions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id: sessionId,
+            first_question: firstQuestionRef.current,
+            events: events
+              .filter((e) => e.type !== "heartbeat")
+              .map((e) => {
+                const { _cacheId, ...rest } = e;
+                return rest;
+              }),
+            cached_results: cachedResults,
+          }),
+        });
+      } catch {
+        /* ignore */
+      }
+    };
+    save();
+  }, [done]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // 轮播 placeholder
   useEffect(() => {
@@ -204,6 +236,7 @@ export default function AgentPanel({
 
   const handleSend = () => {
     if (!input.trim() || loading) return;
+    if (!firstQuestionRef.current) firstQuestionRef.current = input.trim();
     sendMessage(input);
     setInput("");
   };
@@ -353,7 +386,7 @@ export default function AgentPanel({
     <div className={`agent-panel ${maximized ? "maximized" : ""}`}>
       {/* 头部 */}
       <div className="agent-panel-header">
-        <h2>AI 助手</h2>
+        <h2>AI 助手{isReplay ? " · 历史回放" : ""}</h2>
         <div className="agent-panel-actions">
           {loading && (
             <button className="agent-stop-btn" onClick={handleStop}>
@@ -421,24 +454,26 @@ export default function AgentPanel({
         <div ref={bottomRef} />
       </div>
 
-      {/* 输入框 —— 始终可见 */}
-      <div className="agent-panel-footer">
-        <input
-          type="text"
-          className="agent-followup-input"
-          placeholder={HINTS[hintIdx]}
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && handleSend()}
-        />
-        <button
-          className="agent-followup-btn"
-          onClick={handleSend}
-          disabled={!input.trim() || loading}
-        >
-          发送
-        </button>
-      </div>
+      {/* 输入框 —— 回放模式隐藏 */}
+      {!isReplay && (
+        <div className="agent-panel-footer">
+          <input
+            type="text"
+            className="agent-followup-input"
+            placeholder={HINTS[hintIdx]}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleSend()}
+          />
+          <button
+            className="agent-followup-btn"
+            onClick={handleSend}
+            disabled={!input.trim() || loading}
+          >
+            发送
+          </button>
+        </div>
+      )}
     </div>
   );
 }

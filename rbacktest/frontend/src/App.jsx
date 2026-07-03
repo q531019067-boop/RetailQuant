@@ -160,6 +160,9 @@ export default function App() {
 
   // Agent 状态
   const [agentOpen, setAgentOpen] = useState(false);
+  const [agentSessionData, setAgentSessionData] = useState(null); // 查看历史会话时传入
+  const [agentSessions, setAgentSessions] = useState([]);
+  const [showAgentSessions, setShowAgentSessions] = useState(false);
 
   /* ---- initial data fetch ---- */
 
@@ -183,6 +186,11 @@ export default function App() {
         strats: strats.length || 0,
       });
     });
+    // 加载 Agent 对话历史列表
+    fetch("/api/agent/sessions")
+      .then((r) => r.json())
+      .then((d) => setAgentSessions(d.sessions || []))
+      .catch(() => {});
   }, []);
 
   /* ---- backtest result handler ---- */
@@ -240,6 +248,32 @@ export default function App() {
     setBenchmark(null);
   }, []);
 
+  const handleViewAgentSession = async (s) => {
+    try {
+      const res = await fetch(`/api/agent/sessions/${s.id}`);
+      const data = await res.json();
+      setAgentSessionData(data);
+      setAgentOpen(true);
+    } catch {
+      /* ignore */
+    }
+  };
+
+  const handleDeleteAgentSession = async (sid) => {
+    await fetch(`/api/agent/sessions/${sid}`, { method: "DELETE" });
+    setAgentSessions((prev) => prev.filter((s) => s.id !== sid));
+  };
+
+  const handleCloseAgent = () => {
+    setAgentOpen(false);
+    setAgentSessionData(null);
+    // 刷新会话列表
+    fetch("/api/agent/sessions")
+      .then((r) => r.json())
+      .then((d) => setAgentSessions(d.sessions || []))
+      .catch(() => {});
+  };
+
   /* ---- derived ---- */
 
   const stratNames = results ? Object.keys(results.results) : [];
@@ -288,6 +322,11 @@ export default function App() {
                 onRestore={handleRestoreHistory}
                 onDelete={handleDeleteHistory}
                 onClear={handleClearHistory}
+                agentSessions={agentSessions}
+                showAgentSessions={showAgentSessions}
+                onToggleAgent={() => setShowAgentSessions(!showAgentSessions)}
+                onViewAgent={handleViewAgentSession}
+                onDeleteAgent={handleDeleteAgentSession}
               />
             </>
           )}
@@ -342,7 +381,8 @@ export default function App() {
         <AgentPanel
           results={results}
           params={lastParams}
-          onClose={() => setAgentOpen(false)}
+          sessionData={agentSessionData}
+          onClose={handleCloseAgent}
           onViewResults={handleAgentViewResults}
         />
       )}
