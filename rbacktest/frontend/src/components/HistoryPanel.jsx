@@ -15,8 +15,6 @@
  *   onDeleteAgent   - 删除某条 Agent 会话
  */
 
-import { useState, useEffect } from "react";
-
 export default function HistoryPanel({
   history,
   showHistory,
