@@ -262,13 +262,14 @@ class TestToolRegistry:
         assert "capital" in result
 
     def test_backtest_cache_roundtrip(self):
-        """缓存的回测结果能通过 get_cached_result 取出，取后即删。"""
+        """缓存的回测结果能通过 get_cached_result 取出。"""
         from backend.agent.tools import _cache_backtest_result, get_cached_result
 
         fake = {"strategy": "test", "results": {"daily": [1, 2, 3]}}
         _cache_backtest_result("cache-1", fake)
         assert get_cached_result("cache-1") == fake
-        assert get_cached_result("cache-1") is None  # 取后即删
+        # 不删除，再次读取仍存在
+        assert get_cached_result("cache-1") == fake
 
     def test_register_tool_optional_params(self):
         """有 optional 参数的字段不在 required 列表中。"""
@@ -424,7 +425,9 @@ class TestLLMClient:
         """max_iterations 超范围会被修正。"""
         from backend.agent.client import _validate_agent_config
 
-        w = _validate_agent_config({"max_iterations": 999, "model": "test", "base_url": "https://x", "api_key_env": "K"})
+        w = _validate_agent_config(
+            {"max_iterations": 999, "model": "test", "base_url": "https://x", "api_key_env": "K"}
+        )
         assert any("999" in x or "max_iterations" in x for x in w)
 
     def test_validate_warns_missing_required(self):
@@ -439,7 +442,7 @@ class TestLLMClient:
         from backend.agent.client import _validate_agent_config
 
         cfg = {"max_iterations": "50", "model": "x", "base_url": "https://x", "api_key_env": "K"}
-        w = _validate_agent_config(cfg)
+        _validate_agent_config(cfg)
         assert isinstance(cfg["max_iterations"], int)
         assert cfg["max_iterations"] == 50
 

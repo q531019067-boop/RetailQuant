@@ -23,13 +23,13 @@ _log = logging.getLogger("rbacktest")
 
 # 每个 [agent] 字段的约束：{key: (类型, 是否必填, 最小值, 最大值, 描述)}
 _AGENT_CONFIG_SCHEMA: dict[str, tuple[type, bool, object, object, str]] = {
-    "model":            (str,   True,  None, None, "模型名称"),
-    "base_url":         (str,   True,  None, None, "API 地址（需以 http 开头）"),
-    "api_key_env":      (str,   True,  None, None, "API key 环境变量名"),
-    "max_iterations":   (int,   True,  1,    200,  "最大循环轮数"),
-    "temperature":      (float, False, 0.0,  2.0,  "温度"),
-    "max_tokens":       (int,   False, 100,  128000, "最大 token 数"),
-    "timeout_per_step": (float, False, 1,    300,  "单步超时秒数"),
+    "model": (str, True, None, None, "模型名称"),
+    "base_url": (str, True, None, None, "API 地址（需以 http 开头）"),
+    "api_key_env": (str, True, None, None, "API key 环境变量名"),
+    "max_iterations": (int, True, 1, 200, "最大循环轮数"),
+    "temperature": (float, False, 0.0, 2.0, "温度"),
+    "max_tokens": (int, False, 100, 128000, "最大 token 数"),
+    "timeout_per_step": (float, False, 1, 300, "单步超时秒数"),
 }
 
 
@@ -96,7 +96,7 @@ class LLMClient:
     """
 
     def __init__(self) -> None:
-        cfg = _load_agent_config()
+        cfg = load_agent_config()
         self._model: str = cfg.get("model", "deepseek-chat")
         base_url: str = cfg.get("base_url", "https://api.deepseek.com")
         api_key_env: str = cfg.get("api_key_env", "DEEPSEEK_API_KEY")

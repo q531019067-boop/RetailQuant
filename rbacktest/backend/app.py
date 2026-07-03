@@ -17,6 +17,7 @@ import os
 import sys
 import traceback
 import uuid
+from datetime import datetime
 from pathlib import Path
 
 # 确保 backend 包可导入（无论从哪个目录启动）
@@ -296,13 +297,82 @@ def _check_port(port: int) -> bool:
 
 
 # ---------------------------------------------------------------------------
+# Agent 会话持久化（保存为 JSON 文件，重启不丢，AI 可读）
+# ---------------------------------------------------------------------------
+
+_SESSIONS_DIR = Path(__file__).resolve().parent.parent / "data" / "agent_sessions"
+
+
+def _ensure_sessions_dir() -> None:
+    _SESSIONS_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def _session_path(sid: str) -> Path:
+    return _SESSIONS_DIR / f"{sid}.json"
+
+
+@app.route("/api/agent/sessions", methods=["GET"])
+def list_agent_sessions():
+    """列出所有已保存的 Agent 会话（按时间倒序）。"""
+    _ensure_sessions_dir()
+    sessions = []
+    for f in sorted(_SESSIONS_DIR.glob("*.json"), reverse=True):
+        try:
+            data = _json.loads(f.read_text(encoding="utf-8"))
+            sessions.append(
+                {
+                    "id": data.get("id", f.stem),
+                    "saved_at": data.get("saved_at", ""),
+                    "first_question": data.get("first_question", "")[:80],
+                }
+            )
+        except Exception:
+            continue
+    return jsonify({"sessions": sessions})
+
+
+@app.route("/api/agent/sessions/<sid>", methods=["GET"])
+def get_agent_session(sid: str):
+    """读取某个 Agent 会话的完整内容。"""
+    path = _session_path(sid)
+    if not path.exists():
+        return jsonify({"error": "会话不存在"}), 404
+    return jsonify(_json.loads(path.read_text(encoding="utf-8")))
+
+
+@app.route("/api/agent/sessions", methods=["POST"])
+def save_agent_session():
+    """保存 Agent 会话到文件。"""
+    try:
+        body = request.get_json(force=True)
+    except Exception:
+        return jsonify({"error": "请求体解析失败"}), 400
+    sid = body.get("id", "")
+    if not sid:
+        return jsonify({"error": "缺少会话 ID"}), 400
+    _ensure_sessions_dir()
+    body["saved_at"] = body.get("saved_at", datetime.now().isoformat())
+    _session_path(sid).write_text(_json.dumps(body, ensure_ascii=False, indent=2), encoding="utf-8")
+    return jsonify({"ok": True})
+
+
+@app.route("/api/agent/sessions/<sid>", methods=["DELETE"])
+def delete_agent_session(sid: str):
+    """删除某个 Agent 会话。"""
+    path = _session_path(sid)
+    if path.exists():
+        path.unlink()
+    return jsonify({"ok": True})
+
+
+# ---------------------------------------------------------------------------
 # Agent 回测结果缓存（避免「查看图表」重复跑回测）
 # ---------------------------------------------------------------------------
 
 
 @app.route("/api/agent/result/<cache_id>", methods=["GET"])
 def agent_cached_result(cache_id: str):
-    """获取 Agent 工具缓存的全量回测结果。取后即删。"""
+    """获取 Agent 工具缓存的全量回测结果。"""
     from backend.agent.tools import get_cached_result
 
     r = get_cached_result(cache_id)
@@ -354,9 +424,7 @@ def agent_chat():
         try:
             logger.info(f"Agent 会话开始: has_results={bool(results)} has_params={bool(params)}")
 
-            for event in run_agent(
-                results=results, params=params, user_question=question, session_id=session_id
-            ):
+            for event in run_agent(results=results, params=params, user_question=question, session_id=session_id):
                 yield f"data: {json.dumps(event, ensure_ascii=False, default=str)}\n\n"
 
             yield "data: [DONE]\n\n"

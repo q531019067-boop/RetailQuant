@@ -11,7 +11,7 @@ import time
 _sessions: dict[str, dict] = {}
 
 TTL_SECONDS = 1800  # 30 分钟
-MAX_SESSIONS = 50   # 最大会话数，超出则淘汰最旧的
+MAX_SESSIONS = 50  # 最大会话数，超出则淘汰最旧的
 
 
 def create_session() -> str:
