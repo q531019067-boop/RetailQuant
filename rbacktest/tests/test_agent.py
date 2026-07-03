@@ -424,7 +424,9 @@ class TestLLMClient:
         """max_iterations 超范围会被修正。"""
         from backend.agent.client import _validate_agent_config
 
-        w = _validate_agent_config({"max_iterations": 999, "model": "test", "base_url": "https://x", "api_key_env": "K"})
+        w = _validate_agent_config(
+            {"max_iterations": 999, "model": "test", "base_url": "https://x", "api_key_env": "K"}
+        )
         assert any("999" in x or "max_iterations" in x for x in w)
 
     def test_validate_warns_missing_required(self):

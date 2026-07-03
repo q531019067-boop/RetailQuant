@@ -25,25 +25,115 @@ import "./App.css";
 const DEFAULT_COLORS = ["#cf1322", "#1890ff", "#722ed1", "#eb2f96", "#fa8c16"];
 
 const METRIC_ROWS = [
-  { key: "total_return", label: "总收益率", fmt: (v) => `${v.toFixed(2)}%`, better: "higher" },
-  { key: "annual_return", label: "年化收益率", fmt: (v) => `${v.toFixed(2)}%`, better: "higher" },
-  { key: "end_balance", label: "结束资金", fmt: (v) => `¥${Number(v).toLocaleString()}`, better: "higher" },
-  { key: "max_ddpercent", label: "最大回撤", fmt: (v) => `${v.toFixed(2)}%`, better: "lower" },
-  { key: "return_std", label: "收益波动率", fmt: (v) => `${v.toFixed(2)}%`, better: "lower" },
-  { key: "max_drawdown_duration", label: "最长回撤(天)", fmt: (v) => v, better: "lower" },
-  { key: "sharpe_ratio", label: "夏普比率", fmt: (v) => v.toFixed(2), better: "higher" },
-  { key: "sortino_ratio", label: "索提诺比率", fmt: (v) => v.toFixed(2), better: "higher" },
-  { key: "calmar_ratio", label: "卡尔玛比率", fmt: (v) => v.toFixed(2), better: "higher" },
-  { key: "return_drawdown_ratio", label: "收益回撤比", fmt: (v) => v.toFixed(2), better: "higher" },
-  { key: "win_rate", label: "胜率", fmt: (v) => `${v.toFixed(1)}%`, better: "higher" },
-  { key: "profit_factor", label: "盈亏比", fmt: (v) => v.toFixed(2), better: "higher" },
-  { key: "avg_win", label: "均盈(%)", fmt: (v) => `${v.toFixed(2)}%`, better: "higher" },
-  { key: "avg_loss", label: "均亏(%)", fmt: (v) => `${v.toFixed(2)}%`, better: "higher" },
-  { key: "total_trade_count", label: "总成交笔数", fmt: (v) => v, better: "neutral" },
-  { key: "max_consecutive_wins", label: "最长连赢", fmt: (v) => v, better: "higher" },
-  { key: "max_consecutive_losses", label: "最长连亏", fmt: (v) => v, better: "lower" },
+  {
+    key: "total_return",
+    label: "总收益率",
+    fmt: (v) => `${v.toFixed(2)}%`,
+    better: "higher",
+  },
+  {
+    key: "annual_return",
+    label: "年化收益率",
+    fmt: (v) => `${v.toFixed(2)}%`,
+    better: "higher",
+  },
+  {
+    key: "end_balance",
+    label: "结束资金",
+    fmt: (v) => `¥${Number(v).toLocaleString()}`,
+    better: "higher",
+  },
+  {
+    key: "max_ddpercent",
+    label: "最大回撤",
+    fmt: (v) => `${v.toFixed(2)}%`,
+    better: "lower",
+  },
+  {
+    key: "return_std",
+    label: "收益波动率",
+    fmt: (v) => `${v.toFixed(2)}%`,
+    better: "lower",
+  },
+  {
+    key: "max_drawdown_duration",
+    label: "最长回撤(天)",
+    fmt: (v) => v,
+    better: "lower",
+  },
+  {
+    key: "sharpe_ratio",
+    label: "夏普比率",
+    fmt: (v) => v.toFixed(2),
+    better: "higher",
+  },
+  {
+    key: "sortino_ratio",
+    label: "索提诺比率",
+    fmt: (v) => v.toFixed(2),
+    better: "higher",
+  },
+  {
+    key: "calmar_ratio",
+    label: "卡尔玛比率",
+    fmt: (v) => v.toFixed(2),
+    better: "higher",
+  },
+  {
+    key: "return_drawdown_ratio",
+    label: "收益回撤比",
+    fmt: (v) => v.toFixed(2),
+    better: "higher",
+  },
+  {
+    key: "win_rate",
+    label: "胜率",
+    fmt: (v) => `${v.toFixed(1)}%`,
+    better: "higher",
+  },
+  {
+    key: "profit_factor",
+    label: "盈亏比",
+    fmt: (v) => v.toFixed(2),
+    better: "higher",
+  },
+  {
+    key: "avg_win",
+    label: "均盈(%)",
+    fmt: (v) => `${v.toFixed(2)}%`,
+    better: "higher",
+  },
+  {
+    key: "avg_loss",
+    label: "均亏(%)",
+    fmt: (v) => `${v.toFixed(2)}%`,
+    better: "higher",
+  },
+  {
+    key: "total_trade_count",
+    label: "总成交笔数",
+    fmt: (v) => v,
+    better: "neutral",
+  },
+  {
+    key: "max_consecutive_wins",
+    label: "最长连赢",
+    fmt: (v) => v,
+    better: "higher",
+  },
+  {
+    key: "max_consecutive_losses",
+    label: "最长连亏",
+    fmt: (v) => v,
+    better: "lower",
+  },
   { key: "total_days", label: "总交易日", fmt: (v) => v, better: "neutral" },
-  { key: "total_commission", label: "总手续费", fmt: (v) => `¥${Number(v).toFixed(2)}`, better: "lower" },
+  {
+    key: "total_commission",
+    label: "总手续费",
+    fmt: (v) => `¥${Number(v).toFixed(2)}`,
+    better: "lower",
+  },
 ];
 
 /* ------------------------------------------------------------------ */
@@ -115,7 +205,11 @@ export default function App() {
     if (names.length > 0) {
       const daily = res.results[names[0]]?.daily;
       if (daily && daily.length >= 2) {
-        const bm = await fetchBenchmark("000300.SSE", daily[0].date, daily[daily.length - 1].date);
+        const bm = await fetchBenchmark(
+          "000300.SSE",
+          daily[0].date,
+          daily[daily.length - 1].date,
+        );
         if (bm && !bm.error) setBenchmark(bm);
       }
     }
@@ -149,7 +243,9 @@ export default function App() {
   /* ---- derived ---- */
 
   const stratNames = results ? Object.keys(results.results) : [];
-  function getLabel(sn) { return (stratMeta[sn] && stratMeta[sn].label) || sn; }
+  function getLabel(sn) {
+    return (stratMeta[sn] && stratMeta[sn].label) || sn;
+  }
 
   /* ---- render ---- */
 
@@ -167,7 +263,9 @@ export default function App() {
         <span className="header-stats">
           {sysStatus.stocks > 0 && (
             <>
-              <span className="stat-item">{sysStatus.stocks.toLocaleString()} 只股票</span>
+              <span className="stat-item">
+                {sysStatus.stocks.toLocaleString()} 只股票
+              </span>
               <span className="stat-divider">·</span>
               <span className="stat-item">{sysStatus.strats} 个策略</span>
             </>
@@ -179,7 +277,10 @@ export default function App() {
         <aside className={`sidebar ${sidebarCollapsed ? "collapsed" : ""}`}>
           {!sidebarCollapsed && (
             <>
-              <ParamPanel onResults={handleResults} restoredParams={restoredParams} />
+              <ParamPanel
+                onResults={handleResults}
+                restoredParams={restoredParams}
+              />
               <HistoryPanel
                 history={history}
                 showHistory={showHistory}
@@ -217,11 +318,17 @@ export default function App() {
                   stockNames={stockNames}
                   label={getLabel(sn)}
                   show={showTrades[sn] || false}
-                  onToggle={() => setShowTrades((prev) => ({ ...prev, [sn]: !prev[sn] }))}
+                  onToggle={() =>
+                    setShowTrades((prev) => ({ ...prev, [sn]: !prev[sn] }))
+                  }
                 />
               ))}
 
-              <ChartPanel results={results} benchmark={benchmark} stratMeta={stratMeta} />
+              <ChartPanel
+                results={results}
+                benchmark={benchmark}
+                stratMeta={stratMeta}
+              />
             </>
           )}
         </section>

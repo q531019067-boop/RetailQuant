@@ -354,9 +354,7 @@ def agent_chat():
         try:
             logger.info(f"Agent 会话开始: has_results={bool(results)} has_params={bool(params)}")
 
-            for event in run_agent(
-                results=results, params=params, user_question=question, session_id=session_id
-            ):
+            for event in run_agent(results=results, params=params, user_question=question, session_id=session_id):
                 yield f"data: {json.dumps(event, ensure_ascii=False, default=str)}\n\n"
 
             yield "data: [DONE]\n\n"

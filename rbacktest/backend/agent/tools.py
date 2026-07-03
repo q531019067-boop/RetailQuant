@@ -282,34 +282,39 @@ def tool_run_backtest(
 
     # 缓存完整结果供前端「查看图表」
     cache_id = str(uuid.uuid4())[:12]
-    _cache_backtest_result(cache_id, {
-        "vt_symbols": vt_symbols,
-        "start": start,
-        "end": end,
-        "capital": capital,
-        "strategies": strategies,
-        "strategy_params": strategy_params,
-        "results": result["results"],
-    })
+    _cache_backtest_result(
+        cache_id,
+        {
+            "vt_symbols": vt_symbols,
+            "start": start,
+            "end": end,
+            "capital": capital,
+            "strategies": strategies,
+            "strategy_params": strategy_params,
+            "results": result["results"],
+        },
+    )
 
     # 返回每个策略的关键指标
     all_metrics: list[dict] = []
     for sn in strategies:
         strat_result = result["results"].get(sn, {})
         stats = strat_result.get("statistics", {})
-        all_metrics.append({
-            "strategy": sn,
-            "total_return": stats.get("total_return", 0),
-            "annual_return": stats.get("annual_return", 0),
-            "sharpe_ratio": stats.get("sharpe_ratio", 0),
-            "sortino_ratio": stats.get("sortino_ratio", 0),
-            "calmar_ratio": stats.get("calmar_ratio", 0),
-            "max_ddpercent": stats.get("max_ddpercent", 0),
-            "win_rate": stats.get("win_rate", 0),
-            "profit_factor": stats.get("profit_factor", 0),
-            "total_trade_count": stats.get("total_trade_count", 0),
-            "total_days": stats.get("total_days", 0),
-        })
+        all_metrics.append(
+            {
+                "strategy": sn,
+                "total_return": stats.get("total_return", 0),
+                "annual_return": stats.get("annual_return", 0),
+                "sharpe_ratio": stats.get("sharpe_ratio", 0),
+                "sortino_ratio": stats.get("sortino_ratio", 0),
+                "calmar_ratio": stats.get("calmar_ratio", 0),
+                "max_ddpercent": stats.get("max_ddpercent", 0),
+                "win_rate": stats.get("win_rate", 0),
+                "profit_factor": stats.get("profit_factor", 0),
+                "total_trade_count": stats.get("total_trade_count", 0),
+                "total_days": stats.get("total_days", 0),
+            }
+        )
 
     return {
         "strategies": strategies,
@@ -555,6 +560,7 @@ def tool_search_stocks(keyword: str) -> dict:
     # 加载股票名称映射
     try:
         from backend.backtest_engine import get_stock_names
+
         name_map = get_stock_names()
     except Exception:
         name_map = {}
@@ -569,7 +575,11 @@ def tool_search_stocks(keyword: str) -> dict:
             break
 
     if not matches:
-        return {"found": 0, "results": [], "hint": f"未找到匹配 '{keyword}' 的股票。试试代码片段如 '600' 或名称关键词。"}
+        return {
+            "found": 0,
+            "results": [],
+            "hint": f"未找到匹配 '{keyword}' 的股票。试试代码片段如 '600' 或名称关键词。",
+        }
 
     return {"found": len(matches), "results": matches}
 
@@ -607,15 +617,17 @@ def tool_get_stock_brief(symbols: list[str]) -> dict:
             df = pl.read_parquet(DATA_DIR / f"{sym}.parquet")
             close_series = df["close"]
             vol_series = df["volume"]
-            results.append({
-                "code": sym,
-                "trading_days": len(df),
-                "date_range": f"{str(df['datetime'].min())[:10]} ~ {str(df['datetime'].max())[:10]}",
-                "latest_close": round(float(close_series[-1]), 2),
-                "max_close": round(float(close_series.max()), 2),
-                "min_close": round(float(close_series.min()), 2),
-                "avg_daily_volume": int(vol_series.mean()),
-            })
+            results.append(
+                {
+                    "code": sym,
+                    "trading_days": len(df),
+                    "date_range": f"{str(df['datetime'].min())[:10]} ~ {str(df['datetime'].max())[:10]}",
+                    "latest_close": round(float(close_series[-1]), 2),
+                    "max_close": round(float(close_series.max()), 2),
+                    "min_close": round(float(close_series.min()), 2),
+                    "avg_daily_volume": int(vol_series.mean()),
+                }
+            )
         except Exception as e:
             results.append({"code": sym, "error": str(e)})
 

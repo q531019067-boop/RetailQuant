@@ -114,7 +114,10 @@ def _impl(
             if pending_tool_calls and tool_result_cnt < len(pending_tool_calls):
                 tc_id = pending_tool_calls[tool_result_cnt].get("id", "")
             tool_result_cnt += 1
-            msg: dict = {"role": "tool", "content": json.dumps(event.get("result", {}), ensure_ascii=False, default=str)}
+            msg: dict = {
+                "role": "tool",
+                "content": json.dumps(event.get("result", {}), ensure_ascii=False, default=str),
+            }
             if tc_id:
                 msg["tool_call_id"] = tc_id
             loop_messages.append(msg)

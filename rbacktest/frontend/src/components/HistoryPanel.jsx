@@ -55,13 +55,10 @@ export default function HistoryPanel({
                 onClick={() => onRestore(entry)}
                 title={tip}
               >
-                <span className="history-id">
-                  {entry.task_id.slice(0, 8)}
-                </span>
+                <span className="history-id">{entry.task_id.slice(0, 8)}</span>
                 <span className="history-meta">
-                  {p.start?.slice(0, 7) || "?"} ~{" "}
-                  {p.end?.slice(0, 7) || "?"} · {sn.length}策略 ·{" "}
-                  {sc}股
+                  {p.start?.slice(0, 7) || "?"} ~ {p.end?.slice(0, 7) || "?"} ·{" "}
+                  {sn.length}策略 · {sc}股
                 </span>
                 <button
                   className="history-del"
