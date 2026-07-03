@@ -182,8 +182,13 @@ results[策略名].trades      → [{date, symbol, side, price, shares, entry_pr
 ## 测试
 
 ```bash
-cd rbacktest
-backend/.venv/bin/python -m pytest tests/ -v   # 63 tests
+# 后端（需在项目根目录运行）
+uv run python -m pytest rbacktest/tests/ -v   # 90 tests
+
+# 前端
+cd rbacktest/frontend
+npm test              # 12 tests（vitest run）
+npm run test:watch    # 持续监听模式
 ```
 
 ## Lint & Format
@@ -198,6 +203,6 @@ cd rbacktest/frontend && npx prettier --check src/  # JS/CSS
 
 - 后端：Python 3.11+, Flask, VNPY Alpha, Polars, NumPy
 - 前端：React 18, Vite, Recharts
-- 测试：pytest（63 tests）
+- 测试：pytest（90 tests，含 27 个 Agent 模块测试）+ vitest（12 tests，含 AgentButton/CompareTable/TradeTable 组件测试）
 - 包管理：uv (Python), npm (Node)
 - Lint：ruff (Python), prettier (JS/CSS)

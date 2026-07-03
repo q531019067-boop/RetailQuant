@@ -16,3 +16,12 @@ data_dir = "data"                    # 日线 parquet 数据目录（相对于 r
 
 [history]
 max_entries = 20                     # 前端 localStorage 最多保存条数
+
+[agent]
+model = "deepseek-chat"              # DeepSeek V3
+base_url = "https://api.deepseek.com"
+api_key_env = "DEEPSEEK_API_KEY"     # 从环境变量读取，不硬编码
+max_iterations = 8                   # Agent 最大循环轮数
+temperature = 0.3
+max_tokens = 4096
+timeout_per_step = 15                # 单步 LLM 调用超时秒数

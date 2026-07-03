@@ -79,10 +79,11 @@ uv run python -m pytest rbacktest/tests/ -q
 
 每次 review 完成后确认以下全部通过：
 
-- [ ] `pytest` 全部通过（当前基准：63 passed）
+- [ ] `pytest` 全部通过（当前基准：90 passed）
 - [ ] `ruff check` All checks passed
 - [ ] `ruff format` 无 diff
 - [ ] `prettier --check` All matched files use Prettier code style
+- [ ] `vitest` 全部通过（当前基准：12 passed）
 - [ ] `markdownlint` 无错误
 - [ ] 无死代码、无未使用导入
 - [ ] 所有公共函数有类型注解和 docstring

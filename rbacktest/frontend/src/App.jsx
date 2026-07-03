@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import ParamPanel from "./components/ParamPanel";
 import CompareTable from "./components/CompareTable";
 import TradeTable from "./components/TradeTable";
+import AgentButton from "./components/AgentButton";
+import AgentPanel from "./components/AgentPanel";
 import { MenuIcon, CloseIcon, GripIcon } from "./components/Icons";
 import {
   LineChart,
@@ -220,6 +222,11 @@ export default function App() {
   const [history, setHistory] = useState(() => loadHistory());
   const [showHistory, setShowHistory] = useState(false);
   const [restoredParams, setRestoredParams] = useState(null);
+  // 最近一次回测的参数（供 Agent 使用）
+  const [lastParams, setLastParams] = useState(null);
+  // Agent 面板状态
+  const [agentAction, setAgentAction] = useState(null);
+  const [agentOpen, setAgentOpen] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -263,6 +270,7 @@ export default function App() {
   const handleResults = async (res, params) => {
     setResults(res);
     setBenchmark(null);
+    setLastParams(params || null);
 
     // 保存到 localStorage
     const entry = {
@@ -464,7 +472,7 @@ export default function App() {
         >
           {sidebarCollapsed ? <MenuIcon /> : <CloseIcon />}
         </button>
-        <h1>量化回测</h1>
+        <h1>数据研习</h1>
         <span className="header-stats">
           {sysStatus.stocks > 0 && (
             <>
@@ -641,6 +649,30 @@ export default function App() {
           )}
         </section>
       </main>
+
+      {/* Agent 浮动按钮（可拖动） */}
+      <AgentButton
+        onSelect={(action) => {
+          setAgentAction(action);
+          setAgentOpen(true);
+        }}
+        hasResults={!!results}
+        disabled={agentOpen}
+      />
+
+      {/* Agent 对话面板（无遮罩，不阻塞主界面） */}
+      {agentOpen && (
+        <AgentPanel
+          action={agentAction}
+          results={results}
+          params={lastParams}
+          onClose={() => setAgentOpen(false)}
+          onViewResults={(data) => {
+            setResults(data);
+            setBenchmark(null);
+          }}
+        />
+      )}
     </div>
   );
 }
