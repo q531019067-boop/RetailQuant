@@ -20,55 +20,26 @@ function clickBtn(el) {
 
 describe("AgentButton", () => {
   it("renders the button", () => {
-    render(
-      <AgentButton onSelect={vi.fn()} hasResults={false} disabled={false} />,
-    );
+    render(<AgentButton onToggle={vi.fn()} />);
     expect(screen.getByLabelText("AI 助手")).toBeInTheDocument();
   });
 
-  it("opens menu on click", async () => {
-    render(
-      <AgentButton onSelect={vi.fn()} hasResults={true} disabled={false} />,
-    );
-    clickBtn(screen.getByLabelText("AI 助手"));
-    await waitFor(() =>
-      expect(screen.getByText("分析回测")).toBeInTheDocument(),
-    );
-    expect(screen.getByText("优化参数")).toBeInTheDocument();
-  });
-
-  it("blocks result-dependent items when no results", async () => {
-    render(
-      <AgentButton onSelect={vi.fn()} hasResults={false} disabled={false} />,
-    );
-    clickBtn(screen.getByLabelText("AI 助手"));
-    await waitFor(() => expect(screen.getAllByText("需回测").length).toBe(2));
-  });
-
-  it("allows all items when has results", async () => {
-    render(
-      <AgentButton onSelect={vi.fn()} hasResults={true} disabled={false} />,
-    );
-    clickBtn(screen.getByLabelText("AI 助手"));
-    await waitFor(() =>
-      expect(screen.queryByText("需回测")).not.toBeInTheDocument(),
-    );
-  });
-
-  it("calls onSelect with correct action key", async () => {
+  it("calls onToggle on click", async () => {
     const fn = vi.fn();
-    render(<AgentButton onSelect={fn} hasResults={true} disabled={false} />);
+    render(<AgentButton onToggle={fn} />);
     clickBtn(screen.getByLabelText("AI 助手"));
-    await waitFor(() => fireEvent.click(screen.getByText("优化参数")));
-    expect(fn).toHaveBeenCalledWith("optimize");
+    await waitFor(() => expect(fn).toHaveBeenCalled());
   });
 
-  it("does not call onSelect when blocked", async () => {
+  it("does not call onToggle when dragged", async () => {
     const fn = vi.fn();
-    render(<AgentButton onSelect={fn} hasResults={false} disabled={false} />);
-    clickBtn(screen.getByLabelText("AI 助手"));
-    await waitFor(() => fireEvent.click(screen.getByText("分析回测")));
-    expect(fn).not.toHaveBeenCalled();
+    render(<AgentButton onToggle={fn} />);
+    const btn = screen.getByLabelText("AI 助手");
+    // 模拟拖拽：mousedown → mousemove 超过阈值 → mouseup
+    fireEvent.mouseDown(btn, { button: 0, clientX: 100, clientY: 100 });
+    fireEvent.mouseMove(document, { clientX: 120, clientY: 100 });
+    fireEvent.mouseUp(document, { button: 0 });
+    await waitFor(() => expect(fn).not.toHaveBeenCalled(), { timeout: 500 });
   });
 });
 

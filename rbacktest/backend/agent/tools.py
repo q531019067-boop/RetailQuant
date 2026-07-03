@@ -10,18 +10,50 @@ Agent 工具注册与执行。
 
 from __future__ import annotations
 
-import sys
-from pathlib import Path
+import uuid
 from typing import Any
 
-# 确保 backend 可导入
-_PROJECT_DIR = Path(__file__).resolve().parent.parent
-if str(_PROJECT_DIR) not in sys.path:
-    sys.path.insert(0, str(_PROJECT_DIR))
+from backend.backtest_engine import run_backtest as _engine_run_backtest, list_available_stocks
+from backend.strategy import list_strategies_metadata
+from backend.log import logger
 
-from backend.backtest_engine import run_backtest as _engine_run_backtest  # noqa: E402
-from backend.strategy import list_strategies_metadata  # noqa: E402
-from backend.log import logger  # noqa: E402
+# ---------------------------------------------------------------------------
+# 回测结果缓存（供前端「查看图表」直接取，避免重复跑回测）
+# ---------------------------------------------------------------------------
+
+_result_cache: dict[str, dict] = {}  # cache_id → {results, daily, trades}
+_backtest_call_count: int = 0
+_MAX_BACKTEST_CALLS = 30  # 每 session 最多跑 30 次回测，防止 LLM 死循环
+
+
+def _reset_backtest_counter() -> None:
+    """每个新 session 重置回测计数。"""
+    global _backtest_call_count
+    _backtest_call_count = 0
+
+
+def _check_backtest_limit() -> dict | None:
+    """检查回测次数上限，超限返回 error。"""
+    global _backtest_call_count
+    _backtest_call_count += 1
+    if _backtest_call_count > _MAX_BACKTEST_CALLS:
+        return {"error": f"回测次数已达上限（{_MAX_BACKTEST_CALLS}），请基于已有数据给出分析", "hint": "不要重复跑回测"}
+    return None
+
+
+def _cache_backtest_result(cache_id: str, result: dict) -> None:
+    """缓存一次完整回测结果。"""
+    _result_cache[cache_id] = result
+    # 最多保留 50 条
+    if len(_result_cache) > 50:
+        oldest = next(iter(_result_cache))
+        del _result_cache[oldest]
+
+
+def get_cached_result(cache_id: str) -> dict | None:
+    """获取缓存回测结果，取后即删（一次性使用）。"""
+    return _result_cache.pop(cache_id, None)
+
 
 # ---------------------------------------------------------------------------
 # 注册器
@@ -30,13 +62,14 @@ from backend.log import logger  # noqa: E402
 _registry: dict[str, dict] = {}
 
 
-def register_tool(name: str, description: str, parameters: dict):
+def register_tool(name: str, description: str, parameters: dict, optional: list[str] | None = None):
     """装饰器：将函数注册为 Agent 可用工具。
 
     用法:
-        @register_tool("run_backtest", "运行回测", {...})
-        def run_backtest(strategy: str, ...): ...
+        @register_tool("run_backtest", "运行回测", {...}, optional=["capital"])
+        def run_backtest(strategy: str, capital: int = 1_000_000): ...
     """
+    _optional: list[str] = optional or []
 
     def decorator(fn):
         _registry[name] = {
@@ -49,7 +82,7 @@ def register_tool(name: str, description: str, parameters: dict):
                     "parameters": {
                         "type": "object",
                         "properties": parameters,
-                        "required": list(parameters.keys()),
+                        "required": [k for k in parameters if k not in _optional],
                     },
                 },
             },
@@ -99,6 +132,48 @@ def _summarize_kwargs(kwargs: dict) -> str:
 
 
 # ---------------------------------------------------------------------------
+# 股票代码校验（防止 LLM 幻想不存在的代码）
+# ---------------------------------------------------------------------------
+
+
+def _validate_vt_symbols(requested: list[str]) -> dict | None:
+    """校验股票代码是否存在于数据目录中。
+
+    返回 None 表示全部合法；否则返回 error dict，包含：
+      - invalid: 无效代码列表
+      - suggestions: 每个无效代码的修复建议（如 .SH → .SSE）
+    """
+    available = set(list_available_stocks())
+    if not available:
+        return None  # 无数据时放过，让引擎报错
+
+    invalid: list[str] = []
+    suggestions: dict[str, str] = {}
+
+    for sym in requested:
+        if sym in available:
+            continue
+        invalid.append(sym)
+        # 尝试修复：取代码前缀（去掉 .后缀），在可用池里找匹配
+        for suffix in (".SSE", ".SZSE"):
+            # 把用户的后缀替换为目标后缀
+            base = sym.rsplit(".", 1)[0] if "." in sym else sym
+            candidate = f"{base}{suffix}"
+            if candidate in available:
+                suggestions[sym] = candidate
+                break
+
+    if not invalid:
+        return None
+
+    msg = f"以下 {len(invalid)} 个股票代码不存在：{', '.join(invalid)}。"
+    if suggestions:
+        msg += " 建议修正：" + "；".join(f"{k} → {v}" for k, v in suggestions.items()) + "。"
+    msg += " 代码格式必须为 XXXXXX.SSE（沪市）或 XXXXXX.SZSE（深市）。"
+    return {"error": msg, "invalid": invalid, "suggestions": suggestions}
+
+
+# ---------------------------------------------------------------------------
 # 工具 1: 获取策略信息
 # ---------------------------------------------------------------------------
 
@@ -142,10 +217,18 @@ def get_strategy_info(name: str = "") -> dict:
 
 @register_tool(
     name="run_backtest",
-    description="运行单次回测，返回详细统计指标。用于验证某个具体的参数组合。每次只测一个策略。",
+    description="运行回测，strategies 可传一个或多个策略名（如 ['equal_weight'] 或 ['equal_weight', 'ma_cross']）。一次测多个比逐个调用更高效。",
+    optional=["capital", "strategy_params"],
     parameters={
-        "strategy": {"type": "string", "description": "策略名，如 equal_weight"},
-        "params": {"type": "object", "description": "策略参数字典，如 {'top_k': 5, 'lookback': 20}"},
+        "strategies": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "策略名列表，如 ['equal_weight'] 或 ['equal_weight', 'ma_cross']",
+        },
+        "strategy_params": {
+            "type": "object",
+            "description": "可选，各策略的参数，如 {'equal_weight': {'top_k': 5}, 'ma_cross': {'fast': 5}}。省略则用默认参数",
+        },
         "vt_symbols": {
             "type": "array",
             "items": {"type": "string"},
@@ -157,16 +240,31 @@ def get_strategy_info(name: str = "") -> dict:
     },
 )
 def tool_run_backtest(
-    strategy: str,
-    params: dict,
+    strategies: list[str],
     vt_symbols: list[str],
     start: str,
     end: str,
+    strategy_params: dict | None = None,
     capital: int = 1_000_000,
 ) -> dict:
-    """执行单次回测并压缩返回关键指标。"""
-    # 安全限制
+    """执行回测并返回所有策略的关键指标。"""
+    # 硬性上限保护
+    limit_hit = _check_backtest_limit()
+    if limit_hit:
+        return limit_hit
+
+    # 股票代码校验
     vt_symbols = vt_symbols[:20]
+    validation = _validate_vt_symbols(vt_symbols)
+    if validation:
+        return validation
+
+    if not strategies:
+        return {"error": "请至少指定一个策略"}
+    if len(strategies) > 10:
+        strategies = strategies[:10]
+    strategy_params = strategy_params or {}
+
     try:
         result = _engine_run_backtest(
             {
@@ -174,36 +272,54 @@ def tool_run_backtest(
                 "start": start,
                 "end": end,
                 "capital": capital,
-                "strategies": [strategy],
-                "strategy_params": {strategy: params},
+                "strategies": strategies,
+                "strategy_params": strategy_params,
             }
         )
     except Exception as e:
         logger.error(f"run_backtest tool failed: {e}", exc_info=True)
         return {"error": str(e)}
 
-    strat_result = result["results"].get(strategy, {})
-    stats = strat_result.get("statistics", {})
-
-    # 只返回 Agent 关心的关键指标
-    key_metrics = {
-        "strategy": strategy,
-        "params": params,
+    # 缓存完整结果供前端「查看图表」
+    cache_id = str(uuid.uuid4())[:12]
+    _cache_backtest_result(cache_id, {
         "vt_symbols": vt_symbols,
         "start": start,
         "end": end,
-        "total_return": stats.get("total_return", 0),
-        "annual_return": stats.get("annual_return", 0),
-        "sharpe_ratio": stats.get("sharpe_ratio", 0),
-        "sortino_ratio": stats.get("sortino_ratio", 0),
-        "calmar_ratio": stats.get("calmar_ratio", 0),
-        "max_ddpercent": stats.get("max_ddpercent", 0),
-        "win_rate": stats.get("win_rate", 0),
-        "profit_factor": stats.get("profit_factor", 0),
-        "total_trade_count": stats.get("total_trade_count", 0),
-        "total_days": stats.get("total_days", 0),
+        "capital": capital,
+        "strategies": strategies,
+        "strategy_params": strategy_params,
+        "results": result["results"],
+    })
+
+    # 返回每个策略的关键指标
+    all_metrics: list[dict] = []
+    for sn in strategies:
+        strat_result = result["results"].get(sn, {})
+        stats = strat_result.get("statistics", {})
+        all_metrics.append({
+            "strategy": sn,
+            "total_return": stats.get("total_return", 0),
+            "annual_return": stats.get("annual_return", 0),
+            "sharpe_ratio": stats.get("sharpe_ratio", 0),
+            "sortino_ratio": stats.get("sortino_ratio", 0),
+            "calmar_ratio": stats.get("calmar_ratio", 0),
+            "max_ddpercent": stats.get("max_ddpercent", 0),
+            "win_rate": stats.get("win_rate", 0),
+            "profit_factor": stats.get("profit_factor", 0),
+            "total_trade_count": stats.get("total_trade_count", 0),
+            "total_days": stats.get("total_days", 0),
+        })
+
+    return {
+        "strategies": strategies,
+        "vt_symbols": vt_symbols,
+        "start": start,
+        "end": end,
+        "capital": capital,
+        "_cache_id": cache_id,
+        "metrics": all_metrics,
     }
-    return key_metrics
 
 
 # ---------------------------------------------------------------------------
@@ -214,6 +330,7 @@ def tool_run_backtest(
 @register_tool(
     name="search_params",
     description="批量网格搜索最优参数。一次可测试多个参数组合（最多 100 组）。返回所有组合的指标排序列表。适合在知道参数范围后粗搜或精搜。注意每只测一种策略。",
+    optional=["capital"],
     parameters={
         "strategy": {"type": "string", "description": "策略名"},
         "param_grid": {
@@ -242,6 +359,9 @@ def tool_search_params(
     from itertools import product
 
     vt_symbols = vt_symbols[:20]
+    validation = _validate_vt_symbols(vt_symbols)
+    if validation:
+        return validation
     keys = list(param_grid.keys())
     values = list(param_grid.values())
     combinations = list(product(*values))
@@ -325,6 +445,9 @@ def tool_get_daily_series(
 ) -> dict:
     """获取压缩版每日序列。"""
     vt_symbols = vt_symbols[:20]
+    validation = _validate_vt_symbols(vt_symbols)
+    if validation:
+        return validation
     try:
         result = _engine_run_backtest(
             {
@@ -366,3 +489,134 @@ def tool_get_daily_series(
             for d in sampled
         ],
     }
+
+
+# ---------------------------------------------------------------------------
+# 工具 5: 数据概览
+# ---------------------------------------------------------------------------
+
+
+@register_tool(
+    name="get_data_info",
+    description="获取数据概览：总共有多少只股票、数据覆盖的日期范围、示例股票代码。用于了解数据情况，跑回测前先调用。",
+    parameters={},
+)
+def tool_get_data_info() -> dict:
+    """返回数据集的基本信息。"""
+    stocks = list_available_stocks()
+    if not stocks:
+        return {"error": "未找到数据文件"}
+
+    # 抽样几只股票来确定日期范围
+    import polars as pl
+    from pathlib import Path
+
+    DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data" / "daily"
+    min_date = None
+    max_date = None
+    for sym in stocks[:5]:
+        try:
+            df = pl.read_parquet(DATA_DIR / f"{sym}.parquet")
+            dmin = str(df["datetime"].min())[:10]
+            dmax = str(df["datetime"].max())[:10]
+            if min_date is None or dmin < min_date:
+                min_date = dmin
+            if max_date is None or dmax > max_date:
+                max_date = dmax
+        except Exception:
+            continue
+
+    return {
+        "total_stocks": len(stocks),
+        "date_range": f"{min_date} ~ {max_date}" if min_date else "未知",
+        "sample_codes": stocks[:10],
+        "code_format": "XXXXXX.SSE (沪市) 或 XXXXXX.SZSE (深市)",
+    }
+
+
+# ---------------------------------------------------------------------------
+# 工具 6: 搜索股票
+# ---------------------------------------------------------------------------
+
+
+@register_tool(
+    name="search_stocks",
+    description="按代码或名称搜索股票。keyword 支持代码片段（如 '600519'）或名称关键词。返回匹配的股票代码列表，最多 20 条。",
+    parameters={
+        "keyword": {"type": "string", "description": "搜索关键词，如 '600519'、'茅台'、'银行'"},
+    },
+)
+def tool_search_stocks(keyword: str) -> dict:
+    """搜索股票代码。"""
+    stocks = list_available_stocks()
+    if not keyword:
+        return {"error": "请提供搜索关键词"}
+
+    # 加载股票名称映射
+    try:
+        from backend.backtest_engine import get_stock_names
+        name_map = get_stock_names()
+    except Exception:
+        name_map = {}
+
+    kw = keyword.lower().strip()
+    matches = []
+    for sym in stocks:
+        name = name_map.get(sym, "")
+        if kw in sym.lower() or kw in name.lower():
+            matches.append({"code": sym, "name": name})
+        if len(matches) >= 20:
+            break
+
+    if not matches:
+        return {"found": 0, "results": [], "hint": f"未找到匹配 '{keyword}' 的股票。试试代码片段如 '600' 或名称关键词。"}
+
+    return {"found": len(matches), "results": matches}
+
+
+# ---------------------------------------------------------------------------
+# 工具 7: 股票基本信息
+# ---------------------------------------------------------------------------
+
+
+@register_tool(
+    name="get_stock_brief",
+    description="获取股票的基本面数据：日期范围、价格区间（最高/最低/最新收盘价）、成交量统计、交易日数。可一次查询多只股票（最多 10 只）。用于在跑回测前了解股票基本情况。",
+    parameters={
+        "symbols": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "股票代码列表，如 ['600519.SSE', '000858.SZSE']，最多 10 只",
+        },
+    },
+)
+def tool_get_stock_brief(symbols: list[str]) -> dict:
+    """返回股票的 OHLCV 统计摘要。"""
+    import polars as pl
+    from pathlib import Path
+
+    DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data" / "daily"
+    symbols = symbols[:10]
+    validation = _validate_vt_symbols(symbols)
+    if validation:
+        return validation
+
+    results = []
+    for sym in symbols:
+        try:
+            df = pl.read_parquet(DATA_DIR / f"{sym}.parquet")
+            close_series = df["close"]
+            vol_series = df["volume"]
+            results.append({
+                "code": sym,
+                "trading_days": len(df),
+                "date_range": f"{str(df['datetime'].min())[:10]} ~ {str(df['datetime'].max())[:10]}",
+                "latest_close": round(float(close_series[-1]), 2),
+                "max_close": round(float(close_series.max()), 2),
+                "min_close": round(float(close_series.min()), 2),
+                "avg_daily_volume": int(vol_series.mean()),
+            })
+        except Exception as e:
+            results.append({"code": sym, "error": str(e)})
+
+    return {"stocks": results}

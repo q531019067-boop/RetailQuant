@@ -4,19 +4,66 @@ LLM 客户端 —— 封装 OpenAI 兼容 API 调用。
 设计：
     - 只关心 messages + tools → response，不泄漏底层 provider 细节
     - 通过配置文件切换 DeepSeek / OpenAI / 本地模型
-    - 不在这里写任何 Agent 逻辑
+    - 加载时校验配置文件，异常值给出明确警告
 """
 
 from __future__ import annotations
 
+import logging
 import os
 from pathlib import Path
 
 from openai import OpenAI
 
+_log = logging.getLogger("rbacktest")
+
+# ---------------------------------------------------------------------------
+# 配置校验
+# ---------------------------------------------------------------------------
+
+# 每个 [agent] 字段的约束：{key: (类型, 是否必填, 最小值, 最大值, 描述)}
+_AGENT_CONFIG_SCHEMA: dict[str, tuple[type, bool, object, object, str]] = {
+    "model":            (str,   True,  None, None, "模型名称"),
+    "base_url":         (str,   True,  None, None, "API 地址（需以 http 开头）"),
+    "api_key_env":      (str,   True,  None, None, "API key 环境变量名"),
+    "max_iterations":   (int,   True,  1,    200,  "最大循环轮数"),
+    "temperature":      (float, False, 0.0,  2.0,  "温度"),
+    "max_tokens":       (int,   False, 100,  128000, "最大 token 数"),
+    "timeout_per_step": (float, False, 1,    300,  "单步超时秒数"),
+}
+
+
+def _validate_agent_config(cfg: dict) -> list[str]:
+    """校验 [agent] 配置节，返回警告列表（空 = 全部合法）。"""
+    warnings: list[str] = []
+    for key, (typ, required, vmin, vmax, desc) in _AGENT_CONFIG_SCHEMA.items():
+        if key not in cfg or cfg[key] is None:
+            if required:
+                warnings.append(f"[agent] 缺少必填字段 {key}（{desc}），将使用默认值")
+            continue
+        val = cfg[key]
+        if not isinstance(val, typ):
+            try:
+                val = typ(val)
+                cfg[key] = val
+            except (ValueError, TypeError):
+                warnings.append(f"[agent] {key} 类型错误：期望 {typ.__name__}，实际 {type(val).__name__}，将使用默认值")
+                del cfg[key]
+                continue
+        if vmin is not None and val < vmin:
+            warnings.append(f"[agent] {key}={val} 低于最小值 {vmin}（{desc}），已修正为 {vmin}")
+            cfg[key] = vmin
+        if vmax is not None and val > vmax:
+            warnings.append(f"[agent] {key}={val} 超过最大值 {vmax}（{desc}），已修正为 {vmax}")
+            cfg[key] = vmax
+    # base_url 特殊校验
+    if cfg.get("base_url") and not str(cfg["base_url"]).startswith(("http://", "https://")):
+        warnings.append(f"[agent] base_url={cfg['base_url']} 不是有效 URL，需以 http:// 或 https:// 开头")
+    return warnings
+
 
 def _load_agent_config() -> dict:
-    """从 rbacktest.toml 加载 [agent] 配置节，缺失时使用默认值。"""
+    """从 rbacktest.toml 加载 [agent] 配置节，校验并修正异常值。"""
     config_path = Path(__file__).resolve().parent.parent.parent / "rbacktest.toml"
     cfg: dict = {}
     try:
@@ -25,9 +72,19 @@ def _load_agent_config() -> dict:
 
             raw = tomllib.loads(config_path.read_text(encoding="utf-8"))
             cfg = raw.get("agent", {})
-    except Exception:
-        pass
+    except Exception as e:
+        _log.warning(f"读取 rbacktest.toml 失败: {e}，使用默认配置")
+        return cfg
+
+    # 校验并输出警告
+    warnings = _validate_agent_config(cfg)
+    for w in warnings:
+        _log.warning(w)
     return cfg
+
+
+# 公开别名：其他模块可通过 client.load_agent_config() 读取配置
+load_agent_config = _load_agent_config
 
 
 class LLMClient:

@@ -11,11 +11,17 @@ import time
 _sessions: dict[str, dict] = {}
 
 TTL_SECONDS = 1800  # 30 分钟
+MAX_SESSIONS = 50   # 最大会话数，超出则淘汰最旧的
 
 
 def create_session() -> str:
-    """创建新会话，返回 session_id。"""
+    """创建新会话，返回 session_id。会话数超限时淘汰最旧的。"""
     import uuid
+
+    # 会话数超限：淘汰最旧的
+    if len(_sessions) >= MAX_SESSIONS:
+        oldest = min(_sessions, key=lambda s: _sessions[s]["last_access"])
+        del _sessions[oldest]
 
     sid = str(uuid.uuid4())[:12]
     _sessions[sid] = {"messages": [], "created_at": time.time(), "last_access": time.time()}

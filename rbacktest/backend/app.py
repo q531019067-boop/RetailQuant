@@ -296,6 +296,22 @@ def _check_port(port: int) -> bool:
 
 
 # ---------------------------------------------------------------------------
+# Agent 回测结果缓存（避免「查看图表」重复跑回测）
+# ---------------------------------------------------------------------------
+
+
+@app.route("/api/agent/result/<cache_id>", methods=["GET"])
+def agent_cached_result(cache_id: str):
+    """获取 Agent 工具缓存的全量回测结果。取后即删。"""
+    from backend.agent.tools import get_cached_result
+
+    r = get_cached_result(cache_id)
+    if r is None:
+        return jsonify({"error": "缓存已过期或不存在，请重新让 Agent 分析"}), 404
+    return jsonify(r)
+
+
+# ---------------------------------------------------------------------------
 # Agent 对话（SSE 流式）
 # ---------------------------------------------------------------------------
 
@@ -308,6 +324,14 @@ def agent_chat():
     from backend.agent import run_agent
     from backend.log import logger
 
+    # 鉴权：如果设置了 RBACKTEST_API_KEY 环境变量，要求请求头匹配
+    expected_key = os.environ.get("RBACKTEST_API_KEY", "")
+    if expected_key:
+        req_key = request.headers.get("X-Api-Key", "")
+        if req_key != expected_key:
+            logger.warning("Agent 鉴权失败: X-Api-Key 不匹配")
+            return jsonify({"error": "未授权", "hint": "请在请求头中设置 X-Api-Key"}), 401
+
     # 必须在进入生成器之前提取 request 数据（生成器 yield 后请求上下文会被销毁）
     try:
         body = request.get_json(force=True)
@@ -315,7 +339,6 @@ def agent_chat():
         logger.error(f"Agent 请求 JSON 解析失败: {e}")
         body = None
 
-    action = body.get("action", "analyze") if body else "analyze"
     results = body.get("results") if body else None
     params = body.get("params") if body else None
     question = body.get("question", "") if body else ""
@@ -329,10 +352,10 @@ def agent_chat():
             return
 
         try:
-            logger.info(f"Agent 会话开始: action={action} has_results={bool(results)} has_params={bool(params)}")
+            logger.info(f"Agent 会话开始: has_results={bool(results)} has_params={bool(params)}")
 
             for event in run_agent(
-                action=action, results=results, params=params, user_question=question, session_id=session_id
+                results=results, params=params, user_question=question, session_id=session_id
             ):
                 yield f"data: {json.dumps(event, ensure_ascii=False, default=str)}\n\n"
 

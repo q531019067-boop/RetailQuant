@@ -102,23 +102,29 @@ def format_empty_context() -> str:
         from backend.backtest_engine import list_available_stocks
 
         stocks = list_available_stocks()
-        stock_list = ", ".join(stocks[:20])
         stock_count = len(stocks)
+        first_stock = stocks[0] if stocks else "600519.SSE"
+        second_stock = stocks[1] if len(stocks) > 1 else "000858.SZSE"
+        third_stock = stocks[2] if len(stocks) > 2 else "600036.SSE"
+        sample_list = ", ".join(stocks[:5]) if len(stocks) >= 5 else ", ".join(stocks)
     except Exception:
-        stock_list = "未知"
+        sample_list = "未知"
+        first_stock = "600519.SSE"
+        second_stock = "000858.SZSE"
+        third_stock = "600036.SSE"
         stock_count = 0
 
-    return f"""当前没有回测数据。请先自己跑回测来探索。按以下步骤操作：
+    return f"""当前没有回测数据。你可以帮我跑回测来探索策略。按以下步骤操作：
 
 ## 你的可用资源
-- 股票池: {stock_count} 只（例如 {stock_list}）
-- 日期范围: 2023-01-01 ~ 2024-12-31（推荐用最近两年数据）
+- 股票池: {stock_count} 只（例如 {sample_list}）
+- 日期范围: 2023-01-01 ~ 2024-12-31
 - 初始资金: ¥1,000,000
-- 股票池取前 10 只即可（太多会慢）
 
 ## 工作流程
 1. 调用 get_strategy_info("") 获取所有策略列表
-2. 对每个策略调用 run_backtest，用默认参数，vt_symbols 取 [{stock_list.split(",")[0].strip() if stock_list else "600519.SSE"}...]（取前面 5~10 只），start="2023-01-01", end="2024-12-31"
-3. 汇总对比各策略的 Sharpe、最大回撤、胜率
-4. 给出排名和推荐
+2. 选 3-5 只股票（如 [{first_stock}, {second_stock}, {third_stock}]），一次性跑完所有策略，不要逐个策略反复测
+3. 用默认参数，start="2023-01-01", end="2024-12-31"
+4. 汇总对比，给出排名和推荐
+5. **拿到结果就输出，不要再重复跑已经测过的策略**
 """

@@ -17,6 +17,7 @@ from typing import Any
 
 from .client import LLMClient
 from .tools import execute_tool, get_tool_definitions
+from .types import EventType
 from backend.log import logger
 
 
@@ -25,7 +26,7 @@ def agent_loop(
     system_prompt: str,
     user_context: str,
     tools: list[dict] | None = None,
-    max_iterations: int = 8,
+    max_iterations: int = 50,
     timeout_per_step: float = 15.0,
     history: list[dict] | None = None,
 ) -> Generator[dict[str, Any], None, None]:
@@ -65,15 +66,22 @@ def agent_loop(
             {"role": "user", "content": user_context},
         ]
 
+    last_yield = time.time()
     for step in range(max_iterations):
         logger.info(f"Agent step {step + 1}/{max_iterations}")
-        yield {"type": "thinking", "content": f"Step {step + 1}/{max_iterations}..."}
+
+        # keepalive：如果距上次 yield 超过 10 秒，先发心跳
+        now = time.time()
+        if now - last_yield > 10:
+            yield {"type": EventType.HEARTBEAT}
+        yield {"type": EventType.THINKING, "content": f"Step {step + 1}/{max_iterations}..."}
+        last_yield = time.time()
 
         try:
             response = client.chat(messages, tools, timeout=timeout_per_step)
         except Exception as e:
             logger.error(f"LLM call failed at step {step + 1}: {e}", exc_info=True)
-            yield {"type": "error", "content": f"LLM 调用失败: {e}"}
+            yield {"type": EventType.ERROR, "content": f"LLM 调用失败: {e}"}
             return
 
         choice = response.choices[0]
@@ -81,6 +89,18 @@ def agent_loop(
 
         # 处理 tool calls
         if msg.tool_calls:
+            # yield assistant tool_calls 元信息，供外部会话持久化
+            yield {
+                "type": EventType.ASSISTANT_TOOL_CALLS,
+                "tool_calls": [
+                    {
+                        "id": tc.id,
+                        "type": "function",
+                        "function": {"name": tc.function.name, "arguments": tc.function.arguments},
+                    }
+                    for tc in msg.tool_calls
+                ],
+            }
             tool_results = []
             for tc in msg.tool_calls:
                 tool_name = tc.function.name
@@ -90,10 +110,16 @@ def agent_loop(
                     tool_args = {}
 
                 yield {
-                    "type": "tool_call",
+                    "type": EventType.TOOL_CALL,
                     "name": tool_name,
                     "arguments": tool_args,
                 }
+
+                # keepalive：工具执行可能较慢，先发 pulse
+                now = time.time()
+                if now - last_yield > 10:
+                    yield {"type": EventType.HEARTBEAT}
+                    last_yield = now
 
                 start = time.time()
                 try:
@@ -103,7 +129,7 @@ def agent_loop(
                 elapsed = time.time() - start
 
                 yield {
-                    "type": "tool_result",
+                    "type": EventType.TOOL_RESULT,
                     "name": tool_name,
                     "result": result,
                     "elapsed_ms": round(elapsed * 1000),
@@ -125,8 +151,8 @@ def agent_loop(
         # 无 tool call —— 任务完成
         content = msg.content or ""
         logger.info(f"Agent done at step {step + 1}, response length: {len(content)}")
-        yield {"type": "done", "content": content}
+        yield {"type": EventType.DONE, "content": content}
         return
 
     # 达到最大迭代次数
-    yield {"type": "done", "content": "已达到最大分析步数，请缩小问题范围后重试。"}
+    yield {"type": EventType.DONE, "content": "已达到最大分析步数，请缩小问题范围后重试。"}
