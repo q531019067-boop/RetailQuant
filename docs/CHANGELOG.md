@@ -1,11 +1,34 @@
 # Changelog
 
+> 创建人：   Hays Gu
+> 创建时间：  2026-06-22 23:28
+> 最后修改人： Lyuan741
+> 最后修改时间：2026-07-05 22:18
+
+---
+
 > RetailQuant 项目变更日志
 > 格式参考 [Keep a Changelog](https://keepachangelog.com/)
 
 ---
 
-## [Unreleased] - 2026-06-22
+## [Unreleased] - 2026-07-05
+
+### Changed（文档）
+
+- **`docs/` 目录重组**：根目录保留全局文档（大纲、代码索引、STRATEGIES、CHANGELOG、ui、中英对照表）；领域专题迁入 `docs/domain/`，研究测试迁入 `docs/research/`，历史快照迁入 `docs/archive/`，外部工具迁入 `docs/external/`。新增 [`docs/README.md`](README.md) 作为文档地图。
+
+  | 原路径 | 现路径 |
+  |--------|--------|
+  | `docs/多因子选股回测系统.md` | `docs/domain/多因子选股回测系统.md` |
+  | `docs/multi_factor_report.md` | `docs/domain/multi_factor_report.md` |
+  | `docs/数据池.md` | `docs/domain/数据池.md` |
+  | `docs/策略回测链路测试文档.md` | `docs/research/策略回测链路测试文档.md` |
+  | `docs/code-walkthrough-2026-06-22.md` | `docs/archive/code-walkthrough-2026-06-22.md` |
+  | `docs/opt-2026-06-22.md` | `docs/archive/opt-2026-06-22.md` |
+  | `docs/架构分析报告.md` | `docs/archive/架构分析报告.md` |
+  | `docs/TODOLIST.md` | `docs/archive/TODOLIST.md` |
+  | `docs/qlib_usage.md` | `docs/external/qlib_usage.md` |
 
 ### Fixed（修复）
 
@@ -51,10 +74,10 @@
 
 ### Documentation
 
-- 新增 `docs/code-walkthrough-2026-06-22.md`（全量代码导读）
-- 新增 `docs/opt-2026-06-22.md`（优化建议 + patch）
+- 新增 `docs/archive/code-walkthrough-2026-06-22.md`（全量代码导读，已归档）
+- 新增 `docs/archive/opt-2026-06-22.md`（优化建议 + patch，已归档）
 - 新增 `docs/CHANGELOG.md`（本文件）
-- 同步 `docs/STRATEGIES.md`、`docs/多因子选股回测系统.md`、`docs/大纲.md`、`docs/代码索引.md`
+- 同步 `docs/STRATEGIES.md`、`docs/domain/多因子选股回测系统.md`、`docs/大纲.md`、`docs/代码索引.md`
 
 ---
 

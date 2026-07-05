@@ -1,8 +1,15 @@
 # rQuant 策略文档
 
+> 创建人：   Hays Gu
+> 创建时间：  2026-06-17 23:33
+> 最后修改人： Lyuan741
+> 最后修改时间：2026-07-05 22:18
+
+---
+
 ## 历史设计说明
 
-本文件已合并原根目录 `STRATEGIES.md` 与旧 `docs/strategy设计详解.md`。原根目录 `strategy.py` 与 `rquant/compat/` 已被移除；历史文档中关于 `chanlun2b_signal()`、`buyhold_signal()`、`sell_signal()` 等函数式兼容接口，以及单条件 MA/低吸近似实现的描述，仅代表早期设计阶段，不再是当前实现。
+本文件已合并原根目录 `STRATEGIES.md` 与旧 `docs/strategy设计详解.md`（内容现由本文档承载）。原根目录 `strategy.py` 与 `rquant/compat/` 已被移除；历史文档中关于 `chanlun2b_signal()`、`buyhold_signal()`、`sell_signal()` 等函数式兼容接口，以及单条件 MA/低吸近似实现的描述，仅代表早期设计阶段，不再是当前实现。
 
 当前策略系统以 `rquant/strategy/` 为准：策略通过 `@register` 注册，统一输出 `Signal`，并通过 `scan_stock()` / `scan_sell()` / `scan_category()` 调用。
 
@@ -12,7 +19,7 @@
 >
 > 想了解架构和快速上手？看 [`README.md`](../README.md)；本文档专注"每个策略在做什么"。
 >
-> 📖 **MultiFactor 专门报告**：见 [`multi_factor_report.md`](multi_factor_report.md) — 含 8 因子设计 / 4 过滤 / 回测结果 / 参数敏感性
+> 📖 **MultiFactor 专门报告**：见 [`domain/multi_factor_report.md`](domain/multi_factor_report.md) — 含 8 因子设计 / 4 过滤 / 回测结果 / 参数敏感性
 
 ---
 
@@ -342,7 +349,7 @@ STOP_LOSS = -0.10
 
 ### 5. MultiFactor — 多因子选股
 
-> 📖 **完整设计 + 因子工程 + 回测报告**：见 [`docs/多因子选股回测系统.md`](多因子选股回测系统.md) 与 [`docs/multi_factor_report.md`](multi_factor_report.md)
+> 📖 **完整设计 + 因子工程 + 回测报告**：见 [`domain/多因子选股回测系统.md`](domain/多因子选股回测系统.md) 与 [`domain/multi_factor_report.md`](domain/multi_factor_report.md)
 >
 > 本节是策略速览；想看因子权重怎么来的、为什么这么分、回测怎么跑、参数怎么调，看专门报告。
 

@@ -2,7 +2,7 @@
 
 A 股个人量化看板（单实例、本地优先、零外部账号）—— Flask + 缠论近似 + 板块 Treemap + 自选股 + 数据源池。
 
-> 📖 **12 个策略的详细说明**（触发条件、信心度算法、参数、适用场景）见 [`docs/STRATEGIES.md`](docs/STRATEGIES.md)。本文档专注架构、启动、修改记录。
+> 📖 **12 个策略的详细说明**（触发条件、信心度算法、参数、适用场景）见 [`docs/STRATEGIES.md`](docs/STRATEGIES.md)。项目文档地图见 [`docs/README.md`](docs/README.md)。本文档专注架构、启动、修改记录。
 >
 > 📝 **最近变更**：2026-06-22 修了 3 处 P0（首页 K 线 N+1 / 路由器缓存污染回测 / 月频 look-ahead），详见 [`docs/CHANGELOG.md`](docs/CHANGELOG.md)。
 
@@ -126,7 +126,7 @@ ruff format   → 全部格式化
 | `turtle` | **DonchianTurtle** | 20 日新高入场，10 日新低离场（2×ATR 止损） | 日 K |
 | `etf_rotation` | **CrossBorderDca** | 跨境 ETF MA60 下方 + RSI<35 → 加仓 | 日 K |
 | `etf_rotation` | **DividendLowvolRotation** | 红利低波 20 日动量 + 放量 → 持有 | 日 K + 动量 |
-| `factor` | **MultiFactor** | 8 因子（动量×2 + 趋势×3 + 量价×3）+ 4 过滤 + 横截面 | 日 K（⚠️ 财务因子待东财/聚宽，详见 [`docs/multi_factor_report.md`](docs/multi_factor_report.md)） |
+| `factor` | **MultiFactor** | 8 因子（动量×2 + 趋势×3 + 量价×3）+ 4 过滤 + 横截面 | 日 K（⚠️ 财务因子待东财/聚宽，详见 [`docs/domain/multi_factor_report.md`](docs/domain/multi_factor_report.md)） |
 | `grid` | **GridMartingale** | 日线波动率网格 + 马丁加仓预警 | 日 K（⚠️ 理想用分钟级） |
 | `pattern` | **DragonTigerPattern** | 涨停/连板形态（涨幅 ≥ 9.5% 近似） | 日 K（⚠️ 待涨停板接口） |
 | `legacy` | **ChanLun2B** | **优化版**：底分型(5日窗口)+突破+多头排列+量能+RSI 7 重过滤 | 日 K |
@@ -425,8 +425,12 @@ pool.add_quote(TencentQuoteSource(), priority=0)  # Tencent 优先，Sina 兜底
 ```
 rQuant/
 ├── app.py                 # Web 启动入口（转发到 rquant.web）
-├── docs/STRATEGIES.md     # 12 个策略详细文档
-├── docs/CHANGELOG.md      # 变更日志（最新修复见 2026-06-22）
+├── docs/                  # 设计文档（见 docs/README.md）
+│   ├── 大纲.md / 代码索引.md / STRATEGIES.md / CHANGELOG.md / ui.md
+│   ├── domain/            #   多因子、数据池等领域专题
+│   ├── research/          #   研究链路测试
+│   ├── archive/           #   历史快照（只读）
+│   └── external/          #   外部工具（Qlib 等）
 ├── README.md
 ├── pyproject.toml / requirements.txt / LICENSE / config.toml
 │
@@ -434,20 +438,26 @@ rQuant/
 │   ├── business/          #   业务层（持仓/资金/板块/自选股/用户/系统/标的池/大盘）
 │   ├── data_source/       #   数据层（pool/sina/eastmoney/db/parquet/mq/quote_cache）
 │   ├── strategy/          #   策略层（12 个策略 + 注册中心）
-│   ├── research/          #   研究编排层（workflow）
+│   ├── research/          #   研究编排层（workflow + montecarlo）
 │   ├── backtest/          #   通用回测层（engine）
 │   ├── web/               #   Web 展现层（app_factory/routes/views）
 │   └── log/               #   统一日志封装
 │
-├── scripts/               # CLI 脚本（共 12 个 Python 脚本）
+├── scripts/               # CLI 脚本（共 14 个 Python 脚本）
+│   ├── __init__.py         #   包标记
 │   ├── run.py             #   替代启动入口
 │   ├── select_board_pool.py #  ① 板块选池
+│   ├── fetch_board_universe.py # 板块 universe 下载
+│   ├── fetch_hist.py      #   单股/批量 K 线 → Parquet
 │   ├── fetch_hist_for_pool.py # ② 候选池拉数
 │   ├── score_stock.py     #   ③ 多策略评分
 │   ├── simulate_trading.py #  ④ 组合模拟 + 收益矩阵
 │   ├── compare_strategies.py # 单股多策略对比
 │   ├── backtest_multi_factor.py
-│   └── run_backtest.py
+│   ├── run_backtest.py
+│   ├── review.py          #   手动触发日复盘
+│   ├── sync_docs_meta.py  #   docs 元数据同步
+│   └── validate_montecarlo.py # 蒙特卡洛滚动校准
 │
 ├── examples/              # 场景样例（薄编排 scripts/）
 │   └── semiconductor_compute_10x10/  # 半导体 10×10 批量回测样例
@@ -458,7 +468,9 @@ rQuant/
 ├── tests/                 # 测试用例
 │   ├── test_api.py
 │   ├── test_sina.py
-│   └── test_phase2_backtest.py
+│   ├── test_phase2_backtest.py
+│   ├── test_montecarlo.py
+│   └── test_montecarlo_api.py
 ├── templates/             # Flask 模板
 │   ├── index.html
 │   ├── error.html
@@ -470,7 +482,7 @@ rQuant/
 │   ├── trades.json
 │   ├── snapshots.json
 │   ├── boards/            # 行业/概念板块
-│   └── parquet/           # 历史日频 Parquet
+│   └── daily_kline/       # 历史日频 Parquet
 ├── cache/                 # 运行时缓存（自动生成）
 │   ├── rquant.db          # 本地 SQLite 主缓存
 │   └── eastmoney.db       # 财务快照缓存
