@@ -3,7 +3,7 @@
 > 创建人：   Hays Gu
 > 创建时间：  2026-06-22 23:28
 > 最后修改人： Lyuan741
-> 最后修改时间：2026-07-05 22:18
+> 最后修改时间：2026-07-05 22:22
 
 ---
 
@@ -89,11 +89,12 @@
 
 - **来源**：从 `FactorQ/src/advisor/montecarlo.py` 1:1 复刻而来（保留全部核心算法与 `[2026-06-25]` 修复注释），位置 `rquant/research/montecarlo/`。
 - **新增包**：
-  - `rquant/research/montecarlo/__init__.py` — 公开 API 导出（`MonteCarloConfig` / `MonteCarloForecaster` / `run_forecast` + 5 个经验阈值常量）
-  - `rquant/research/montecarlo/forecaster.py` — 核心 GBM + 停牌日剔除 + σ 退化保护 + TP/SL 自洽校验
+  - `rquant/research/montecarlo/__init__.py` — 公开 API 导出（`MonteCarloConfig` / `MonteCarloForecaster` / `run_forecast` + 9 个经验阈值常量）
+  - `rquant/research/montecarlo/forecaster.py` — 核心 GBM + 停牌日剔除 + σ 退化保护 + TP/SL 自洽校验 + first-touch 统计 + σ 置信区间
   - `rquant/research/montecarlo/cli.py` — 命令行入口（`python -m rquant.research.montecarlo.cli`）
   - `rquant/research/montecarlo/README.md` — 用户文档（quick reference）
   - `rquant/research/montecarlo/DESIGN.md` — 设计文档（13 章 + 2 附录，654 行）
+- **新增校准脚本**：`scripts/validate_montecarlo.py` — 滚动窗口回放，输出 P05–P95 覆盖率、PIT、Brier(TP/SL) 等校准指标到 `results/montecarlo_validation/`。
 - **新增 HTTP 路由**：`rquant/web/routes.py` → `GET /api/montecarlo/<code>`（自选股 / 持仓行均可触发）
   - Query params：`days` / `sims` / `lookback` / `kline_days` / `seed` / `tp` / `sl` / `live_price`
   - 响应：与 `run_forecast()` 同 schema，`{ok: true, ...out_dict}` 或 4xx/5xx
@@ -102,12 +103,12 @@
   - `static/style.css` — 新增 11 个 `.mc-*` 类
   - Chart.js 4.4.1（已有 CDN 依赖）画分位带渐变（`fill: { target: datasetIndex }`）
 - **新增测试**：
-  - `tests/test_montecarlo.py` — 库 smoke test（13 用例：import / 字段 / 复现 / 单调 / TP-SL 自洽 / 停牌日 / σ 退化 / error 分支）
-  - `tests/test_montecarlo_api.py` — Flask test_client 集成测试（11 用例：路由 / 成功 / seed 复现 / live_price / TP-SL 透传 / 兜底 / 空 K 线 / fetch 异常 / 库 error / 大小写 / lookback 钳位）
+  - `tests/test_montecarlo.py` — 库 smoke test（15 用例：import / 字段 / 复现 / 单调 / TP-SL 自洽 / 停牌日 / σ 退化 / 样本下限 / sample_paths / drift 解析校验 / error 分支）
+  - `tests/test_montecarlo_api.py` — Flask test_client 集成测试（12 用例：路由 / 成功 / seed 复现 / live_price / TP-SL 透传 / 兜底 / 空 K 线 / fetch 异常 / 库 error / 大小写 / lookback 钳位 / days+sims 上限钳制）
 
 ### Verified
 
-- ✅ `pytest tests/test_montecarlo.py tests/test_montecarlo_api.py` → 24/24 passed
+- ✅ `pytest tests/test_montecarlo.py tests/test_montecarlo_api.py` → 27/27 passed
 - ✅ `ruff check` + `ruff format` 全部通过
 - ✅ 完整链路 smoke：`curl /api/montecarlo/sh600000?days=20&sims=200&seed=42&tp=13.5&sl=11.8` → 200 + 字段齐全
 - ✅ 服务 `python3 app.py` 端口 8080 启动正常
@@ -122,7 +123,7 @@
 
 - `rquant/__init__.py` 顶层导出、`web/routes.py` 仅 +1 import + 1 新路由，**不影响**现有页面 / API
 - 没动 `templates/error.html`、`static/style.css` 现有样式（仅 append）
-- 没改 `requirements.txt` / `pyproject.toml` / 任何 `scripts/`
+- 没改 `requirements.txt` / `pyproject.toml`；新增的 `scripts/validate_montecarlo.py` 仅用于研究校准，不参与 Web 运行时
 
 ---
 

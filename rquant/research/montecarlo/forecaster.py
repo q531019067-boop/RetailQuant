@@ -12,16 +12,17 @@ rquant.research.montecarlo.forecaster — 个股蒙特卡洛路径预测器
 基于几何布朗运动（Geometric Brownian Motion, GBM）：
 
     简化日频模型（dt=1）：
-        P_{t+1} = P_t * exp((mu - sigma^2/2) + sigma * Z_t)
+        P_{t+1} = P_t * exp(drift + sigma * Z_t)
         Z_t ~ N(0, 1)
     一般形式（如果未来要做非日频）：
-        P_{t+1} = P_t * exp((mu - sigma^2/2) * dt + sigma * sqrt(dt) * Z_t)
+        P_{t+1} = P_t * exp(drift * dt + sigma * sqrt(dt) * Z_t)
 
-当前用 dt=1（一个交易日），mu/sigma 都是日频 — 等价于一般形式 dt=1。
+当前用 dt=1（一个交易日）。``drift`` / ``sigma`` 均为日频参数；
+``drift = mean(ln(P_t / P_{t-1}))`` 已含 Itô 修正项，路径生成时**不再**减 ``sigma^2/2``。
 
 参数估计
 --------
-mu, sigma 用最近 ``lookback_days`` 个交易日的**有效**日对数收益率
+drift, sigma 用最近 ``lookback_days`` 个交易日的**有效**日对数收益率
 ``ln(P_t / P_{t-1})`` 计算。
 
 - **[2026-06-25 修复]** 排除停牌日（close 与前日相同 OR volume=0），避免 0 收益污染 mean/std。
@@ -37,8 +38,9 @@ mu, sigma 用最近 ``lookback_days`` 个交易日的**有效**日对数收益�
   - ``final_price_*``：最终价分位
   - ``expected_return_pct``：中位预期收益
   - ``prob_higher_pct``：上涨概率
-  - ``prob_take_profit_pct``：路径中任意一日 close >= TP 的概率
-  - ``prob_stop_loss_pct``：路径中任意一日 close <= SL 的概率
+  - ``prob_take_profit_pct``：路径中任意一日 close >= TP 的概率（触达分析口径）
+  - ``prob_stop_loss_pct``：路径中任意一日 close <= SL 的概率（触达分析口径）
+  - ``tp_hit_count`` / ``sl_hit_count``：触达路径条数（供判断条件统计样本量）
   - ``max_drawdown_median_pct``：中位最大回撤
   - ``max_drawdown_worst_5pct_pct``：5 分位最大回撤（≈ 95% 路径不超过这个回撤）
   - ``first_touch_tp_day_median`` / ``first_touch_sl_day_median``：中位首次触 TP/SL 的天数
@@ -56,6 +58,7 @@ mu, sigma 用最近 ``lookback_days`` 个交易日的**有效**日对数收益�
 - GBM 假设价格服从对数正态分布、对数收益独立同分布。
 - A 股肥尾、政策冲击、跳空等事件可能让实际尾部风险 > 模型预测。
 - 路径中只有"日终价"，没有日内 high/low → 命中 TP/SL 概率基于日终价（实际会更早触发）。
+- 输入 K 线应使用后复权价格；除权除息缺口会扭曲 drift/sigma 估计。
 """
 
 from __future__ import annotations
@@ -63,6 +66,7 @@ from __future__ import annotations
 # isort: off
 import math
 from dataclasses import dataclass
+from statistics import NormalDist
 from typing import Dict, List, Optional, Tuple
 
 import numpy as np
@@ -74,8 +78,12 @@ import pandas as pd
 MIN_SIGMA_DAILY = 1e-4  # σ < 1e-4 → 年化 < 1.6%，视为"无波动"退化，用兜底值
 SIGMA_FLOOR = 0.005  # σ 退化时兜底为 0.5%/日（年化 ~8%，A 股合理下限）
 SUSPENDED_VOL_THRESHOLD = 0  # volume <= 此值视为停牌日
-MIN_LOG_RETS = 20  # 有效 log return 至少要 20 条，否则拒绝
+MIN_LOG_RETS = 60  # 有效 log return 至少要 60 条，否则拒绝
 LOOKBACK_ADEQUACY_RATIO = 0.8  # 实际样本 / 请求 lookback < 0.8 → warning
+DEFAULT_SIMULATIONS = 10_000
+MAX_SIMULATIONS = 50_000
+MAX_FORECAST_DAYS = 252
+HIGH_VOL_SIGMA_DAILY = 0.04
 
 
 @dataclass
@@ -83,7 +91,7 @@ class MonteCarloConfig:
     """蒙特卡洛模拟参数"""
 
     forecast_days: int = 20  # 预测多少个交易日
-    simulations: int = 1000  # 模拟次数（路径数）
+    simulations: int = DEFAULT_SIMULATIONS  # 模拟次数（路径数）
     lookback_days: int = 252  # 用多少天历史算 mu/sigma（约 1 年）
     take_profit: Optional[float] = None  # 止盈价（None = 不算 TP 命中）
     stop_loss: Optional[float] = None  # 止损价（None = 不算 SL 命中）
@@ -191,6 +199,13 @@ class MonteCarloForecaster:
         drawdown = path / running_max - 1.0
         return float(np.nanmin(drawdown))
 
+    def _max_drawdowns(self, paths: np.ndarray) -> np.ndarray:
+        """向量化计算每条路径的最大回撤。"""
+        running_max = np.maximum.accumulate(paths, axis=1)
+        running_max = np.where(running_max == 0, np.nan, running_max)
+        drawdown = paths / running_max - 1.0
+        return np.nanmin(drawdown, axis=1)
+
     def _first_touch_day(self, path: np.ndarray, target: float, mode: str) -> Optional[int]:
         """首次触目标价的天数（day index，从 0 起；0 = 当前价）
 
@@ -203,6 +218,33 @@ class MonteCarloForecaster:
         else:
             hits = np.where(path <= target)[0]
         return int(hits[0]) if len(hits) > 0 else None
+
+    def _first_touch_days(self, paths: np.ndarray, target: float, mode: str) -> np.ndarray:
+        """向量化计算每条路径首次触价日，未触发为 -1。"""
+        if mode == "gte":
+            hits = paths >= target
+        else:
+            hits = paths <= target
+        any_hit = hits.any(axis=1)
+        first_days = np.argmax(hits, axis=1).astype(int)
+        first_days[~any_hit] = -1
+        return first_days
+
+    def _sigma_confidence_interval(self, sigma: float, n: int) -> Tuple[float, float]:
+        """用 Wilson-Hilferty 近似给出 sigma 的 95% 置信区间。"""
+        if n < 2 or sigma < 0:
+            return (float("nan"), float("nan"))
+        df = n - 1
+        normal = NormalDist()
+
+        def chi2_ppf(p: float) -> float:
+            z = normal.inv_cdf(p)
+            base = 1 - 2 / (9 * df) + z * math.sqrt(2 / (9 * df))
+            return df * max(base, 1e-12) ** 3
+
+        lo = math.sqrt(df * sigma**2 / chi2_ppf(0.975))
+        hi = math.sqrt(df * sigma**2 / chi2_ppf(0.025))
+        return lo, hi
 
     def _validate_tp_sl(
         self,
@@ -249,6 +291,7 @@ class MonteCarloForecaster:
         """
         cfg = self.config
         warnings: List[str] = []
+        low_data_warning = False
 
         if current_price <= 0:
             return {
@@ -263,8 +306,10 @@ class MonteCarloForecaster:
                 "name": name,
             }
 
+        lookback_days = max(int(cfg.lookback_days), MIN_LOG_RETS)
+
         # 1) 算 log return 的 mu / sigma（[2026-06-25] 排除停牌日 + warning）
-        log_rets, ret_warnings = self._compute_log_returns(df, cfg.lookback_days)
+        log_rets, ret_warnings = self._compute_log_returns(df, lookback_days)
         warnings.extend(ret_warnings)
 
         if len(log_rets) < MIN_LOG_RETS:
@@ -274,10 +319,15 @@ class MonteCarloForecaster:
                 "code": code,
                 "name": name,
                 "warnings": warnings,
+                "low_data_warning": True,
             }
+        if len(log_rets) < lookback_days * LOOKBACK_ADEQUACY_RATIO:
+            low_data_warning = True
 
-        mu = float(np.mean(log_rets))
-        sigma = float(np.std(log_rets, ddof=1))  # 无偏估计
+        drift = float(np.mean(log_rets))  # 日漂移 = E[ln(P_t/P_{t-1})]，已含 Itô 项
+        sigma_raw = float(np.std(log_rets, ddof=1))  # 无偏估计
+        sigma = sigma_raw
+        sigma_ci = self._sigma_confidence_interval(sigma_raw, len(log_rets))
 
         # [2026-06-25] σ 退化保护
         sigma_floored = False
@@ -288,16 +338,25 @@ class MonteCarloForecaster:
         elif sigma > 0.20:
             warnings.append(f"σ={sigma:.4f} 极大（年化 {sigma * math.sqrt(252) * 100:.0f}%），A 股罕见，请确认数据正确")
 
-        # 2) 年化（仅供参考；GBM 本身用日频 mu/sigma）
-        mu_annual = mu * 252
+        # 2) 年化（仅供参考；GBM 本身用日频 drift/sigma）
+        mu_annual = drift * 252
         sigma_annual = sigma * math.sqrt(252)
 
         # 3) 生成随机路径（dt = 1 个交易日，简化的 GBM）
         rng = np.random.default_rng(cfg.seed)
-        Z = rng.standard_normal(size=(cfg.simulations, cfg.forecast_days))
-        # 增量 = (mu - sigma^2/2) + sigma * Z
-        # 完整公式是 (mu - sigma^2/2) * dt + sigma * sqrt(dt) * Z，dt=1 时等价
-        increments = (mu - 0.5 * sigma**2) + sigma * Z
+        forecast_days = min(max(int(cfg.forecast_days), 1), MAX_FORECAST_DAYS)
+        simulations = min(max(int(cfg.simulations), 1), MAX_SIMULATIONS)
+        if forecast_days != cfg.forecast_days:
+            warnings.append(f"forecast_days 已钳制为 {forecast_days}（上限 {MAX_FORECAST_DAYS}）")
+        if simulations != cfg.simulations:
+            warnings.append(f"simulations 已钳制为 {simulations}（上限 {MAX_SIMULATIONS}）")
+        if sigma >= HIGH_VOL_SIGMA_DAILY and simulations < 20_000:
+            simulations = min(20_000, MAX_SIMULATIONS)
+            warnings.append(f"σ={sigma:.4f} 属于高波动，模拟次数自动提升到 {simulations}")
+
+        Z = rng.standard_normal(size=(simulations, forecast_days))
+        # drift 来自 log return 样本均值，不再额外减 sigma^2/2
+        increments = drift + sigma * Z
         log_paths = np.cumsum(increments, axis=1)
         # 第一列是 0（当前价）
         log_paths = np.hstack([np.zeros((cfg.simulations, 1)), log_paths])
@@ -326,37 +385,49 @@ class MonteCarloForecaster:
 
         prob_tp = None
         prob_sl = None
+        tp_hit_count = None
+        sl_hit_count = None
+        first_tp_days = np.array([], dtype=int)
+        first_sl_days = np.array([], dtype=int)
         if tp is not None and tp > 0:
             hits = (paths >= tp).any(axis=1)
             prob_tp = float(np.mean(hits)) * 100
+            tp_hit_count = int(np.sum(hits))
+            first_tp_days = self._first_touch_days(paths, tp, "gte")
         if sl is not None and sl > 0:
             hits = (paths <= sl).any(axis=1)
             prob_sl = float(np.mean(hits)) * 100
+            sl_hit_count = int(np.sum(hits))
+            first_sl_days = self._first_touch_days(paths, sl, "lte")
 
         # 最大回撤分布
-        mdds = np.array([self._max_drawdown(paths[i]) for i in range(cfg.simulations)])
+        mdds = self._max_drawdowns(paths)
         mdd_median = float(np.median(mdds))
         # 95% 路径不超过的回撤 = 5 分位（更负）
         mdd_worst_5pct = float(np.percentile(mdds, 5))
 
         # 首次触 TP/SL 的中位天数（仅在触发时计入）
-        first_tp_days = []
-        first_sl_days = []
-        if tp is not None and tp > 0:
-            for i in range(cfg.simulations):
-                d = self._first_touch_day(paths[i], tp, "gte")
-                if d is not None:
-                    first_tp_days.append(d)
-        if sl is not None and sl > 0:
-            for i in range(cfg.simulations):
-                d = self._first_touch_day(paths[i], sl, "lte")
-                if d is not None:
-                    first_sl_days.append(d)
-        first_tp_median = float(np.median(first_tp_days)) if first_tp_days else None
-        first_sl_median = float(np.median(first_sl_days)) if first_sl_days else None
+        tp_valid_days = first_tp_days[first_tp_days >= 0]
+        sl_valid_days = first_sl_days[first_sl_days >= 0]
+        first_tp_median = float(np.median(tp_valid_days)) if len(tp_valid_days) else None
+        first_sl_median = float(np.median(sl_valid_days)) if len(sl_valid_days) else None
+
+        first_touch_tp_pct = None
+        first_touch_sl_pct = None
+        first_touch_neither_pct = None
+        if tp is not None and tp > 0 and sl is not None and sl > 0:
+            tp_day = first_tp_days
+            sl_day = first_sl_days
+            tp_first = (tp_day >= 0) & ((sl_day < 0) | (tp_day < sl_day))
+            sl_first = (sl_day >= 0) & ((tp_day < 0) | (sl_day < tp_day))
+            simultaneous = (tp_day >= 0) & (sl_day >= 0) & (tp_day == sl_day)
+            neither = (tp_day < 0) & (sl_day < 0)
+            first_touch_tp_pct = float(np.mean(tp_first | simultaneous)) * 100
+            first_touch_sl_pct = float(np.mean(sl_first)) * 100
+            first_touch_neither_pct = float(np.mean(neither)) * 100
 
         # 6) 样本路径
-        n_samples = min(cfg.sample_paths, cfg.simulations)
+        n_samples = min(cfg.sample_paths, simulations)
         sample_paths = [{"id": int(i + 1), "prices": [round(float(p), 4) for p in paths[i]]} for i in range(n_samples)]
 
         # 7) 历史段（给前端画历史 60 天 → 当前价的衔接）
@@ -377,10 +448,12 @@ class MonteCarloForecaster:
             "current_price": round(float(current_price), 4),
             "last_date": pd.to_datetime(df["date"].iloc[-1]).strftime("%Y-%m-%d"),
             "lookback_days_used": len(log_rets),
-            "forecast_days": cfg.forecast_days,
-            "simulations": cfg.simulations,
-            "mu_daily": round(mu, 6),
+            "low_data_warning": low_data_warning,
+            "forecast_days": forecast_days,
+            "simulations": simulations,
+            "mu_daily": round(drift, 6),
             "sigma_daily": round(sigma, 6),
+            "sigma_confidence_interval": [round(float(sigma_ci[0]), 6), round(float(sigma_ci[1]), 6)],
             "sigma_floored": sigma_floored,  # [2026-06-25] 前端可识别"用了兜底 σ"
             "mu_annualized": round(mu_annual, 4),
             "sigma_annualized": round(sigma_annual, 4),
@@ -405,6 +478,13 @@ class MonteCarloForecaster:
                 "prob_higher_pct": round(prob_higher, 2),
                 "prob_take_profit_pct": round(prob_tp, 2) if prob_tp is not None else None,
                 "prob_stop_loss_pct": round(prob_sl, 2) if prob_sl is not None else None,
+                "prob_first_touch_tp_pct": (round(first_touch_tp_pct, 2) if first_touch_tp_pct is not None else None),
+                "prob_first_touch_sl_pct": (round(first_touch_sl_pct, 2) if first_touch_sl_pct is not None else None),
+                "prob_first_touch_neither_pct": (
+                    round(first_touch_neither_pct, 2) if first_touch_neither_pct is not None else None
+                ),
+                "tp_hit_count": tp_hit_count,
+                "sl_hit_count": sl_hit_count,
                 "max_drawdown_median_pct": round(mdd_median * 100, 2),
                 # [2026-06-25] 更明确命名（之前 max_drawdown_p95_pct 容易误读）
                 "max_drawdown_worst_5pct_pct": round(mdd_worst_5pct * 100, 2),
@@ -418,7 +498,7 @@ def run_forecast(
     df: pd.DataFrame,
     current_price: float,
     forecast_days: int = 20,
-    simulations: int = 1000,
+    simulations: int = DEFAULT_SIMULATIONS,
     lookback_days: int = 252,
     take_profit: Optional[float] = None,
     stop_loss: Optional[float] = None,

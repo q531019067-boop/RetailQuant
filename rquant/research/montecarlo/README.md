@@ -6,8 +6,8 @@
 
 - **来源**：1:1 复刻自 [FactorQ](https://github.com/.../FactorQ) `src/advisor/montecarlo.py`（2026-06-29 同步），保留全部核心逻辑与 [2026-06-25] 修复注释。
 - **剥离依赖**：原 `__main__` 块依赖 FactorQ 的 `OnDemandAnalyzer`，本包已替换为 `cli.py`，走 `rquant.business.data.fetch_kline`。
-- **不触碰**：`rquant/__init__.py` 顶层导出、`web/routes.py`、`templates/`、`static/`、现有 `scripts/`。
-- **前端**：暂时不接。如果以后要接，自行在 routes.py 加一个 `/api/montecarlo/<code>` 即可。
+- **HTTP API**：`GET /api/montecarlo/<code>`（见 `rquant/web/routes.py`），支持 `days` / `sims` / `lookback` / `tp` / `sl` / `seed` / `live_price` 等 query 参数。
+- **配套工具**：`scripts/validate_montecarlo.py` 可做滚动窗口校准验证，输出覆盖率 CSV 与汇总 JSON。
 
 ## 公开 API
 
@@ -17,8 +17,14 @@ from rquant.research.montecarlo import (
     MonteCarloForecaster,
     run_forecast,
     MIN_LOG_RETS,
+    DEFAULT_SIMULATIONS,
+    MAX_SIMULATIONS,
+    MAX_FORECAST_DAYS,
     MIN_SIGMA_DAILY,
     SIGMA_FLOOR,
+    SUSPENDED_VOL_THRESHOLD,
+    LOOKBACK_ADEQUACY_RATIO,
+    HIGH_VOL_SIGMA_DAILY,
 )
 ```
 
@@ -36,7 +42,7 @@ out = run_forecast(
     df=df,
     current_price=current_price,
     forecast_days=20,
-    simulations=1000,
+    simulations=10_000,
     lookback_days=252,
     take_profit=round(current_price * 1.08, 2),
     stop_loss=round(current_price * 0.96, 2),
@@ -66,7 +72,9 @@ python -m rquant.research.montecarlo.cli sh600000 --live-price 12.40  # 盘中�
 | `current_price` | float | GBM 起点（caller 决定） |
 | `last_date` | str (YYYY-MM-DD) | K 线末日 |
 | `lookback_days_used` | int | 实际用了多少条 log return（剔停牌后） |
+| `low_data_warning` | bool | 有效样本不足 lookback 80% |
 | `mu_daily` / `sigma_daily` | float | 日频 μ/σ |
+| `sigma_confidence_interval` | list[float] | 日波动率 95% 置信区间 |
 | `mu_annualized` / `sigma_annualized` | float | 年化 μ/σ（仅供参考） |
 | `sigma_floored` | bool | 是否用了兜底 σ（数据极静） |
 | `take_profit` / `stop_loss` | float | 兜底后的 TP/SL |
@@ -77,8 +85,12 @@ python -m rquant.research.montecarlo.cli sh600000 --live-price 12.40  # 盘中�
 | `stats.final_price_*` | float | 最终价分位 |
 | `stats.expected_return_pct` | float | 中位预期收益 |
 | `stats.prob_higher_pct` | float | 上涨概率 |
-| `stats.prob_take_profit_pct` | float \| null | TP 命中概率 |
-| `stats.prob_stop_loss_pct` | float \| null | SL 命中概率 |
+| `stats.prob_take_profit_pct` | float \| null | TP 命中概率（触达分析口径） |
+| `stats.prob_stop_loss_pct` | float \| null | SL 命中概率（触达分析口径） |
+| `stats.prob_first_touch_tp_pct` | float \| null | TP/SL 互斥时 TP 先触概率 |
+| `stats.prob_first_touch_sl_pct` | float \| null | TP/SL 互斥时 SL 先触概率 |
+| `stats.prob_first_touch_neither_pct` | float \| null | TP/SL 均未触发概率 |
+| `stats.tp_hit_count` / `stats.sl_hit_count` | int \| null | 触达路径条数 |
 | `stats.max_drawdown_median_pct` | float | 中位最大回撤 |
 | `stats.max_drawdown_worst_5pct_pct` | float | 5 分位最大回撤（≈ 95% 路径不超过） |
 | `stats.first_touch_tp_day_median` | int \| null | 中位首次触 TP 的天数 |
@@ -89,7 +101,8 @@ python -m rquant.research.montecarlo.cli sh600000 --live-price 12.40  # 盘中�
 ## 数据要求
 
 - `df` 是 pandas.DataFrame，列至少 `date, close`（最好带 `volume` 用于停牌日判定），按日期升序。
-- 至少 30 天 K 线（库内会校验更严格的 20 条有效 log return）。
+- 至少 30 天 K 线（库内会校验更严格的 60 条有效 log return）。
+- **使用后复权价格**；除权除息缺口会扭曲 drift/sigma。
 - `current_price > 0`，caller 自行保证是"as-of 当前"的真实价。盘中应是实时价，不是昨收。
 
 ## 时序严谨性
@@ -112,6 +125,12 @@ rquant/research/montecarlo/
 ├── cli.py          # 命令行入口（python -m rquant.research.montecarlo.cli）
 ├── README.md       # 本文件（用户文档 / 快速上手）
 └── DESIGN.md       # 设计文档（数学模型 / 决策记录 / 调试指南）
+```
+
+模型校准验证脚本位于 `scripts/validate_montecarlo.py`，用于滚动回放并输出覆盖率报告：
+
+```bash
+python scripts/validate_montecarlo.py sh600000 sz000001 --simulations 10000
 ```
 
 ## 设计文档
@@ -137,6 +156,6 @@ rquant/research/montecarlo/
 ## 测试
 
 ```bash
-pytest tests/test_montecarlo.py -v          # 库 smoke test（13 用例）
-pytest tests/test_montecarlo_api.py -v      # HTTP API 集成测试（11 用例）
+pytest tests/test_montecarlo.py -v          # 库 smoke test（15 用例）
+pytest tests/test_montecarlo_api.py -v      # HTTP API 集成测试（12 用例）
 ```

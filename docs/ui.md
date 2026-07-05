@@ -3,7 +3,7 @@
 > 创建人：   Lyuan741
 > 创建时间：  2026-06-18 00:25
 > 最后修改人： Lyuan741
-> 最后修改时间：2026-07-05 22:18
+> 最后修改时间：2026-07-05 22:22
 
 ---
 
@@ -324,6 +324,7 @@
 | 参数表单 | `.mc-form` | `days` / `sims`（select）/ `seed` / `tp` / `sl` / `live_price` + "生成预测" 按钮 |
 | TP / SL 默认值 | `#mc-tp` / `#mc-sl` | 打开时按现价 ×1.08 / ×0.96 自动填，用户可改 |
 | 统计摘要 | `#mc-summary` | 网格 6+4 项：中位预期收益 / 上涨概率 / TP 命中 / SL 命中 / MDD 中位 / MDD 95分位 / μ 日频年化 / σ 日频年化 / 有效样本 / 兜底 TP-SL |
+| API 扩展统计 | `stats.prob_first_touch_*` / `sigma_confidence_interval` | 后端返回，当前 UI 未展示；调试或研究报告可直接读取 API |
 | 涨绿跌红 | `.mc-val.up` / `.mc-val.down` | 收益 / MDD 颜色标识 |
 | σ 退化提示 | `.mc-warn-tag` | 紧贴 σ 值的"已兜底"小标签 |
 | 图表 | `<canvas id="mc-chart">`（380px 高） | Chart.js line chart，dataset 顺序：历史 / P05 / P25 / 中位 / P75 / P95 / 5 条样本路径 / TP / SL |
