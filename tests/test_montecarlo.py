@@ -168,8 +168,10 @@ def test_basic_forecast_field_shape():
         "simulations",
         "mu_daily",
         "sigma_daily",
+        "sigma_confidence_interval",
         "mu_annualized",
         "sigma_annualized",
+        "low_data_warning",
         "take_profit",
         "stop_loss",
         "paths",
@@ -195,6 +197,11 @@ def test_basic_forecast_field_shape():
         "prob_higher_pct",
         "max_drawdown_median_pct",
         "max_drawdown_worst_5pct_pct",
+        "prob_first_touch_tp_pct",
+        "prob_first_touch_sl_pct",
+        "prob_first_touch_neither_pct",
+        "tp_hit_count",
+        "sl_hit_count",
     ):
         assert k in out["stats"], f"missing stats key: {k}"
 
@@ -252,6 +259,14 @@ def test_tp_sl_normal():
     # ±5% 在 20 天 GBM（σ~2%/day）应该都能大量触发
     assert out["stats"]["prob_take_profit_pct"] > 30
     assert out["stats"]["prob_stop_loss_pct"] > 30
+    assert out["stats"]["tp_hit_count"] is not None
+    assert out["stats"]["sl_hit_count"] is not None
+    first_touch_sum = (
+        out["stats"]["prob_first_touch_tp_pct"]
+        + out["stats"]["prob_first_touch_sl_pct"]
+        + out["stats"]["prob_first_touch_neither_pct"]
+    )
+    assert abs(first_touch_sum - 100) < 0.02
 
 
 def test_tp_sl_inconsistent_ignored():
@@ -329,15 +344,21 @@ def test_invalid_price_error():
 
 
 def test_lookback_adequacy_warning():
-    """请求 252 但只有 50 天数据时，触发样本不足 warning"""
+    """请求 252 但只有 80 天数据时，触发样本不足 warning"""
+    df = _make_gbm_kline(n=80)
+    out = run_forecast(df, current_price=10.0, forecast_days=20, simulations=200, lookback_days=252, seed=42)
+    assert "error" not in out, out.get("error")
+    assert out["low_data_warning"] is True
+    assert any("实际可用数据" in w or "统计估计可能不稳定" in w for w in out["warnings"])
+
+
+def test_min_log_returns_requires_60():
+    """有效 log return 少于 60 条时拒绝预测"""
     df = _make_gbm_kline(n=50)
     out = run_forecast(df, current_price=10.0, forecast_days=20, simulations=200, lookback_days=252, seed=42)
-    # 50 天 → 只有 49 条 log return < MIN_LOG_RETS=20 阈值，刚好够但样本少
-    # 实际行为：
-    # - log_rets 有 49 条 >= MIN_LOG_RETS
-    # - 49/50 < 0.8 不触发 warning（因为 requested=50）
-    # 所以这里主要验证不抛异常 + 有 warnings 字段
-    assert "warnings" in out or "error" in out
+    assert "error" in out
+    assert "至少 60" in out["error"]
+    assert out["low_data_warning"] is True
 
 
 def test_sample_paths_count():
@@ -356,3 +377,28 @@ def test_sample_paths_count():
     # 每条 path 的 prices 长度 = forecast_days + 1
     for sp in out["sample_paths"]:
         assert len(sp["prices"]) == out["forecast_days"] + 1
+
+
+def test_median_matches_analytic_drift():
+    """模拟终值中位应接近解析解 P0 * exp(drift * T)，防漂移项双扣回归"""
+    df = _make_gbm_kline(n=252, seed=7)
+    current = float(df["close"].iloc[-1])
+    forecast_days = 20
+    lookback = 120
+    closes = df["close"].tail(lookback + 1).to_numpy(dtype=float)
+    log_rets = np.diff(np.log(closes))
+    drift = float(np.mean(log_rets))
+    theory_median = current * float(np.exp(drift * forecast_days))
+
+    out = run_forecast(
+        df,
+        current_price=current,
+        forecast_days=forecast_days,
+        simulations=20_000,
+        lookback_days=lookback,
+        seed=42,
+    )
+    assert "error" not in out, out.get("error")
+    sim_median = out["stats"]["final_price_median"]
+    rel_err = abs(sim_median - theory_median) / theory_median
+    assert rel_err < 0.02, f"median drift mismatch: sim={sim_median}, theory={theory_median}"

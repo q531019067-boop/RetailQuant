@@ -26,7 +26,13 @@ from rquant.business.pool_store import (
     remove_from_watchlist,
 )
 from rquant.log import get_recent_logs, info
-from rquant.research.montecarlo import run_forecast
+from rquant.research.montecarlo import (
+    DEFAULT_SIMULATIONS,
+    MAX_FORECAST_DAYS,
+    MAX_SIMULATIONS,
+    MIN_LOG_RETS,
+    run_forecast,
+)
 from rquant.strategy import all_strategies, scan_sell, scan_stock
 
 from .views import (
@@ -417,9 +423,9 @@ def register_routes(app: Flask) -> None:
         """单只股票蒙特卡洛路径预测（GBM + 分位带 + TP/SL 命中）。
 
         Query params（全部可选）:
-            days        (int,   default 20)   预测多少个交易日
-            sims        (int,   default 1000) 模拟路径数
-            lookback    (int,   default 252)  历史 lookback 天数
+            days        (int,   default 20)   预测多少个交易日（上限 252）
+            sims        (int,   default 10000) 模拟路径数（上限 50000）
+            lookback    (int,   default 252)  历史 lookback 天数（下限 60）
             kline_days  (int,   default 400)  拉 K 线天数（自动取 max(lookback+30, kline_days)）
             tp          (float, optional)     止盈价（不传 / ≤0 → 库内按现价 ×1.08 兜底）
             sl          (float, optional)     止损价（不传 / ≤0 → 库内按现价 ×0.96 兜底）
@@ -440,9 +446,9 @@ def register_routes(app: Flask) -> None:
         info("web", f"GET /api/montecarlo/{code}")
 
         # --- 解析参数 ---
-        days = _safe_int(request.args.get("days"), 20)
-        sims = _safe_int(request.args.get("sims"), 1000)
-        lookback = max(30, _safe_int(request.args.get("lookback"), 252))
+        days = min(max(_safe_int(request.args.get("days"), 20), 1), MAX_FORECAST_DAYS)
+        sims = min(max(_safe_int(request.args.get("sims"), DEFAULT_SIMULATIONS), 1), MAX_SIMULATIONS)
+        lookback = max(MIN_LOG_RETS, _safe_int(request.args.get("lookback"), 252))
         kline_days = max(lookback + 30, _safe_int(request.args.get("kline_days"), 400))
 
         # 可选浮点：未传或 ≤0 → None（库内会兜底）
@@ -547,7 +553,7 @@ def register_routes(app: Flask) -> None:
 
     @app.route("/api/strategy_status")
     def api_strategy_status():
-        """所有策略的运行时状态（当前为 mock，详见 docs/TODOLIST.md）"""
+        """所有策略的运行时状态（当前为 mock，详见 docs/archive/TODOLIST.md）"""
         return jsonify({"strategies": system.get_strategy_status()})
 
     @app.route("/api/system_log")

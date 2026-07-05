@@ -1,5 +1,16 @@
 # RetailQuant 代码导读（2026-06-22 全量盘点）
 
+> 创建人：   unknown
+> 创建时间：  unknown
+> 最后修改人： Lyuan741
+> 最后修改时间：2026-07-05 22:18
+
+---
+
+> **归档说明**：2026-06-22 代码快照（当时 10 策略 / 6804 行）。当前架构以 [`../大纲.md`](../大纲.md) 与 [`../代码索引.md`](../代码索引.md) 为准。
+
+---
+
 > 项目：`RetailQuant`（A 股个人量化看板）
 > 版本：`rquant 0.2.0` / `retailquant 0.1.0`
 > 规模：**6804 行 Python 代码，56 个 .py 文件**
@@ -478,7 +489,7 @@ python scripts/backtest_multi_factor.py \
 
 - **路由 `/api/watchlist/analyze/<code>`** 每次访问都跑全策略 + 重新拉 K 线（无缓存），自选股多时慢
 - **首页 `/` 同步跑所有策略信号**，长池子下首屏慢
-- **`system.get_strategy_status()`** 当前是 mock（hash(name) % 30 + 1 随机时间），未真实持久化（TODO 在 docs/TODOLIST.md）
+- **`system.get_strategy_status()`** 当前是 mock（hash(name) % 30 + 1 随机时间），未真实持久化（TODO 在 docs/archive/TODOLIST.md）
 
 ### 8.4 工程
 

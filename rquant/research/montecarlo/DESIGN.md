@@ -86,12 +86,12 @@ $$
 ### 3.2 本库用的日频简化（dt = 1）
 
 $$
-P_{t+1} = P_t \cdot \exp\left( \mu - \frac{\sigma^2}{2} + \sigma \cdot Z_t \right), \quad Z_t \sim \mathcal{N}(0, 1)
+P_{t+1} = P_t \cdot \exp\left( \mu + \sigma \cdot Z_t \right), \quad Z_t \sim \mathcal{N}(0, 1)
 $$
 
-其中 $\mu, \sigma$ 都是**日频**参数。
+其中 $\mu, \sigma$ 都是**日频**参数；本库的 $\mu$ 直接取有效日对数收益率样本均值，已经是 log-return drift，路径生成时不再额外减 $\sigma^2/2$。
 
-> 一般形式是 $dt$（任意时间步长），dt=1 时跟简化公式完全等价。**目前固定 dt=1**（一个交易日），因为 A 股 T+1，最小有意义的时间步就是"下一个交易日"。如果以后想做分钟级，把 $\mu, \sigma$ 换成"分钟频"参数即可，公式不变。
+> 一般形式是 $dt$（任意时间步长），dt=1 时跟简化公式等价。**目前固定 dt=1**（一个交易日），因为 A 股 T+1，最小有意义的时间步就是"下一个交易日"。如果以后想做分钟级，把 $\mu, \sigma$ 换成"分钟频"参数即可，公式不变。
 
 ### 3.3 为什么选 GBM（而不是 jump-diffusion、Heston、SABR 等）
 
@@ -112,7 +112,7 @@ GBM 是**最弱假设 + 最直观**的 baseline。如果用户想"升级"到带�
 - 5 分位 $P_{05}(t) = \mathrm{percentile}_{5\%}\big(\{S^{(i)}_t\}_{i=1}^{N}\big)$
 - 25 分位 / 50（中位）/ 75 / 95 类似
 
-**大数定律保证**：当 $N \to \infty$，分位估计收敛到真实分布分位。实务上 $N = 1000$ 已足够（误差 $\sim 1/\sqrt{N} \approx 3\%$），$N = 5000$ 误差 $\sim 1.4\%$，**不需要更高**。
+**大数定律保证**：当 $N \to \infty$，分位估计收敛到真实分布分位。实务默认 $N = 10000$，兼顾分位稳定性与 API 响应速度；高波动个股会自动提升到 20000 条路径。
 
 > 注意：分位带宽度受**预测长度** $T$ 影响——预测 60 天的分位带天然比 20 天宽（GBM 的标准差累积放大）。不要拿不同 forecast_days 的结果横向比较带宽。
 
@@ -195,13 +195,13 @@ SIGMA_FLOOR = 0.005     # 兜底为 0.5%/日（年化 ~8%，A 股合理下限）
 ### 4.4 样本不足保护
 
 ```python
-MIN_LOG_RETS = 20                # 有效 log return 至少要 20 条，否则拒绝
+MIN_LOG_RETS = 60                # 有效 log return 至少要 60 条，否则拒绝
 LOOKBACK_ADEQUACY_RATIO = 0.8    # 实际样本 / 请求 lookback < 0.8 → warning
 ```
 
-**为什么 20**：
-- $n < 20$：标准差估计不稳定（卡方分布尾部重）
-- $n \ge 20$：t 分布接近正态，σ 估计误差 < 15%
+**为什么 60**：
+- $n < 60$：标准差估计置信区间过宽，20 日预测分位带容易被单个异常日主导
+- $n \ge 60$：约 3 个月日频样本，是 A 股个股波动估计的最低实用门槛
 
 **为什么 0.8**：
 - 200 天 lookback 只剩 159 条有效（80%）→ 警告但仍算
@@ -226,11 +226,13 @@ $P_0$ 是最早一天的 close，$P_n$ 是最后一天的 close。`run_forecast(
 ```python
 rng = np.random.default_rng(cfg.seed)         # 1. 随机数发生器（可复现）
 Z = rng.standard_normal((sims, days))          # 2. 一次性生成所有标准正态
-increments = (mu - 0.5 * sigma**2) + sigma * Z # 3. GBM 增量
+increments = drift + sigma * Z                 # 3. GBM 增量（drift = mean(log_rets)）
 log_paths = cumsum(increments, axis=1)        # 4. log 价格路径
 log_paths = hstack([zeros, log_paths])          # 5. 加 day 0 = 当前价
 paths = current_price * exp(log_paths)         # 6. 真实价格路径
 ```
+
+> **注意**：`drift = mean(ln(P_t/P_{t-1}))` 已是 Itô 修正后的日漂移，**不得**再减 `sigma^2/2`。
 
 ### 5.2 关键实现细节
 
@@ -240,7 +242,7 @@ paths = current_price * exp(log_paths)         # 6. 真实价格路径
 
 ### 5.3 数值稳定性
 
-- `increments` 中 `(mu - sigma²/2)` 可能非常小（如 mu=0.0005, sigma=0.02 → -0.0002）——在 float64 下完全没问题
+- `increments = drift + sigma * Z` 在 float64 下完全没问题；`drift` 已是 log return 样本均值，不再扣 `sigma²/2`
 - `cumsum` 在 1000 步以内不会累积到 inf（即使 σ=0.1，1000 步后 log 价格最大约 ±25，对应价格比例 e^25 ≈ 7e10，仍在 float64 范围）
 - `exp` 在 log_paths 巨大时（>700）会溢出，但实际不会出现
 
@@ -293,7 +295,11 @@ prob_sl = mean((paths <= sl).any(axis=1)) * 100
 
 **关键**：是"路径中任意一日"触发，不是"最终价"触发——这反映了"未来 N 天内触顶/触底"的概率，更符合 TP/SL 实际语义。
 
-**已知语义漏洞（保留 FactorQ 原行为）**：
+**互斥交易口径**：
+- `prob_take_profit_pct` / `prob_stop_loss_pct` 仍保留独立触达口径
+- `prob_first_touch_tp_pct` / `prob_first_touch_sl_pct` / `prob_first_touch_neither_pct` 表示 TP/SL 同时挂单时的先触即停结果
+
+**已知语义边界**：
 - 当 TP ≤ SL 时，校验拒绝 → tp/sl = None → prob_tp/prob_sl = None
 - 但返回的 `take_profit`/`stop_loss` 字段是兜底后的值（`current_price * 1.08 / 0.96`）——这是给前端画横线用
 - **结果**：库对自相矛盾的 TP/SL 不重算命中率，前端需注意 `prob_*` 为 None 的情况
@@ -301,9 +307,9 @@ prob_sl = mean((paths <= sl).any(axis=1)) * 100
 ### 6.5 最大回撤（MDD）
 
 ```python
-running_max = np.maximum.accumulate(path)         # 历史最高价
-drawdown = path / running_max - 1                # 各时点回撤（负值）
-mdd = np.nanmin(drawdown)                        # 最大回撤 = 最深谷底
+running_max = np.maximum.accumulate(paths, axis=1)  # 每条路径历史最高价
+drawdown = paths / running_max - 1                  # 各时点回撤（负值）
+mdds = np.nanmin(drawdown, axis=1)                  # 每条路径最大回撤
 ```
 
 - `max_drawdown_median_pct`：所有路径 MDD 的中位
@@ -341,10 +347,12 @@ out = run_forecast(df, current_price=12.34, ...)
 | `current_price` | float | caller | GBM 起点（4 位小数） |
 | `last_date` | str | `df["date"].iloc[-1]` | K 线末日 YYYY-MM-DD |
 | `lookback_days_used` | int | `_compute_log_returns` | 实际有效 log return 条数（剔停牌后） |
+| `low_data_warning` | bool | `len(log_rets) < lookback*0.8` | 样本偏少提示 |
 | `forecast_days` | int | config | 预测步数 |
 | `simulations` | int | config | 路径数 |
 | `mu_daily` | float | `mean(log_rets)` | 日频 μ |
 | `sigma_daily` | float | `std(log_rets, ddof=1)` | 日频 σ |
+| `sigma_confidence_interval` | list | σ 的 95% CI | 波动率估计可靠性 |
 | `sigma_floored` | bool | σ < 1e-4 ? | 是否用了兜底 σ |
 | `mu_annualized` | float | `mu_daily * 252` | 年化 μ |
 | `sigma_annualized` | float | `sigma_daily * sqrt(252)` | 年化 σ |
@@ -383,6 +391,10 @@ out["paths"] = {
 | `prob_higher_pct` | float | 最终价 > 当前价的概率 (%) |
 | `prob_take_profit_pct` | float \| None | 路径中任意一日 ≥ TP 的概率 (%) |
 | `prob_stop_loss_pct` | float \| None | 路径中任意一日 ≤ SL 的概率 (%) |
+| `prob_first_touch_tp_pct` | float \| None | TP/SL 互斥时 TP 先触概率 (%) |
+| `prob_first_touch_sl_pct` | float \| None | TP/SL 互斥时 SL 先触概率 (%) |
+| `prob_first_touch_neither_pct` | float \| None | TP/SL 均未触发概率 (%) |
+| `tp_hit_count` / `sl_hit_count` | int \| None | 独立触达路径条数 |
 | `max_drawdown_median_pct` | float | 路径 MDD 的中位 (%) |
 | `max_drawdown_worst_5pct_pct` | float | 路径 MDD 的 5 分位 (%)——95% 路径不超过 |
 | `first_touch_tp_day_median` | int \| None | 中位首次触 TP 的天数 |
@@ -399,7 +411,7 @@ out["paths"] = {
 | `current_price <= 0` | 当前价无效 | 立即返回 error | `{"error": "current_price 必须 > 0"}` |
 | 停牌日 ≥ 50% | 大量剔除 | warning + 继续 | `out.warnings` 含 "排除 N 条停牌日…" |
 | 全部停牌 | 无有效 log return | 返回 error | `{"error": "有效样本不足（0 条…）"}` |
-| 有效样本 < 20 | 不够统计 | 返回 error | `{"error": "有效样本不足（X 条…）"}` |
+| 有效样本 < 60 | 不够统计 | 返回 error | `{"error": "有效样本不足（X 条…）"}` |
 | 有效样本 < 80% lookback | 数据稀疏 | warning + 继续 | `out.warnings` 含 "统计估计可能不稳定" |
 | σ < 1e-4 | 退化 | 兜底 0.005 + warning | `out["sigma_floored"] = True` |
 | σ > 0.20 | 极大（年化 > 80%） | warning（不兜底） | `out.warnings` 含 "σ 极大" |
@@ -453,19 +465,19 @@ A 股策略经常掉进"看起来很赚钱"陷阱：
 
 | sims × days | 单次耗时 |
 |-------------|---------|
-| 1000 × 20 | ~5 ms |
-| 1000 × 252 | ~30 ms |
-| 5000 × 252 | ~120 ms |
+| 10000 × 20 | ~0.1 s |
+| 50000 × 20 | ~0.5 s |
+| 10000 × 252 | ~0.2 s |
 
-瓶颈在 MDD 计算（Python 循环）。如果 sims > 10000，考虑 numba 加速或向量化 MDD。
+路径生成、MDD、first-touch 均已向量化。主要成本来自大矩阵分配和分位数计算，API 会把 `sims` 钳制到 50000、`days` 钳制到 252。
 
 ### 10.2 内存
 
 - `Z` 矩阵：(sims, days) float64
-- 1000 × 252 → ~2 MB
 - 10000 × 252 → ~20 MB
+- 50000 × 252 → ~100 MB
 - `paths` 同尺寸 → 翻倍
-- 总体在 1000 sims 下可忽略
+- 单股 API 可接受；批量扫描应控制并发
 
 ### 10.3 数值边界
 
@@ -574,15 +586,15 @@ assert out["paths"]["median"] == out2["paths"]["median"]
 
 - A 股 T+1，最小有意义步长是"下个交易日"
 - 分钟级需要 tick 数据（数据源没有）
-- 分钟级蒙特卡洛计算成本会爆炸（1 天 240 分钟 × 20 天 = 4800 步 × 1000 sims = 4.8M cells）
+- 分钟级蒙特卡洛计算成本会爆炸（1 天 240 分钟 × 20 天 = 4800 步 × 10000 sims = 48M cells）
 
 → dt=1 是性价比最优解。
 
 ### 13.3 为什么用 numpy 而不是 cupy / jax
 
-- numpy 已够快（单次 5ms）
+- numpy 已够快（10000 × 20 天约 0.1 秒）
 - cupy / jax 引入 GPU 依赖（部署复杂 + 数据传输 overhead）
-- 1000 sims × 252 days 量级，CPU 完全 hold 住
+- 10000 sims × 252 days 量级，CPU 完全 hold 住
 
 → 拒绝过早优化。
 

@@ -32,7 +32,7 @@ from typing import Optional
 
 import pandas as pd
 
-from .forecaster import run_forecast
+from .forecaster import DEFAULT_SIMULATIONS, MAX_FORECAST_DAYS, MAX_SIMULATIONS, MIN_LOG_RETS, run_forecast
 
 
 def _current_price_from_df(df: pd.DataFrame) -> float:
@@ -57,7 +57,9 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("code", help="股票代码，如 sh600000")
     parser.add_argument("--days", type=int, default=20, help="预测天数（默认 20）")
-    parser.add_argument("--sims", type=int, default=1000, help="模拟路径数（默认 1000）")
+    parser.add_argument(
+        "--sims", type=int, default=DEFAULT_SIMULATIONS, help=f"模拟路径数（默认 {DEFAULT_SIMULATIONS}）"
+    )
     parser.add_argument("--lookback", type=int, default=252, help="历史 lookback 天数（默认 252）")
     parser.add_argument("--tp", type=float, default=None, help="止盈价（不传则按现价 ×1.08 兜底）")
     parser.add_argument("--sl", type=float, default=None, help="止损价（不传则按现价 ×0.96 兜底）")
@@ -71,6 +73,9 @@ def main(argv: list[str] | None = None) -> int:
         help="覆盖当前价（盘中实时价），不传则用 K 线最后 close",
     )
     args = parser.parse_args(argv)
+    args.days = min(max(args.days, 1), MAX_FORECAST_DAYS)
+    args.sims = min(max(args.sims, 1), MAX_SIMULATIONS)
+    args.lookback = max(args.lookback, MIN_LOG_RETS)
 
     # 延迟导入业务层（CLI 入口要尽量轻）
     from rquant.business.data import fetch_kline, get_stock

@@ -11,9 +11,9 @@ TP/SL 自洽校验、MDD 统计、warnings 上报），仅做了以下调整：
    改写为 ``cli.py``，使用 RetailQuant 自身的 ``rquant.business.data.fetch_kline``。
 3. **作为工具库**：
 
-   - 不注册任何路由、不写前端；
+   - 核心能力保持无状态函数调用；
+   - Web 层通过 ``rquant.web.routes`` 注册 ``/api/montecarlo/<code>``；
    - 不动 ``rquant/__init__.py`` 顶层导出（避免影响现有 import）；
-   - 不动 ``web/routes.py`` / ``templates`` / ``static``；
    - 任何上层（CLI、Flask route、Jupyter、单元测试）都可以
      ``from rquant.research.montecarlo import run_forecast`` 直接调用。
 
@@ -27,7 +27,7 @@ TP/SL 自洽校验、MDD 统计、warnings 上报），仅做了以下调整：
         df=kline_df,                # 必须含 date, close, volume 列（按日期升序）
         current_price=12.34,        # 当前价（盘中应传实时价，不是昨收）
         forecast_days=20,           # 预测多少个交易日
-        simulations=1000,           # 模拟路径数
+        simulations=10_000,         # 模拟路径数
         lookback_days=252,          # 用多少天历史估 μ/σ
         take_profit=13.32,          # 止盈价（可选）
         stop_loss=11.85,            # 止损价（可选）
@@ -40,7 +40,8 @@ TP/SL 自洽校验、MDD 统计、warnings 上报），仅做了以下调整：
 --------
 - ``df`` 是 pandas.DataFrame，列至少包含 ``date`` / ``close`` / ``volume``，按日期升序。
 - ``current_price > 0``，且 caller 自行保证是"as-of 当前"的真实价（盘中应为实时价）。
-- 至少 30 天 K 线（库内会校验更严格的 20 条有效 log return）。
+- 至少 30 天 K 线（库内会校验更严格的 60 条有效 log return）。
+- 使用后复权价格，避免除权除息缺口扭曲 drift/sigma。
 
 时序严谨性
 ----------
@@ -57,7 +58,11 @@ TP/SL 自洽校验、MDD 统计、warnings 上报），仅做了以下调整：
 """
 
 from .forecaster import (
+    DEFAULT_SIMULATIONS,
+    HIGH_VOL_SIGMA_DAILY,
     LOOKBACK_ADEQUACY_RATIO,
+    MAX_FORECAST_DAYS,
+    MAX_SIMULATIONS,
     MIN_LOG_RETS,
     MIN_SIGMA_DAILY,
     SIGMA_FLOOR,
@@ -69,6 +74,10 @@ from .forecaster import (
 
 __all__ = [
     "LOOKBACK_ADEQUACY_RATIO",
+    "DEFAULT_SIMULATIONS",
+    "HIGH_VOL_SIGMA_DAILY",
+    "MAX_FORECAST_DAYS",
+    "MAX_SIMULATIONS",
     "MIN_LOG_RETS",
     "MIN_SIGMA_DAILY",
     "SIGMA_FLOOR",

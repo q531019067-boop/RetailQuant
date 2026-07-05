@@ -1,5 +1,12 @@
 # RetailQuant UI 交互文档
 
+> 创建人：   Lyuan741
+> 创建时间：  2026-06-18 00:25
+> 最后修改人： Lyuan741
+> 最后修改时间：2026-07-05 22:22
+
+---
+
 > 生成：2026-06-18 | 面向 AI 维护者 | 覆盖 `templates/index.html` 所有交互元素
 
 ---
@@ -11,15 +18,6 @@
 │ rQuant  市场状态  最后刷新              🔄 ⚙️ 用户 │
 └────────────────────────────────────────────────────┘
 ┌─ flash 消息条（条件渲染）──────────────────────────┐
-└────────────────────────────────────────────────────┘
-┌─ 板块热力图 (Treemap) ────────────────────────────┐
-│ 🗺️ 板块热力图  [行业板块] [概念板块]   颜色=涨跌幅 │
-│ ┌──────────────────────────────────────────────┐  │
-│ │          Canvas 900×500                      │  │
-│ │  ┌────┐ ┌───┐ ┌──────┐                      │  │
-│ │  │半导体│ │银行│ │ 白酒 │  …                 │  │
-│ │  └────┘ └───┘ └──────┘                      │  │
-│ └──────────────────────────────────────────────┘  │
 └────────────────────────────────────────────────────┘
 ┌─ 顶部卡片 ────────────────────────────────────────┐
 │ 总资产 可用资金 总市值 今日盈亏 仓位 买入信号 卖出提示 │
@@ -93,7 +91,7 @@
 | 属性 | 值 |
 |---|---|
 | 容器 | `<div class="box" id="treemap-box">` |
-| 位置 | Flash 下方，顶部卡片上方 |
+| 位置 | 顶部卡片下方，第一行左列 |
 
 | 元素 | 样式 | 作用 | 触发函数 |
 |---|---|---|---|
@@ -137,11 +135,11 @@
 
 ---
 
-### 5. 顶部卡片
+### 5. 顶部卡片（Hero）
 
 | 属性 | 值 |
 |---|---|
-| 容器 | `<div class="cards">` — grid 自适应列 |
+| 容器 | `<div class="cards cards-7">` — 7 列 Hero 卡片 |
 | 样式 | `.card` — 半透明背景，圆角 8px，边框 |
 
 | 卡片 | 数据来源 | 条件样式 |
@@ -156,52 +154,62 @@
 
 ---
 
-### 6. 卖出提示区
+### 6. 今日决策区
 
 | 属性 | 值 |
 |---|---|
-| 容器 | `<div class="box" id="sell-signals-box">` |
-| 布局 | `.row` 左列（与买入信号并列） |
+| 容器 | `<div class="box" id="decision-box">` |
+| 布局 | 第一行右列，与 `#treemap-box` 并列 |
 
 | 元素 | 样式 | 作用 |
 |---|---|---|
-| 标题 `📉 卖出提示` | h2 + `.badge.red` 计数 | 区块标识 + 信号数量 |
-| 信号卡片 | `.signal` — 深色背景，圆角 6px | 每条信号独立卡片 |
+| 标题 `📋 今日决策` | h2 | 区块标识 |
+| 卖出提示 | `#sell-signals-list` + `.signal.sig-urgent` | 展示最多 3 条卖出信号 |
+| 买入信号 Top5 | `.top-signal-row` | 展示最多 5 条买入候选 |
 
-| 信号子元素 | 样式 | 内容 |
+| 卖出信号子元素 | 样式 | 内容 |
 |---|---|---|
 | `.sig-head` | flex，左右分布 | `<b>`code + name；`.urgency-tag`（urgent 红 / normal 黄） |
 | `.sig-reason` | 13px，色 `#b0bec5` | 触发原因（如"触发 -7% 止损线"） |
 | `.sig-detail` | 12px，色 `#78909c` | 建议卖出价 |
 
+| 买入 Top5 子元素 | 样式 | 内容 |
+|---|---|---|
+| `.ts-row-1` | flex | 排名、代码、名称、策略标签 |
+| `.ts-row-2` | 小字 | 现价 → 买价 · 止损 · 止盈 |
+
 | 条件 | 显示 |
 |---|---|
-| `sell_signals` 非空 | 渲染信号卡片 |
+| `sell_signals` 非空 | 渲染最多 3 条卖出信号 |
 | `sell_signals` 为空 | 显示 `✅ 无（持仓健康）` |
+| `buy_signals` 非空 | 渲染最多 5 条买入候选 |
+| `buy_signals` 为空 | 显示 `📭 今日无信号` |
 
 ---
 
-### 7. 买入信号区
+### 7. 买入信号列表
 
 | 属性 | 值 |
 |---|---|
 | 容器 | `<div class="box" id="buy-signals-box">` |
-| 布局 | `.row` 右列 |
+| 布局 | 全宽，位于持仓/持仓分布之后 |
 
 | 元素 | 样式 | 作用 |
 |---|---|---|
-| 标题 `🔥 买入信号` | h2 + `.badge.green` 计数 | 区块标识 + 信号数量 |
-| 信号卡片 | `.signal` | 每条信号独立卡片 |
+| 标题 `🔥 买入信号列表` | h2 + `.badge.green` 计数 | 区块标识 + 信号数量 |
+| 筛选器 | `.filter-group` | 按策略大类和策略名筛选 |
+| 信号表格 | `.data-table` + `#buy-signals-list` | 每条信号一行 |
 
-| 信号子元素 | 样式 | 内容 |
-|---|---|---|
-| `.sig-head` | flex | `<b>`code + name · sector；`.strat-tag`（ChanLun2B / BuyHold） |
-| `.sig-reason` | 13px，色 `#b0bec5` | 触发原因 |
-| `.sig-detail` | 12px，色 `#78909c` | 现价 → 买价 · 止损 · 止盈 |
+| 表格列 | 内容 |
+|---|---|
+| 代码 / 名称 / 板块 | 股票基础信息 |
+| 策略 | `.strat-tag` 显示触发策略 |
+| 现价 / 建议买入 / 止损 / 止盈 | 价格区间 |
+| 信心度 / 原因 | 策略输出解释 |
 
 | 条件 | 显示 |
 |---|---|
-| `buy_signals` 非空 | 渲染信号卡片 |
+| `buy_signals` 非空 | 渲染 `.signal-row` 表格行 |
 | `buy_signals` 为空 | 显示 `📭 今日无信号` |
 
 ---
@@ -306,7 +314,7 @@
 | 触发 | 自选股行 / 持仓行的 `📊 预测` 按钮 |
 | 数据来源 | `GET /api/montecarlo/<code>?days=…&sims=…&seed=…&tp=…&sl=…&live_price=…` |
 | 渲染 | Chart.js 4.4.1（CDN，已有依赖） |
-| 后端 | `rquant.research.montecarlo`（从 FactorQ 1:1 复刻） |
+| 后端 | `rquant.research.montecarlo`（从 FactorQ 1:1 复刻）；设计见 [`../rquant/research/montecarlo/README.md`](../rquant/research/montecarlo/README.md) |
 
 | 元素 | 样式 / ID | 作用 |
 |---|---|---|
@@ -316,6 +324,7 @@
 | 参数表单 | `.mc-form` | `days` / `sims`（select）/ `seed` / `tp` / `sl` / `live_price` + "生成预测" 按钮 |
 | TP / SL 默认值 | `#mc-tp` / `#mc-sl` | 打开时按现价 ×1.08 / ×0.96 自动填，用户可改 |
 | 统计摘要 | `#mc-summary` | 网格 6+4 项：中位预期收益 / 上涨概率 / TP 命中 / SL 命中 / MDD 中位 / MDD 95分位 / μ 日频年化 / σ 日频年化 / 有效样本 / 兜底 TP-SL |
+| API 扩展统计 | `stats.prob_first_touch_*` / `sigma_confidence_interval` | 后端返回，当前 UI 未展示；调试或研究报告可直接读取 API |
 | 涨绿跌红 | `.mc-val.up` / `.mc-val.down` | 收益 / MDD 颜色标识 |
 | σ 退化提示 | `.mc-warn-tag` | 紧贴 σ 值的"已兜底"小标签 |
 | 图表 | `<canvas id="mc-chart">`（380px 高） | Chart.js line chart，dataset 顺序：历史 / P05 / P25 / 中位 / P75 / P95 / 5 条样本路径 / TP / SL |
@@ -610,7 +619,7 @@ doTopup() / doWithdraw()
 |---|---|---|
 | `.navbar` | 顶部导航栏 | flex，半透明黑底 |
 | `.container` | 内容区 | max-width 1200px，居中 |
-| `.cards` | 顶部四卡片容器 | grid auto-fit |
+| `.cards` | 顶部卡片容器 | grid auto-fit |
 | `.cards-7` | 顶部七卡片布局 | grid 7 列 |
 | `.card` | 单张卡片 | 圆角 8px，半透明背景 |
 | `.card.green` / `.card.red` | 盈亏卡片 | 绿/红边框 |
@@ -619,6 +628,10 @@ doTopup() / doWithdraw()
 | `.badge.green` / `.badge.red` | 计数徽章 | 圆角 10px |
 | `.signal` | 信号卡片 | 深色底，圆角 6px |
 | `.signal.sig-urgent` | 紧急信号 | 红色边框 |
+| `.top-signal-row` | 今日决策买入 Top5 行 | 两行紧凑布局 |
+| `.filter-group` | 买入信号筛选器 | 右侧 select 组合 |
+| `.data-table` | 买入信号表格 | 暗色表格 |
+| `.signal-row` | 买入信号表格行 | 带 category / strategy data 属性 |
 | `.sig-head` | 信号头部 | flex 左右分布 |
 | `.urgency-tag` / `.strat-tag` | 标签 | 圆角 4px，小字 |
 | `.tab-btn` / `.tab-btn.active` | Tab 切换按钮 | 灰色 → 青色高亮 |

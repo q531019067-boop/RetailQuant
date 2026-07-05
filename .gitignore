@@ -22,7 +22,7 @@ data/portfolio.json
 data/trades.json
 data/funds.json
 data/users.json
-data/parquet/
+data/daily_kline/
 
 uv.lock
 
@@ -30,3 +30,6 @@ uv.lock
 
 # 复盘报告（本地生成，GitHub Action 会 force-add 推送）
 reports/
+
+# 研究/回测/蒙特卡洛输出（本地生成，不提交）
+results/

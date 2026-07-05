@@ -99,6 +99,9 @@ def test_basic_success(client):
         "max_drawdown_worst_5pct_pct",
         "prob_take_profit_pct",
         "prob_stop_loss_pct",
+        "prob_first_touch_tp_pct",
+        "prob_first_touch_sl_pct",
+        "prob_first_touch_neither_pct",
     ):
         assert k in body["stats"], f"missing stats.{k}"
     # path 长度
@@ -222,8 +225,8 @@ def test_code_normalized_lowercase(client):
     assert body["code"] == "sh600000"
 
 
-def test_lookback_param_min_30(client):
-    """lookback 传 5 → 内部钳到 30（防止用户传太小导致样本不足）"""
+def test_lookback_param_min_60(client):
+    """lookback 传 5 → 内部钳到 60（防止用户传太小导致样本不足）"""
     df = _make_gbm_kline(n=252)
     with (
         patch("rquant.web.routes.data.fetch_kline", return_value=df),
@@ -235,3 +238,42 @@ def test_lookback_param_min_30(client):
     assert resp.status_code == 200
     # 实际用的 lookback_days 在 path 数决定，不在 body，但应该正常跑完
     assert body["ok"] is True
+
+
+def test_days_and_sims_are_clamped(client):
+    """days / sims 过大时钳到库允许上限，防止 API 被滥用"""
+    df = _make_gbm_kline(n=300)
+
+    def fake_run_forecast(
+        df,
+        current_price,
+        forecast_days,
+        simulations,
+        lookback_days,
+        take_profit,
+        stop_loss,
+        seed,
+        code,
+        name,
+    ):
+        return {
+            "code": code,
+            "name": name,
+            "current_price": round(float(current_price), 4),
+            "last_date": "2024-01-01",
+            "lookback_days_used": lookback_days,
+            "forecast_days": forecast_days,
+            "simulations": simulations,
+            "stats": {"expected_return_pct": 0, "prob_higher_pct": 50},
+        }
+
+    with (
+        patch("rquant.web.routes.data.fetch_kline", return_value=df),
+        patch("rquant.web.routes.data.get_stock", return_value={}),
+        patch("rquant.web.routes.run_forecast", side_effect=fake_run_forecast),
+    ):
+        resp = client.get("/api/montecarlo/sh600000?days=999&sims=999999&seed=42")
+    body = resp.get_json()
+    assert resp.status_code == 200
+    assert body["forecast_days"] == 252
+    assert body["simulations"] == 50000
