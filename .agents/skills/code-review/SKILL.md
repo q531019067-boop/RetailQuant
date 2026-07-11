@@ -96,6 +96,7 @@ uv run python -m pytest rbacktest/tests/ -q
   - 修改了 API（prop/参数名）→ 前端组件文档和测试同步更新
   - 每个测试的断言值与方法实际返回值一致（不是「恰好通过」而是「正确验证」）
 - [ ] 无死代码、无未使用导入、无废弃 CSS class
+- [ ] 无 `print` 或 `traceback.print_exc()`：所有输出统一使用 `from backend.log import logger`
 - [ ] 无循环依赖、无跨模块私有函数引用
 - [ ] 所有公共函数有类型注解和 docstring
 - [ ] 边界条件已处理（空输入、None、除零）
@@ -115,5 +116,6 @@ uv run python -m pytest rbacktest/tests/ -q
 | 私有函数跨模块 | 改名去掉 `_` 前缀或暴露公开 API |
 | 事件类型散落 | 定义 `class EventType` 单例，所有文件引用它 |
 | 配置硬编码 | 写入 `rbacktest.toml`，通过 `load_agent_config()` 读取 |
+| `print` / `traceback.print_exc()` | 替换为 `logger.warning/info/error(exc_info=True)`，日志统一走 `backend.log.logger` |
 | 文档-代码-测试不一致 | 修改后立即跑测试验证，函数签名变更 → 同步更新调用处和测试 |
 | 测试恰好通过但实际是错的 | 检查断言值是否真的等于代码返回值（不要靠巧合） |
