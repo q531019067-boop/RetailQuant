@@ -15,7 +15,6 @@ import io
 import json as _json
 import os
 import sys
-import traceback
 import uuid
 from datetime import datetime
 from pathlib import Path
@@ -38,6 +37,7 @@ from backend.backtest_engine import (  # noqa: E402
     run_backtest,
 )
 from backend.strategy import list_strategies_metadata  # noqa: E402
+from backend.log import logger  # noqa: E402
 
 app = Flask(__name__)
 CORS(app)
@@ -54,28 +54,41 @@ def _check_data_dir() -> None:
     contract_file = data_dir / "contract.json"
 
     if not data_dir.exists():
-        print(f"[WARNING] Data directory not found: {data_dir}")
-        print("          Please create it and copy daily/*.parquet + contract.json")
+        logger.warning(
+            "Data directory not found: %s\n"
+            "          Please create it and copy daily/*.parquet + contract.json",
+            data_dir,
+        )
         return
 
     if not daily_dir.exists() or not any(daily_dir.glob("*.parquet")):
         parquet_count = len(list(daily_dir.glob("*.parquet"))) if daily_dir.exists() else 0
-        print(f"[WARNING] No daily parquet files found in {daily_dir} ({parquet_count} found)")
-        print("          The data/ directory has these subdirectories:")
+        logger.warning(
+            "No daily parquet files found in %s (%s found)\n"
+            "          The data/ directory has these subdirectories:",
+            daily_dir,
+            parquet_count,
+        )
         for d in sorted(data_dir.iterdir()):
             if d.is_dir():
                 count = len(list(d.iterdir()))
-                print(f"            {d.name}/  ({count} files)")
+                logger.info("            %s/  (%s files)", d.name, count)
         return
 
     if not contract_file.exists():
-        print(f"[WARNING] contract.json not found: {contract_file}")
-        print("          VNPY AlphaLab will use default contract settings.")
+        logger.warning(
+            "contract.json not found: %s\n"
+            "          VNPY AlphaLab will use default contract settings.",
+            contract_file,
+        )
 
     stocks = list_available_stocks()
     strats = list_strategies_metadata()
-    print(
-        f"[OK] Data directory ready: {len(stocks)} stocks, {len(strats)} strategies, contract.json {'found' if contract_file.exists() else 'missing'}"
+    logger.info(
+        "Data directory ready: %s stocks, %s strategies, contract.json %s",
+        len(stocks),
+        len(strats),
+        "found" if contract_file.exists() else "missing",
     )
 
 
@@ -197,7 +210,7 @@ def run_optimize():
             }
         )
     except Exception as e:
-        traceback.print_exc()
+        logger.error("参数网格搜索失败", exc_info=True)
         return jsonify({"error": str(e)}), 500
 
 
@@ -233,7 +246,7 @@ def run_backtest_api():
         result = run_backtest(params)
         return jsonify(result)
     except Exception as e:
-        traceback.print_exc()
+        logger.error("回测执行失败", exc_info=True)
         return jsonify({"error": str(e)}), 500
 
 
@@ -280,7 +293,7 @@ def export_results():
             headers={"Content-Disposition": "attachment; filename=backtest_results.csv"},
         )
     except Exception as e:
-        traceback.print_exc()
+        logger.error("CSV 导出失败", exc_info=True)
         return jsonify({"error": str(e)}), 500
 
 
@@ -392,7 +405,6 @@ def agent_chat():
     import json
 
     from backend.agent import run_agent
-    from backend.log import logger
 
     # 鉴权：如果设置了 RBACKTEST_API_KEY 环境变量，要求请求头匹配
     expected_key = os.environ.get("RBACKTEST_API_KEY", "")
@@ -431,7 +443,6 @@ def agent_chat():
             logger.info("Agent 会话完成")
         except Exception as e:
             logger.error(f"Agent SSE 致命异常: {e}", exc_info=True)
-            traceback.print_exc()
             err = json.dumps({"type": "error", "content": f"系统错误: {e}"}, ensure_ascii=False)
             yield f"data: {err}\n\n"
             yield "data: [DONE]\n\n"
@@ -451,9 +462,13 @@ if __name__ == "__main__":
     port = int(os.environ.get("RBACKTEST_PORT", 15000))
 
     if not _check_port(port):
-        print(f"[FATAL] Port {port} is already in use!")
-        print("        Set RBACKTEST_PORT env var to use a different port, e.g.:")
-        print(f"        RBACKTEST_PORT={port + 1} uv run python rbacktest/backend/app.py")
+        logger.critical(
+            "Port %s is already in use!\n"
+            "        Set RBACKTEST_PORT env var to use a different port, e.g.:\n"
+            "        RBACKTEST_PORT=%s uv run python rbacktest/backend/app.py",
+            port,
+            port + 1,
+        )
         sys.exit(1)
 
     app.run(host="0.0.0.0", port=port, debug=False)
